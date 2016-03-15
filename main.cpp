@@ -1,205 +1,136 @@
 #pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedImportStatement"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-#include <iostream>
-
-#include <OpenGL/gl3.h>
-#include <GLFW/glfw3.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include </usr/local/include/SOIL.h>
-
-#include <noise/noise.h>
-#include <noise/noiseutils.h>
-
-#include "classes/shader.h"
-#include "classes/camera.h"
-#include "classes/Light.h"
-
-GLuint screenWidth = 1440, screenHeight = 900;
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-
-void Do_Movement();
-GLuint loadTexture(std::string image);
-
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-bool keys[1024];
-bool firstMouse = true;
-GLfloat lastX = screenWidth / 2, lastY = screenHeight / 2;
-
-GLfloat deltaTime = 0.0f;
-GLfloat lastFrame = 0.0f;
+#include "main.h"
 
 int main() {
     glfwInit();
 
+    // -------------------------------
+    // GLFW config
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "Test", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test", nullptr, nullptr);
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
 
+    // -------------------------------
+    // Callbacks
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    glViewport(0, 0, screenWidth, screenHeight);
-
-    GLfloat vertices[] = {
-            -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-             0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-            -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,
-            -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-
-            -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-             0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-            -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
-            -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-
-            -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-            -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-            -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-            -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-            -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-            -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-
-             0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-             0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-             0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-             0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-             0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-             0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-
-            -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-             0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f,
-             0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-             0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-            -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,
-            -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-
-            -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-            -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
-            -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
-    };
-
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindVertexArray(VAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0);
-
+    // -------------------------------
+    // OpenGL Config
+    glEnable(GL_MULTISAMPLE);
+    glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_STENCIL_TEST);
 
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-    GLuint texture_diff = loadTexture("/Users/mac/ClionProjects/C++/images/container2.png");
-    GLuint texture_spec = loadTexture("/Users/mac/ClionProjects/C++/images/container2_specular.png");
+    // -------------------------------
+    // Chunk
+    Chunk chunk(glm::vec3(0, 0, 0));
+    chunk.Mesh();
 
-    Shader lighting("/Users/mac/ClionProjects/C++/shaders/lighting.vert", "/Users/mac/ClionProjects/C++/shaders/lighting.frag");
-    Shader cel_shading("/Users/mac/ClionProjects/C++/shaders/lighting.vert", "/Users/mac/ClionProjects/C++/shaders/cel_shading.frag");
+    // -------------------------------
+    // Textures
+    GLuint texture_diff = loadTexture("../images/container2.png");
+    GLuint texture_spec = loadTexture("../images/container2_specular.png");
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_diff);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture_spec);
+
+    // -------------------------------
+    // Shaders
+    Shader lighting("../shaders/lighting.vert", "", "../shaders/lighting.frag", true, false, true);
+    Shader text("../shaders/text.vert", "", "../shaders/text.frag", true, false, true);
+
+    // -------------------------------
+    // Uniform Buffer Object
+    glGenBuffers(1, &UBO);
+    glUniformBlockBinding(lighting.Program, glGetUniformBlockIndex(lighting.Program, "Matrices"), 0);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+    glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
+
+    // -------------------------------
+    // Lights
     lighting.Use();
 
-    Light::Add_Point_Light(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f), glm::vec3(0.9f), 1.0f, 0.09f, 0.032f);
+    Light::Add_Point_Light(glm::vec3(0.0f, 20.0f, 0.0f), glm::vec3(0.05f), glm::vec3(0.7f), glm::vec3(0.9f), 1.0, 0.09, 0.032);
     Light::Upload_Lights(lighting);
 
+    // -------------------------------
+    // Material
     glUniform1i(glGetUniformLocation(lighting.Program, "material.diffuse"), 0);
     glUniform1i(glGetUniformLocation(lighting.Program, "material.specular"), 1);
-    glUniform1f(glGetUniformLocation(lighting.Program, "material.shininess"), 32.0f);
+    glUniform1f(glGetUniformLocation(lighting.Program, "material.shininess"), 128.0f);
+
+    // -------------------------------
+    // Text
+    Init_Text(text);
+
+    double last_fps[AVG_FPS_RANGE] = {0.0};
+    int fps_counter = 0;
+    int current_FPS = 0;
 
     while (!glfwWindowShouldClose(window)) {
+        // -------------------------------
+        // Frame Timing
         GLfloat currentFrame = (GLfloat) glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        glfwPollEvents();
-        Do_Movement();
+        double fps = (1.0f / deltaTime + 0.5);
 
-        glEnable(GL_DEPTH_TEST);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-        glm::mat4 model;
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float) screenWidth / screenHeight, 0.1f, 1000.0f);
-
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilMask(0xFF);
-
-        lighting.Use();
-        glUniform3f(glGetUniformLocation(lighting.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
-
-        glUniformMatrix4fv(glGetUniformLocation(lighting.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(glGetUniformLocation(lighting.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(lighting.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture_diff);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture_spec);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-
-        if (keys[GLFW_KEY_C]) {
-            glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-            glStencilMask(0x00);
-            glDisable(GL_DEPTH_TEST);
-
-            cel_shading.Use();
-            model = glm::scale(model, glm::vec3(1.05f));
-
-            glUniformMatrix4fv(glGetUniformLocation(cel_shading.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-            glUniformMatrix4fv(glGetUniformLocation(cel_shading.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
-            glUniformMatrix4fv(glGetUniformLocation(cel_shading.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-            glBindVertexArray(VAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            glBindVertexArray(0);
-
-            glStencilMask(0xFF);
-            glEnable(GL_DEPTH_TEST);
+        for (int i = 0; i < AVG_FPS_RANGE; i++) {
+            if (i < AVG_FPS_RANGE - 1) {
+                last_fps[i] = last_fps[i + 1];
+            }
+            else {
+                last_fps[i] = fps;
+            }
         }
+
+        if (fps_counter == FPS_UPDATE_FRAME_FREQ) {
+            fps_counter = 0;
+
+            double fps_sum = 0.0;
+
+            for (int i = 0; i < AVG_FPS_RANGE; i++) {
+                fps_sum += last_fps[i];
+            }
+
+            current_FPS = (int) (fps_sum / AVG_FPS_RANGE);
+        }
+        else {
+            fps_counter += 1;
+        }
+
+        glfwPollEvents();
+        Do_Movement(deltaTime);
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        Render_Scene(lighting, chunk);
+
+        Render_Text(text, "FPS: " + std::to_string(current_FPS), 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
 
         glfwSwapBuffers(window);
     }
@@ -208,7 +139,7 @@ int main() {
     return 0;
 }
 
-void Do_Movement() {
+void Do_Movement(GLfloat deltaTime) {
     if (keys[GLFW_KEY_W]) {
         camera.ProcessKeyboard(FORWARD, deltaTime);
     }
@@ -226,46 +157,149 @@ void Do_Movement() {
     }
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
+void Render_Scene(Shader shader, Chunk chunk) {
+    shader.Use();
+
+    // -------------------------------
+    // Set Matrices
+    glm::mat4 view = camera.GetViewMatrix();
+    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f,
+                                            1000.0f);
+    glm::mat4 model;
+
+    // -------------------------------
+    // Upload Uniforms
+    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniform3f(glGetUniformLocation(shader.Program, "viewPos"), camera.Position.x, camera.Position.y,
+                camera.Position.z);
+
+    // -------------------------------
+    // Render Chunk
+    chunk.Draw();
+}
+
+void Init_Text(Shader shader) {
+    FT_Library ft;
+    FT_Face face;
+
+    if (FT_Init_FreeType(&ft)) {
+        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
     }
 
-    if (key >= 0 && key < 1024) {
-        if (action == GLFW_PRESS) {
-            keys[key] = true;
+    if (FT_New_Face(ft, "../fonts/Arial.ttf", 0, &face)) {
+        std::cout << "ERROR::FREETYPE: Failed to load Font" << std::endl;
+    }
+
+    FT_Set_Pixel_Sizes(face, 0, 48);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    for (GLubyte c = 0; c < 128; c++) {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+            std::cout << "ERROR::FREETYPE: Failed to load Glyph " << c << std::endl;
+            continue;
         }
-        else if (action == GLFW_RELEASE) {
-            keys[key] = false;
-        }
+
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+                     face->glyph->bitmap.width,
+                     face->glyph->bitmap.rows,
+                     0, GL_RED, GL_UNSIGNED_BYTE,
+                     face->glyph->bitmap.buffer
+        );
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        Character character = {
+                texture,
+                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+                (GLuint) face->glyph->advance.x
+        };
+
+        Characters.insert(std::pair<GLchar, Character>(c, character));
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    FT_Done_Face(face);
+    FT_Done_FreeType(ft);
+
+    glGenVertexArrays(1, &textVAO);
+    glGenBuffers(1, &textVBO);
+
+    glBindVertexArray(textVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    shader.Use();
+
+    glm::mat4 projection = glm::ortho(0.0f, (float) SCREEN_WIDTH, 0.0f, (float) SCREEN_HEIGHT);
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform1i(glGetUniformLocation(shader.Program, "text"), 2);
 }
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
-        lastX = (GLfloat) xpos;
-        lastY = (GLfloat) ypos;
-        firstMouse = false;
+void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
+    shader.Use();
+
+    glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindVertexArray(textVAO);
+
+    std::string::const_iterator c;
+
+    for (c = text.begin(); c != text.end(); c++) {
+        Character ch = Characters[*c];
+
+        GLfloat xPos = x + ch.Bearing.x * scale;
+        GLfloat yPos = y - (ch.Size.y - ch.Bearing.y) * scale;
+
+        GLfloat w = ch.Size.x * scale;
+        GLfloat h = ch.Size.y * scale;
+
+        GLfloat text_vertices[6][4] = {
+                {xPos,     yPos + h,   0.0, 0.0},
+                {xPos,     yPos,       0.0, 1.0},
+                {xPos + w, yPos,       1.0, 1.0},
+
+                {xPos,     yPos + h,   0.0, 0.0},
+                {xPos + w, yPos,       1.0, 1.0},
+                {xPos + w, yPos + h,   1.0, 0.0}
+        };
+
+        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+
+        glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(text_vertices), text_vertices);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        x += (ch.Advance >> 6) * scale;
     }
 
-    GLfloat xOffset = (GLfloat) xpos - lastX;
-    GLfloat yOffset = (GLfloat) (lastY - ypos);
-
-    lastX = (GLfloat) xpos;
-    lastY = (GLfloat) ypos;
-
-    camera.ProcessMouseMovement(xOffset, yOffset);
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    camera.ProcessMouseScroll((GLfloat) yoffset);
-}
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    screenWidth = (GLuint) width;
-    screenHeight = (GLuint) height;
-
-    glViewport(0, 0, screenWidth, screenHeight);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 GLuint loadTexture(std::string image_path) {
@@ -281,7 +315,7 @@ GLuint loadTexture(std::string image_path) {
 
     int width, height;
     unsigned char* image = SOIL_load_image(image_path.c_str(), &width, &height, 0, SOIL_LOAD_RGB);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
     glGenerateMipmap(GL_TEXTURE_2D);
     SOIL_free_image_data(image);
     glBindTexture(GL_TEXTURE_2D, 0);
