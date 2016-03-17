@@ -8,6 +8,7 @@
 
 #include <mach/mach_time.h>
 
+#include <OpenGL/gl3.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
@@ -24,15 +25,14 @@
 
 #include "Variables.h"
 #include "classes/shader.h"
-#include "classes/camera.h"
+#include "classes/Player.h"
 #include "classes/Light.h"
 #include "classes/VBO.h"
 #include "classes/Chunk.h"
 
 // -------------------------------
 // Functions
-void Render_Scene(Shader shader, Chunk chunk);
-void Add_Cube(int x, int y, int z);
+void Render_Scene(Shader shader);
 void Do_Movement(GLfloat deltaTime);
 void Init_Text(Shader shader);
 void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
@@ -49,9 +49,8 @@ struct Character {
 
 // -------------------------------
 // Globals
-GLuint VAO, VBO, UBO;
+GLuint UBO;
 GLuint textVAO, textVBO;
-GLuint vertexCount = 0;
 
 GLfloat lastX = SCREEN_WIDTH / 2, lastY = SCREEN_HEIGHT / 2;
 GLfloat deltaTime = 0.0f;
@@ -62,11 +61,12 @@ bool firstMouse = true;
 
 // -------------------------------
 // Objects
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Player player = Player();
 
 // -------------------------------
 // Data
 std::map<GLchar, Character> Characters;
+std::vector<Chunk> Chunks;
 
 // -------------------------------
 // Functions
@@ -97,8 +97,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     lastX = (GLfloat) xpos;
     lastY = (GLfloat) ypos;
 
-    camera.ProcessMouseMovement(xOffset, yOffset);
+    player.ProcessMouseMovement(xOffset, yOffset);
 }
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    camera.ProcessMouseScroll((GLfloat) yoffset);
+    player.ProcessMouseScroll((GLfloat) yoffset);
 }

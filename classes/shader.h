@@ -52,7 +52,7 @@ public:
         GLint success;
         GLchar infoLog[512];
 
-        this->Program = glCreateProgram();
+        Program = glCreateProgram();
 
         if (vertActive) {
             const GLchar* vShaderCode = vertexCode.c_str();
@@ -68,7 +68,7 @@ public:
                 std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
             }
 
-            glAttachShader(this->Program, vertex);
+            glAttachShader(Program, vertex);
         }
 
         if (geoActive) {
@@ -85,7 +85,7 @@ public:
                 std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
             }
 
-            glAttachShader(this->Program, geometry);
+            glAttachShader(Program, geometry);
         }
 
         if (fragActive) {
@@ -102,15 +102,15 @@ public:
                 std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
             }
 
-            glAttachShader(this->Program, fragment);
+            glAttachShader(Program, fragment);
         }
 
-        glLinkProgram(this->Program);
+        glLinkProgram(Program);
 
-        glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
+        glGetProgramiv(Program, GL_LINK_STATUS, &success);
 
         if (!success) {
-            glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
+            glGetProgramInfoLog(Program, 512, NULL, infoLog);
             std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
         }
 
@@ -119,6 +119,6 @@ public:
         if (fragActive) glDeleteShader(fragment);
     }
     void Use() {
-        glUseProgram(this->Program);
+        glUseProgram(Program);
     }
 };

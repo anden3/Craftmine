@@ -2,6 +2,7 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
 #include "main.h"
+// #include "classes/Time.h"
 
 int main() {
     glfwInit();
@@ -32,7 +33,7 @@ int main() {
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_STENCIL_TEST);
+    glEnable(GL_CULL_FACE);
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -40,23 +41,24 @@ int main() {
 
     // -------------------------------
     // Chunk
-    Chunk chunk(glm::vec3(0, 0, 0));
-    chunk.Mesh();
+    for (int x = 0; x < 2; x++) {
+        for (int y = 0; y < 2; y++) {
+            for (int z = 0; z < 2; z++) {
+                Chunks.push_back(Chunk(glm::vec3(x, y, z)));
+            }
+        }
+    }
 
     // -------------------------------
     // Textures
-    GLuint texture_diff = loadTexture("../images/container2.png");
-    GLuint texture_spec = loadTexture("../images/container2_specular.png");
+    GLuint texture = loadTexture("../images/stone.png");
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture_diff);
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture_spec);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     // -------------------------------
     // Shaders
-    Shader lighting("../shaders/lighting.vert", "", "../shaders/lighting.frag", true, false, true);
+    Shader lighting("../shaders/shader.vert", "", "../shaders/shader.frag", true, false, true);
     Shader text("../shaders/text.vert", "", "../shaders/text.frag", true, false, true);
 
     // -------------------------------
@@ -70,18 +72,19 @@ int main() {
 
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
 
-    // -------------------------------
-    // Lights
-    lighting.Use();
+    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+    glm::mat4 projection = glm::perspective(glm::radians(player.Cam.Zoom), (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 1000.0f);
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    Light::Add_Point_Light(glm::vec3(0.0f, 20.0f, 0.0f), glm::vec3(0.05f), glm::vec3(0.7f), glm::vec3(0.9f), 1.0, 0.09, 0.032);
-    Light::Upload_Lights(lighting);
+    // -------------------------------
+    // Light
+    lighting.Use();
+    Light::Add_Dir_Light(lighting, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
 
     // -------------------------------
     // Material
     glUniform1i(glGetUniformLocation(lighting.Program, "material.diffuse"), 0);
-    glUniform1i(glGetUniformLocation(lighting.Program, "material.specular"), 1);
-    glUniform1f(glGetUniformLocation(lighting.Program, "material.shininess"), 128.0f);
 
     // -------------------------------
     // Text
@@ -128,9 +131,13 @@ int main() {
         Do_Movement(deltaTime);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        Render_Scene(lighting, chunk);
+
+        Render_Scene(lighting);
 
         Render_Text(text, "FPS: " + std::to_string(current_FPS), 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+        Render_Text(text, "X: " + std::to_string(int(player.WorldPos.x)), 30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+        Render_Text(text, "Y: " + std::to_string(int(player.WorldPos.y)), 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+        Render_Text(text, "Z: " + std::to_string(int(player.WorldPos.z)), 30.0f, SCREEN_HEIGHT - 140.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
 
         glfwSwapBuffers(window);
     }
@@ -139,48 +146,45 @@ int main() {
     return 0;
 }
 
-void Do_Movement(GLfloat deltaTime) {
-    if (keys[GLFW_KEY_W]) {
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    }
-
-    if (keys[GLFW_KEY_S]) {
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    }
-
-    if (keys[GLFW_KEY_A]) {
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    }
-
-    if (keys[GLFW_KEY_D]) {
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-    }
-}
-
-void Render_Scene(Shader shader, Chunk chunk) {
+void Render_Scene(Shader shader) {
     shader.Use();
 
     // -------------------------------
     // Set Matrices
-    glm::mat4 view = camera.GetViewMatrix();
-    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f,
-                                            1000.0f);
+    glm::mat4 view = player.Cam.GetViewMatrix();
     glm::mat4 model;
 
     // -------------------------------
     // Upload Uniforms
     glBindBuffer(GL_UNIFORM_BUFFER, UBO);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
-    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(glGetUniformLocation(shader.Program, "viewPos"), camera.Position.x, camera.Position.y,
-                camera.Position.z);
 
     // -------------------------------
-    // Render Chunk
-    chunk.Draw();
+    // Render Chunks
+    for (int i = 0; i < Chunks.size(); i++) {
+        Chunks[i].Draw();
+    }
+}
+
+void Do_Movement(GLfloat deltaTime) {
+    if (keys[GLFW_KEY_W]) {
+        player.ProcessKeyboard(FRONT, deltaTime);
+    }
+
+    if (keys[GLFW_KEY_S]) {
+        player.ProcessKeyboard(BACK, deltaTime);
+    }
+
+    if (keys[GLFW_KEY_A]) {
+        player.ProcessKeyboard(LEFT, deltaTime);
+    }
+
+    if (keys[GLFW_KEY_D]) {
+        player.ProcessKeyboard(RIGHT, deltaTime);
+    }
 }
 
 void Init_Text(Shader shader) {
@@ -207,7 +211,7 @@ void Init_Text(Shader shader) {
 
         GLuint texture;
         glGenTextures(1, &texture);
-        glActiveTexture(GL_TEXTURE2);
+        glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
         glBindTexture(GL_TEXTURE_2D, texture);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
@@ -255,7 +259,7 @@ void Init_Text(Shader shader) {
 
     glm::mat4 projection = glm::ortho(0.0f, (float) SCREEN_WIDTH, 0.0f, (float) SCREEN_HEIGHT);
     glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(shader.Program, "text"), 2);
+    glUniform1i(glGetUniformLocation(shader.Program, "text"), TEXT_TEXTURE_UNIT);
 }
 
 void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
@@ -263,7 +267,7 @@ void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat 
 
     glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
 
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
     glBindVertexArray(textVAO);
 
     std::string::const_iterator c;
@@ -310,12 +314,12 @@ GLuint loadTexture(std::string image_path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     int width, height;
     unsigned char* image = SOIL_load_image(image_path.c_str(), &width, &height, 0, SOIL_LOAD_RGB);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
     glGenerateMipmap(GL_TEXTURE_2D);
     SOIL_free_image_data(image);
     glBindTexture(GL_TEXTURE_2D, 0);

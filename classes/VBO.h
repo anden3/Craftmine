@@ -4,26 +4,16 @@
 
 class VBO {
 public:
-    int vertexCount = 0;
-
-    VBO(int size=0) {
-        if (size != 0) {
-            this->bufferSize = size;
-        }
-
-        glGenVertexArrays(1, &this->VertexArrayObject);
-        glGenBuffers(1, &this->VertexBufferObject);
-
-        glBindBuffer(GL_ARRAY_BUFFER, this->VertexBufferObject);
-        glBufferData(GL_ARRAY_BUFFER, this->bufferSize, NULL, GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    VBO() {
+        glGenVertexArrays(1, &VertexArrayObject);
+        glGenBuffers(1, &VertexBufferObject);
     }
 
-    void Data(GLfloat data[], int vCount) {
-        glBindVertexArray(this->VertexArrayObject);
+    void Data(std::vector<float> data) {
+        glBindVertexArray(VertexArrayObject);
 
-        glBindBuffer(GL_ARRAY_BUFFER, this->VertexBufferObject);
-        glBufferData(GL_ARRAY_BUFFER, vCount * 8 * sizeof(GLfloat), data, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
 
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
@@ -37,16 +27,18 @@ public:
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        this->vertexCount += vCount;
+        vertexCount += data.size() / 8;
     }
 
     void Draw() {
-        glBindVertexArray(this->VertexArrayObject);
-        glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+        glBindVertexArray(VertexArrayObject);
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
         glBindVertexArray(0);
     }
 
 private:
     int bufferSize = pow(CHUNK_SIZE, 3) * 36 * 8;
-    GLuint VertexArrayObject, VertexBufferObject;
+    int vertexCount = 0;
+    GLuint VertexArrayObject;
+    unsigned int VertexBufferObject;
 };

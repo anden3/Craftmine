@@ -7,6 +7,7 @@ const int MAX_SPOT_LIGHTS = 10;
 struct Material {
     sampler2D diffuse;
     sampler2D specular;
+    sampler2D normal;
     float     shininess;
 };
 
@@ -69,7 +70,9 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 void main() {
-    vec3 norm = normalize(Normal);
+    vec3 norm = texture(material.normal, TexCoords).rgb;
+    norm = normalize(norm * 2.0 - 1.0);
+
     vec3 viewDir = normalize(viewPos - FragPos);
 
     vec3 result = vec3(0.0f, 0.0f, 0.0f);
