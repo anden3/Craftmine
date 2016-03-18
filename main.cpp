@@ -2,7 +2,6 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
 #include "main.h"
-// #include "classes/Time.h"
 
 int main() {
     glfwInit();
@@ -41,9 +40,9 @@ int main() {
 
     // -------------------------------
     // Chunk
-    for (int x = 0; x < 2; x++) {
-        for (int y = 0; y < 2; y++) {
-            for (int z = 0; z < 2; z++) {
+    for (int x = -2; x < 3; x++) {
+        for (int y = -2; y < 3; y++) {
+            for (int z = -2; z < 3; z++) {
                 Chunks.push_back(Chunk(glm::vec3(x, y, z)));
             }
         }
@@ -141,6 +140,9 @@ int main() {
 
         glfwSwapBuffers(window);
     }
+
+    chunkGenTimer.Get("all");
+    chunkMeshTimer.Get("all");
 
     glfwTerminate();
     return 0;

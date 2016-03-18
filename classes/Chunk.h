@@ -8,32 +8,73 @@ public:
     glm::vec3 Position;
     std::vector<glm::vec3> Blocks;
 
-    bool IsMeshed = false;
-    bool GeneratedFeatures = false;
-
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
 
     Chunk(glm::vec3 position) {
         Position = position;
+
+        chunkGenTimer.Add();
         Generate();
+        chunkGenTimer.Add();
+
+        chunkMeshTimer.Add();
         Mesh();
+        chunkMeshTimer.Add();
     }
 
     void Generate() {
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            float gx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
+        bool x_in_chunk = false;
+        bool y_in_chunk = false;
+        bool z_in_chunk = false;
 
-            for (int y = 0; y < CHUNK_SIZE; y++) {
-                float gy = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
+        for (int x = -1; x <= CHUNK_SIZE; x++) {
+            float nx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
+            x_in_chunk = (x >= 0 && x < CHUNK_SIZE);
 
-                for (int z = 0; z < CHUNK_SIZE; z++) {
-                    float gz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
+            for (int y = -1; y <= CHUNK_SIZE; y++) {
+                float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
+                y_in_chunk = (y >= 0 && y < CHUNK_SIZE);
 
-                    double noiseValue = noiseModule.GetValue(gx, gy, gz);
+                for (int z = -1; z <= CHUNK_SIZE; z++) {
+                    float nz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
+                    z_in_chunk = (z >= 0 && z < CHUNK_SIZE);
+
+                    double noiseValue = noiseModule.GetValue(nx, ny, nz);
 
                     if (noiseValue >= 0.0) {
-                        BlockMap[x][y][z] = 1;
-                        Blocks.push_back(glm::vec3(x, y, z));
+                        if (x_in_chunk && y_in_chunk && z_in_chunk) {
+                            BlockMap[x][y][z] = 1;
+                            Blocks.push_back(glm::vec3(x, y, z));
+                        }
+                    }
+                    else {
+                        if (y_in_chunk && z_in_chunk) {
+                            if (x > 0) {
+                                SeesAir[x - 1][y][z] += pow(2, RIGHT);
+                            }
+                            if (x < CHUNK_SIZE - 1) {
+                                SeesAir[x + 1][y][z] += pow(2, LEFT);
+                            }
+                        }
+
+                        if (x_in_chunk && z_in_chunk) {
+                            if (y > 0) {
+                                SeesAir[x][y - 1][z] += pow(2, UP);
+                            }
+                            if (y < CHUNK_SIZE - 1) {
+                                SeesAir[x][y + 1][z] += pow(2, DOWN);
+                            }
+                        }
+
+                        if (x_in_chunk && y_in_chunk) {
+                            if (z > 0) {
+                                SeesAir[x][y][z - 1] += pow(2, FRONT);
+                            }
+                            if (z < CHUNK_SIZE - 1) {
+                                SeesAir[x][y][z + 1] += pow(2, BACK);
+                            }
+                        }
                     }
                 }
             }
@@ -45,20 +86,17 @@ public:
         std::vector<glm::vec3>::iterator block = Blocks.begin();
 
         while (block != Blocks.end()) {
-            std::vector<int> neighbors = Get_Neighbors(*block);
-            int neighborSum = 0;
+            unsigned char seesAir = SeesAir[(int)block->x][(int)block->y][(int)block->z];
 
-            for (int i = 0; i < 6; i++) {
-                neighborSum += neighbors[i];
-            }
-
-            if (neighborSum == 6) {
+            if (seesAir == 0) {
                 block = Blocks.erase(block);
             }
             else {
-                for (int i = 0; i < 6; i++) {
-                    if (neighbors[i] == 0) {
-                        for (int j = i * 6; j < i * 6 + 6; j++) {
+                int bit = 0;
+
+                while (bit < 6) {
+                    if (seesAir & 0x01) {
+                        for (int j = bit * 6; j < bit * 6 + 6; j++) {
                             data.push_back(vertices[j][0] + Position.x * CHUNK_SIZE + block->x);
                             data.push_back(vertices[j][1] + Position.y * CHUNK_SIZE + block->y);
                             data.push_back(vertices[j][2] + Position.z * CHUNK_SIZE + block->z);
@@ -68,11 +106,12 @@ public:
                             }
                         }
                     }
+                    bit++;
+                    seesAir = seesAir >> 1;
                 }
                 ++block;
             }
         }
-
         vbo.Data(data);
     }
 
@@ -81,55 +120,4 @@ public:
     }
 private:
     VBO vbo;
-
-    std::vector<int> Get_Neighbors(glm::vec3 pos) {
-        std::vector<int> result;
-
-        int x = pos.x;
-        int y = pos.y;
-        int z = pos.z;
-
-        glm::vec3 Neighbors[6] = {
-                glm::vec3(x - 1, y, z), glm::vec3(x + 1, y, z),
-                glm::vec3(x, y - 1, z), glm::vec3(x, y + 1, z),
-                glm::vec3(x, y, z - 1), glm::vec3(x, y, z + 1),
-        };
-
-        for (int i = 0; i < 6; i++) {
-            glm::vec3 neighbor = Neighbors[i];
-
-            if (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE) {
-                result.push_back(0);
-                continue;
-            }
-
-            if (neighbor.y < 0) {
-                result.push_back(1);
-                continue;
-            }
-
-            else if (neighbor.y >= CHUNK_SIZE) {
-                result.push_back(0);
-                continue;
-            }
-
-            if (neighbor.z < 0 || neighbor.z >= CHUNK_SIZE) {
-                result.push_back(0);
-                continue;
-            }
-
-            int nx = neighbor.x;
-            int ny = neighbor.y;
-            int nz = neighbor.z;
-
-            if (BlockMap[nx][ny][nz] >= 1) {
-                result.push_back(1);
-            }
-            else {
-                result.push_back(0);
-            }
-        }
-
-        return result;
-    }
 };

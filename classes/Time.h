@@ -59,7 +59,7 @@ public:
         }
 
         else if (type == "last") {
-            Convert_Time(timings[count], ID + " Loop " + std::to_string(count));
+            Convert_Time(timings[count - 1], ID + " Loop " + std::to_string(count));
         }
 
         else if (type == "avg") {
@@ -134,10 +134,10 @@ private:
 
 void Convert_Time(int64_t t, std::string text) {
     std::string units[4] = {
-            "nanoseconds",
-            "microseconds",
-            "milliseconds",
-            "seconds"
+            "nanosecond",
+            "microsecond",
+            "millisecond",
+            "second"
     };
 
     int unitIndex = 0;
@@ -151,6 +151,10 @@ void Convert_Time(int64_t t, std::string text) {
 
     std::string desc = "Time Taken (" + text + "):";
     std::string value = std::to_string(t);
+
+    if (value != "1") {
+        unit += "s";
+    }
 
     if (value.length() > 7) {
         value = value.substr(0, 7);

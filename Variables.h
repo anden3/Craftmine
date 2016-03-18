@@ -1,5 +1,7 @@
 #pragma once
 
+#include "classes/Time.h"
+
 // -------------------------------
 // Enumerations
 enum Directions {
@@ -36,6 +38,11 @@ bool CONSTRAIN_PITCH = true;
 // -------------------------------
 // Variables
 noise::module::Perlin noiseModule;
+
+// -------------------------------
+// Timers
+Time chunkGenTimer("Chunk Generation");
+Time chunkMeshTimer("Chunk Meshing");
 
 // -------------------------------
 // Data
