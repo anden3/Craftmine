@@ -1,70 +1,41 @@
 #pragma once
 
-#include "../Variables.h"
-#include "../Functions.h"
-#include "camera.h"
+#include <vector>
+#include <tuple>
+
+#include <glm/glm.hpp>
+
+#include "Camera.h"
+#include "Chunk.h"
+
+enum Directions {
+    LEFT,
+    RIGHT,
+    DOWN,
+    UP,
+    BACK,
+    FRONT
+};
+
+extern std::vector<Chunk*> ChunkQueue;
+std::tuple<glm::vec3, glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 
 class Player {
 public:
-    glm::vec3 WorldPos = glm::vec3(0.0f);
-    glm::vec3 Chunk = glm::vec3(0);
-    glm::vec3 Tile = glm::vec3(0);
+    Player();
 
-    Camera Cam = Camera();
+    glm::vec3 WorldPos;
+    glm::vec3 CurrentChunk;
+    glm::vec3 CurrentTile;
 
-    void ProcessKeyboard(Directions direction, GLfloat deltaTime) {
-        GLfloat velocity = PLAYER_BASE_SPEED * deltaTime;
+    float SpeedModifier = 1.0f;
 
-        if (direction == FRONT) {
-            WorldPos += Cam.Front * velocity;
-        }
+    Camera Cam;
 
-        if (direction == BACK) {
-            WorldPos -= Cam.Front * velocity;
-        }
+    void ProcessKeyboard(Directions direction, float deltaTime);
+    void ProcessMouseMovement(float xOffset, float yOffset);
+    void ProcessMouseScroll(float yOffset);
 
-        if (direction == LEFT) {
-            WorldPos -= Cam.Right * velocity;
-        }
-
-        if (direction == RIGHT) {
-            WorldPos += Cam.Right * velocity;
-        }
-
-        Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + 1.7, WorldPos.z);
-    }
-
-    void ProcessMouseMovement(GLfloat xOffset, GLfloat yOffset) {
-        xOffset *= PLAYER_SENSITIVITY;
-        yOffset *= PLAYER_SENSITIVITY;
-
-        Cam.Yaw   += xOffset;
-        Cam.Pitch += yOffset;
-
-        if (CONSTRAIN_PITCH) {
-            if (Cam.Pitch > 89.0f) {
-                Cam.Pitch = 89.0f;
-            }
-
-            if (Cam.Pitch < -89.0f) {
-                Cam.Pitch = -89.0f;
-            }
-        }
-
-        Cam.updateCameraVectors();
-    }
-
-    void ProcessMouseScroll(float yOffset) {
-        if (Cam.Zoom >= MIN_FOV && Cam.Zoom <= MAX_FOV) {
-            Cam.Zoom -= yOffset;
-        }
-
-        if (Cam.Zoom < MIN_FOV) {
-            Cam.Zoom = MIN_FOV;
-        }
-
-        if (Cam.Zoom > MAX_FOV) {
-            Cam.Zoom = MAX_FOV;
-        }
-    }
+private:
+    void RenderChunks();
 };

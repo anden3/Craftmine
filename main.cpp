@@ -3,6 +3,21 @@
 
 #include "main.h"
 
+#include <OpenGl/gl3.h>
+
+// #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <SOIL.h>
+
+#include <freetype2/ft2build.h>
+#include FT_FREETYPE_H
+
+#include "classes/Time.h"
+#include "classes/Light.h"
+
+Time t1("Timer 1");
+
 int main() {
     glfwInit();
 
@@ -39,18 +54,8 @@ int main() {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
     // -------------------------------
-    // Chunk
-    for (int x = -2; x < 3; x++) {
-        for (int y = -2; y < 3; y++) {
-            for (int z = -2; z < 3; z++) {
-                Chunks.push_back(Chunk(glm::vec3(x, y, z)));
-            }
-        }
-    }
-
-    // -------------------------------
     // Textures
-    GLuint texture = loadTexture("../images/stone.png");
+    GLuint texture = loadTexture("../images/grass.png");
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -89,63 +94,36 @@ int main() {
     // Text
     Init_Text(text);
 
-    double last_fps[AVG_FPS_RANGE] = {0.0};
-    int fps_counter = 0;
-    int current_FPS = 0;
-
     while (!glfwWindowShouldClose(window)) {
-        // -------------------------------
-        // Frame Timing
-        GLfloat currentFrame = (GLfloat) glfwGetTime();
+        float currentFrame = (float) glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-
-        double fps = (1.0f / deltaTime + 0.5);
-
-        for (int i = 0; i < AVG_FPS_RANGE; i++) {
-            if (i < AVG_FPS_RANGE - 1) {
-                last_fps[i] = last_fps[i + 1];
-            }
-            else {
-                last_fps[i] = fps;
-            }
-        }
-
-        if (fps_counter == FPS_UPDATE_FRAME_FREQ) {
-            fps_counter = 0;
-
-            double fps_sum = 0.0;
-
-            for (int i = 0; i < AVG_FPS_RANGE; i++) {
-                fps_sum += last_fps[i];
-            }
-
-            current_FPS = (int) (fps_sum / AVG_FPS_RANGE);
-        }
-        else {
-            fps_counter += 1;
-        }
 
         glfwPollEvents();
         Do_Movement(deltaTime);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        Generate_Chunk();
         Render_Scene(lighting);
-
-        Render_Text(text, "FPS: " + std::to_string(current_FPS), 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-        Render_Text(text, "X: " + std::to_string(int(player.WorldPos.x)), 30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-        Render_Text(text, "Y: " + std::to_string(int(player.WorldPos.y)), 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-        Render_Text(text, "Z: " + std::to_string(int(player.WorldPos.z)), 30.0f, SCREEN_HEIGHT - 140.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+        Draw_Text(text, deltaTime);
 
         glfwSwapBuffers(window);
     }
 
-    chunkGenTimer.Get("all");
-    chunkMeshTimer.Get("all");
-
+    t1.Get("all");
     glfwTerminate();
     return 0;
+}
+
+void Generate_Chunk() {
+    if (ChunkQueue.size() > 0) {
+        ChunkQueue.back()->Generate();
+        ChunkQueue.back()->Mesh();
+
+        ChunkMap[ChunkQueue.back()->Position] = ChunkQueue.back();
+        ChunkQueue.pop_back();
+    }
 }
 
 void Render_Scene(Shader shader) {
@@ -166,12 +144,52 @@ void Render_Scene(Shader shader) {
 
     // -------------------------------
     // Render Chunks
-    for (int i = 0; i < Chunks.size(); i++) {
-        Chunks[i].Draw();
+    for (auto const chunk: ChunkMap) {
+        chunk.second->Draw();
     }
 }
 
-void Do_Movement(GLfloat deltaTime) {
+void Draw_Text(Shader shader, float deltaTime) {
+    double fps = (1.0f / deltaTime + 0.5);
+
+    for (int i = 0; i < AVG_FPS_RANGE; i++) {
+        if (i < AVG_FPS_RANGE - 1) {
+            last_fps[i] = last_fps[i + 1];
+        }
+        else {
+            last_fps[i] = fps;
+        }
+    }
+
+    if (fps_counter == FPS_UPDATE_FRAME_FREQ) {
+        fps_counter = 0;
+
+        double fps_sum = 0.0;
+
+        for (int i = 0; i < AVG_FPS_RANGE; i++) {
+            fps_sum += last_fps[i];
+        }
+
+        current_FPS = (int) (fps_sum / AVG_FPS_RANGE);
+    }
+    else {
+        fps_counter += 1;
+    }
+
+    Render_Text(shader, "FPS: " + std::to_string(current_FPS), 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader, "X: " + std::to_string(int(player.WorldPos.x)), 30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader, "Y: " + std::to_string(int(player.WorldPos.y)), 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader, "Z: " + std::to_string(int(player.WorldPos.z)), 30.0f, SCREEN_HEIGHT - 140.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+}
+
+void Do_Movement(float deltaTime) {
+    if (keys[GLFW_KEY_LEFT_SHIFT]) {
+        player.SpeedModifier = 2.0f;
+    }
+    else {
+        player.SpeedModifier = 1.0f;
+    }
+
     if (keys[GLFW_KEY_W]) {
         player.ProcessKeyboard(FRONT, deltaTime);
     }
@@ -249,10 +267,10 @@ void Init_Text(Shader shader) {
     glBindVertexArray(textVAO);
     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -264,7 +282,7 @@ void Init_Text(Shader shader) {
     glUniform1i(glGetUniformLocation(shader.Program, "text"), TEXT_TEXTURE_UNIT);
 }
 
-void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
+void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color) {
     shader.Use();
 
     glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
@@ -277,13 +295,13 @@ void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat 
     for (c = text.begin(); c != text.end(); c++) {
         Character ch = Characters[*c];
 
-        GLfloat xPos = x + ch.Bearing.x * scale;
-        GLfloat yPos = y - (ch.Size.y - ch.Bearing.y) * scale;
+        float xPos = x + ch.Bearing.x * scale;
+        float yPos = y - (ch.Size.y - ch.Bearing.y) * scale;
 
-        GLfloat w = ch.Size.x * scale;
-        GLfloat h = ch.Size.y * scale;
+        float w = ch.Size.x * scale;
+        float h = ch.Size.y * scale;
 
-        GLfloat text_vertices[6][4] = {
+        float text_vertices[6][4] = {
                 {xPos,     yPos + h,   0.0, 0.0},
                 {xPos,     yPos,       0.0, 1.0},
                 {xPos + w, yPos,       1.0, 1.0},
@@ -327,6 +345,41 @@ GLuint loadTexture(std::string image_path) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return texture;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+
+    if (key >= 0 && key < 1024) {
+        if (action == GLFW_PRESS) {
+            keys[key] = true;
+        }
+        else if (action == GLFW_RELEASE) {
+            keys[key] = false;
+        }
+    }
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (firstMouse) {
+        lastX = (float) xpos;
+        lastY = (float) ypos;
+        firstMouse = false;
+    }
+
+    float xOffset = (float) xpos - lastX;
+    float yOffset = (float) (lastY - ypos);
+
+    lastX = (float) xpos;
+    lastY = (float) ypos;
+
+    player.ProcessMouseMovement(xOffset, yOffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    player.ProcessMouseScroll((float) yoffset);
 }
 
 #pragma clang diagnostic pop

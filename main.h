@@ -1,104 +1,57 @@
 #pragma once
 
-// -------------------------------
-// Includes
-#include <iostream>
-#include <vector>
 #include <map>
+#include <iostream>
 
-#include <mach/mach_time.h>
-
-#include <OpenGL/gl3.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
-#include <SOIL.h>
-
-#include <noise/noise.h>
-#include <noise/noiseutils.h>
-
-#include <freetype2/ft2build.h>
-#include FT_FREETYPE_H
-
-#include "Variables.h"
-#include "classes/shader.h"
+#include "classes/Shader.h"
 #include "classes/Player.h"
-#include "classes/Light.h"
-#include "classes/VBO.h"
-#include "classes/Chunk.h"
 
-// -------------------------------
-// Functions
-void Render_Scene(Shader shader);
-void Do_Movement(GLfloat deltaTime);
-void Init_Text(Shader shader);
-void Render_Text(Shader shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
-GLuint loadTexture(std::string image);
-
-// -------------------------------
-// Structs
 struct Character {
-    GLuint     TextureID;
+    unsigned int TextureID;
     glm::ivec2 Size;
     glm::ivec2 Bearing;
-    GLuint     Advance;
+    unsigned int Advance;
 };
 
-// -------------------------------
-// Globals
-GLuint UBO;
-GLuint textVAO, textVBO;
+static const int SCREEN_WIDTH  = 1440;
+static const int SCREEN_HEIGHT = 900;
 
-GLfloat lastX = SCREEN_WIDTH / 2, lastY = SCREEN_HEIGHT / 2;
-GLfloat deltaTime = 0.0f;
-GLfloat lastFrame = 0.0f;
+static const int AVG_FPS_RANGE = 5;
+static const int FPS_UPDATE_FRAME_FREQ = 5;
+
+static const int TEXT_TEXTURE_UNIT = 10;
+
+static double last_fps[AVG_FPS_RANGE] = {0.0};
+static int fps_counter = 0;
+static int current_FPS = 0;
+
+unsigned int UBO;
+unsigned int textVAO, textVBO;
+
+float lastX = SCREEN_WIDTH / 2, lastY = SCREEN_HEIGHT / 2;
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 bool keys[1024];
 bool firstMouse = true;
 
-// -------------------------------
-// Objects
 Player player = Player();
 
-// -------------------------------
-// Data
-std::map<GLchar, Character> Characters;
-std::vector<Chunk> Chunks;
+std::map<char, Character> Characters;
+std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
+std::vector<Chunk*> ChunkQueue;
 
-// -------------------------------
-// Functions
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-
-    if (key >= 0 && key < 1024) {
-        if (action == GLFW_PRESS) {
-            keys[key] = true;
-        }
-        else if (action == GLFW_RELEASE) {
-            keys[key] = false;
-        }
-    }
-}
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
-        lastX = (GLfloat) xpos;
-        lastY = (GLfloat) ypos;
-        firstMouse = false;
-    }
-
-    GLfloat xOffset = (GLfloat) xpos - lastX;
-    GLfloat yOffset = (GLfloat) (lastY - ypos);
-
-    lastX = (GLfloat) xpos;
-    lastY = (GLfloat) ypos;
-
-    player.ProcessMouseMovement(xOffset, yOffset);
-}
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    player.ProcessMouseScroll((GLfloat) yoffset);
-}
+void Generate_Chunk();
+void Draw_Text(Shader shader, float deltaTime);
+void Render_Scene(Shader shader);
+void Do_Movement(float deltaTime);
+void Init_Text(Shader shader);
+void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color);
+unsigned int loadTexture(std::string image);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
