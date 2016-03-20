@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -8,22 +9,6 @@
 #include "VBO.h"
 
 static const int CHUNK_SIZE = 16;
-
-class Chunk {
-public:
-    glm::vec3 Position;
-    std::vector<glm::vec3> Blocks;
-    VBO vbo;
-
-    char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
-    unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
-
-    Chunk(glm::vec3 position);
-
-    void Generate();
-    void Mesh();
-    void Draw();
-};
 
 class Vec3Comparator {
 public:
@@ -37,6 +22,22 @@ public:
         else
             return false;
     }
+};
+
+class Chunk {
+public:
+    glm::vec3 Position;
+    std::set<glm::vec3, Vec3Comparator> Blocks;
+    VBO vbo;
+
+    char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+
+    Chunk(glm::vec3 position);
+
+    void Generate();
+    void Mesh();
+    void Draw();
 };
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;

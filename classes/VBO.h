@@ -10,7 +10,6 @@ public:
     void Draw();
 
 private:
-    //int bufferSize;
     int vertexCount;
     unsigned int VertexArrayObject;
     unsigned int VertexBufferObject;

@@ -98,7 +98,7 @@ void Chunk::Generate() {
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (x_in_chunk && y_in_chunk && z_in_chunk) {
                         BlockMap[x][y][z] = 1;
-                        Blocks.push_back(glm::vec3(x, y, z));
+                        Blocks.insert(glm::vec3(x, y, z));
                     }
                 }
                 else {
@@ -136,7 +136,8 @@ void Chunk::Generate() {
 
 void Chunk::Mesh() {
     std::vector<float> data;
-    std::vector<glm::vec3>::iterator block = Blocks.begin();
+
+    std::set<glm::vec3>::iterator block = Blocks.begin();
 
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[(int)block->x][(int)block->y][(int)block->z];
@@ -165,6 +166,7 @@ void Chunk::Mesh() {
             ++block;
         }
     }
+
     vbo.Data(data);
 }
 

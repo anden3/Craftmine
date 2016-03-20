@@ -28,7 +28,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    glfwWindowHint(GLFW_SAMPLES, 4);
+    //glfwWindowHint(GLFW_SAMPLES, 4);
 
     GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test", nullptr, nullptr);
     glfwMakeContextCurrent(window);
@@ -48,6 +48,8 @@ int main() {
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -118,8 +120,10 @@ int main() {
 
 void Generate_Chunk() {
     if (ChunkQueue.size() > 0) {
+        t1.Add();
         ChunkQueue.back()->Generate();
         ChunkQueue.back()->Mesh();
+        t1.Add();
 
         ChunkMap[ChunkQueue.back()->Position] = ChunkQueue.back();
         ChunkQueue.pop_back();
@@ -229,7 +233,7 @@ void Init_Text(Shader shader) {
             continue;
         }
 
-        GLuint texture;
+        unsigned int texture;
         glGenTextures(1, &texture);
         glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -250,7 +254,7 @@ void Init_Text(Shader shader) {
                 texture,
                 glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
                 glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                (GLuint) face->glyph->advance.x
+                (unsigned int) face->glyph->advance.x
         };
 
         Characters.insert(std::pair<GLchar, Character>(c, character));
@@ -340,9 +344,8 @@ GLuint loadTexture(std::string image_path) {
     int width, height;
     unsigned char* image = SOIL_load_image(image_path.c_str(), &width, &height, 0, SOIL_LOAD_RGB);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    SOIL_free_image_data(image);
     glBindTexture(GL_TEXTURE_2D, 0);
+    SOIL_free_image_data(image);
 
     return texture;
 }

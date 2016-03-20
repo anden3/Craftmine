@@ -5,7 +5,6 @@
 static const int CHUNK_SIZE = 16;
 
 VBO::VBO() {
-    //bufferSize = (CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE) * 36 * 8;
     vertexCount = 0;
 
     glGenVertexArrays(1, &VertexArrayObject);
@@ -13,10 +12,14 @@ VBO::VBO() {
 }
 
 void VBO::Data(std::vector<float> data) {
+    if (data.size() == 0) {
+        return;
+    }
+
     glBindVertexArray(VertexArrayObject);
 
     glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
@@ -34,7 +37,9 @@ void VBO::Data(std::vector<float> data) {
 }
 
 void VBO::Draw() {
-    glBindVertexArray(VertexArrayObject);
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    glBindVertexArray(0);
+    if (vertexCount > 0) {
+        glBindVertexArray(VertexArrayObject);
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+        glBindVertexArray(0);
+    }
 }
