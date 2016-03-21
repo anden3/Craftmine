@@ -37,7 +37,6 @@ public:
 
     void Generate();
     void Mesh();
-    void Draw();
 };
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;

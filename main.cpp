@@ -3,6 +3,8 @@
 
 #include "main.h"
 
+#include <sys/resource.h>
+
 #include <OpenGl/gl3.h>
 
 // #include <glm/gtc/matrix_transform.hpp>
@@ -28,7 +30,6 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    //glfwWindowHint(GLFW_SAMPLES, 4);
 
     GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test", nullptr, nullptr);
     glfwMakeContextCurrent(window);
@@ -44,10 +45,9 @@ int main() {
 
     // -------------------------------
     // OpenGL Config
-    glEnable(GL_MULTISAMPLE);
     glEnable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -57,7 +57,7 @@ int main() {
 
     // -------------------------------
     // Textures
-    GLuint texture = loadTexture("../images/grass.png");
+    unsigned int texture = loadTexture("../images/grass.png");
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -108,7 +108,7 @@ int main() {
 
         Generate_Chunk();
         Render_Scene(lighting);
-        Draw_Text(text, deltaTime);
+        Draw_UI(text, deltaTime);
 
         glfwSwapBuffers(window);
     }
@@ -149,24 +149,27 @@ void Render_Scene(Shader shader) {
     // -------------------------------
     // Render Chunks
     for (auto const chunk: ChunkMap) {
-        chunk.second->Draw();
+        chunk.second->vbo.Draw();
     }
 }
 
-void Draw_Text(Shader shader, float deltaTime) {
-    double fps = (1.0f / deltaTime + 0.5);
+void Draw_UI(Shader shader, float deltaTime) {
+    std::string fps = "FPS: ";
+    std::string ram = "RAM: ";
 
     for (int i = 0; i < AVG_FPS_RANGE; i++) {
         if (i < AVG_FPS_RANGE - 1) {
             last_fps[i] = last_fps[i + 1];
         }
         else {
-            last_fps[i] = fps;
+            last_fps[i] = (1.0f / deltaTime + 0.5);
         }
     }
 
-    if (fps_counter == FPS_UPDATE_FRAME_FREQ) {
-        fps_counter = 0;
+    if (text_counter == TEXT_UPDATE_FRAME_FREQ) {
+        text_counter = 0;
+
+        ram += getMemoryUsage();
 
         double fps_sum = 0.0;
 
@@ -174,16 +177,26 @@ void Draw_Text(Shader shader, float deltaTime) {
             fps_sum += last_fps[i];
         }
 
-        current_FPS = (int) (fps_sum / AVG_FPS_RANGE);
+        fps += std::to_string((int) (fps_sum / AVG_FPS_RANGE));
+
+        current_RAM = ram;
+        current_FPS = fps;
     }
     else {
-        fps_counter += 1;
+        ram = current_RAM;
+        fps = current_FPS;
+
+        text_counter++;
     }
 
-    Render_Text(shader, "FPS: " + std::to_string(current_FPS), 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-    Render_Text(shader, "X: " + std::to_string(int(player.WorldPos.x)), 30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-    Render_Text(shader, "Y: " + std::to_string(int(player.WorldPos.y)), 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-    Render_Text(shader, "Z: " + std::to_string(int(player.WorldPos.z)), 30.0f, SCREEN_HEIGHT - 140.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader, fps, 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader, ram, 30.0f, SCREEN_HEIGHT - 70.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
+    Render_Text(shader,
+                "X: " + std::to_string(int(player.WorldPos.x)) +
+                "    Y: " + std::to_string(int(player.WorldPos.y)) +
+                "    Z: " + std::to_string(int(player.WorldPos.z)),
+
+                30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
 }
 
 void Do_Movement(float deltaTime) {
@@ -330,8 +343,8 @@ void Render_Text(Shader shader, std::string text, float x, float y, float scale,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-GLuint loadTexture(std::string image_path) {
-    GLuint texture;
+unsigned int loadTexture(std::string image_path) {
+    unsigned int texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -348,6 +361,22 @@ GLuint loadTexture(std::string image_path) {
     SOIL_free_image_data(image);
 
     return texture;
+}
+
+std::string getMemoryUsage() {
+    std::vector<std::string> units = {"B", "KB", "MB", "GB"};
+    int unitIndex = 0;
+
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    long memUsage = usage.ru_maxrss;
+
+    while (memUsage >= 1024) {
+        memUsage /= 1024;
+        unitIndex++;
+    }
+
+    return std::to_string(memUsage) + " " + units[unitIndex];
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {

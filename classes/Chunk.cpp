@@ -3,7 +3,6 @@
 #include <noise/noise.h>
 
 static const int CHUNK_ZOOM = 50;
-
 static const float NOISE_DENSITY_BLOCK = 0.5f;
 
 noise::module::Perlin noiseModule;
@@ -135,8 +134,11 @@ void Chunk::Generate() {
 }
 
 void Chunk::Mesh() {
-    std::vector<float> data;
+    if (Blocks.size() == 0) {
+        return;
+    }
 
+    std::vector<float> data;
     std::set<glm::vec3>::iterator block = Blocks.begin();
 
     while (block != Blocks.end()) {
@@ -167,9 +169,7 @@ void Chunk::Mesh() {
         }
     }
 
-    vbo.Data(data);
-}
-
-void Chunk::Draw() {
-    vbo.Draw();
+    if (data.size() > 0) {
+        vbo.Data(data);
+    }
 }

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <vector>
 #include <tuple>
-
-#include <glm/glm.hpp>
 
 #include "Camera.h"
 #include "Chunk.h"

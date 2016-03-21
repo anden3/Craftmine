@@ -11,11 +11,12 @@ VBO::VBO() {
     glGenBuffers(1, &VertexBufferObject);
 }
 
-void VBO::Data(std::vector<float> data) {
-    if (data.size() == 0) {
-        return;
-    }
+VBO::~VBO() {
+    glDeleteBuffers(1, &VertexBufferObject);
+    glDeleteVertexArrays(1, &VertexArrayObject);
+}
 
+void VBO::Data(std::vector<float> data) {
     glBindVertexArray(VertexArrayObject);
 
     glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
@@ -33,7 +34,7 @@ void VBO::Data(std::vector<float> data) {
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    vertexCount += data.size() / 8;
+    vertexCount = (int) data.size() / 8;
 }
 
 void VBO::Draw() {
