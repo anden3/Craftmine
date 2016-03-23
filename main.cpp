@@ -3,11 +3,8 @@
 
 #include "main.h"
 
-#include <sys/resource.h>
-
 #include <OpenGl/gl3.h>
 
-// #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SOIL.h>
@@ -37,9 +34,10 @@ int main() {
 
     // -------------------------------
     // Callbacks
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_proxy);
+    glfwSetCursorPosCallback(window, mouse_proxy);
+    glfwSetScrollCallback(window, scroll_proxy);
+    glfwSetMouseButtonCallback(window, click_proxy);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -48,8 +46,6 @@ int main() {
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -102,7 +98,7 @@ int main() {
         lastFrame = currentFrame;
 
         glfwPollEvents();
-        Do_Movement(deltaTime);
+        player.Move(deltaTime);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -146,6 +142,20 @@ void Render_Scene(Shader shader) {
 
     glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
+    if (toggleWireframe) {
+        toggleWireframe = false;
+        wireframe = !wireframe;
+
+        if (wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glUniform1i(glGetUniformLocation(shader.Program, "material.diffuse"), 50);
+        }
+        else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glUniform1i(glGetUniformLocation(shader.Program, "material.diffuse"), 0);
+        }
+    }
+
     // -------------------------------
     // Render Chunks
     for (auto const chunk: ChunkMap) {
@@ -156,6 +166,10 @@ void Render_Scene(Shader shader) {
 void Draw_UI(Shader shader, float deltaTime) {
     std::string fps = "FPS: ";
     std::string ram = "RAM: ";
+
+    std::string playerChunk = "Chunk: " + formatVector(player.CurrentChunk, true);
+    std::string playerTile = "Tile:      " + formatVector(player.CurrentTile, true);
+    std::string playerPos = formatVector(player.WorldPos, false, "    ");
 
     for (int i = 0; i < AVG_FPS_RANGE; i++) {
         if (i < AVG_FPS_RANGE - 1) {
@@ -189,38 +203,20 @@ void Draw_UI(Shader shader, float deltaTime) {
         text_counter++;
     }
 
-    Render_Text(shader, fps, 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-    Render_Text(shader, ram, 30.0f, SCREEN_HEIGHT - 70.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-    Render_Text(shader,
-                "X: " + std::to_string(int(player.WorldPos.x)) +
-                "    Y: " + std::to_string(int(player.WorldPos.y)) +
-                "    Z: " + std::to_string(int(player.WorldPos.z)),
-
-                30.0f, SCREEN_HEIGHT - 100.0f, 0.5f, glm::vec3(0.2f, 0.8f, 0.2f));
-}
-
-void Do_Movement(float deltaTime) {
-    if (keys[GLFW_KEY_LEFT_SHIFT]) {
-        player.SpeedModifier = 2.0f;
-    }
-    else {
-        player.SpeedModifier = 1.0f;
+    if (wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    if (keys[GLFW_KEY_W]) {
-        player.ProcessKeyboard(FRONT, deltaTime);
-    }
+    Render_Text(shader, fps, 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, TEXT_COLOR);
+    Render_Text(shader, ram, 30.0f, SCREEN_HEIGHT - 80.0f, 0.5f, TEXT_COLOR);
 
-    if (keys[GLFW_KEY_S]) {
-        player.ProcessKeyboard(BACK, deltaTime);
-    }
+    Render_Text(shader, playerChunk, 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, TEXT_COLOR);
+    Render_Text(shader, playerTile, 30.0f, SCREEN_HEIGHT - 150.0f, 0.5f, TEXT_COLOR);
 
-    if (keys[GLFW_KEY_A]) {
-        player.ProcessKeyboard(LEFT, deltaTime);
-    }
+    Render_Text(shader, playerPos, 30.0f, SCREEN_HEIGHT - 200.0f, 0.5f, TEXT_COLOR);
 
-    if (keys[GLFW_KEY_D]) {
-        player.ProcessKeyboard(RIGHT, deltaTime);
+    if (wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 }
 
@@ -379,39 +375,44 @@ std::string getMemoryUsage() {
     return std::to_string(memUsage) + " " + units[unitIndex];
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
+std::string formatVector(glm::vec3 vector, bool tuple, std::string separator) {
+    std::string result;
+
+    std::string x = std::to_string(int(vector.x));
+    std::string y = std::to_string(int(vector.y));
+    std::string z = std::to_string(int(vector.z));
+
+    if (tuple) {
+        result += "(" + x + separator + y + separator + z + ")";
+    }
+    else {
+        result += "X: " + x + separator + "Y: " + y + separator + "Z: " + z;
     }
 
-    if (key >= 0 && key < 1024) {
-        if (action == GLFW_PRESS) {
-            keys[key] = true;
-        }
-        else if (action == GLFW_RELEASE) {
-            keys[key] = false;
-        }
-    }
+    return result;
 }
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
-        lastX = (float) xpos;
-        lastY = (float) ypos;
-        firstMouse = false;
+void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_ESCAPE) {
+            glfwSetWindowShouldClose(window, GL_TRUE);
+            return;
+        }
+        else if (key == GLFW_KEY_I) {
+            toggleWireframe = true;
+        }
     }
 
-    float xOffset = (float) xpos - lastX;
-    float yOffset = (float) (lastY - ypos);
-
-    lastX = (float) xpos;
-    lastY = (float) ypos;
-
-    player.ProcessMouseMovement(xOffset, yOffset);
+    player.KeyHandler(key, action);
 }
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    player.ProcessMouseScroll((float) yoffset);
+void mouse_proxy(GLFWwindow* window, double posX, double posY) {
+    player.MouseHandler(posX, posY);
+}
+void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
+    player.ScrollHandler(offsetY);
+}
+void click_proxy(GLFWwindow* window, int button, int action, int mods) {
+    player.ClickHandler(button, action);
 }
 
 #pragma clang diagnostic pop

@@ -8,7 +8,7 @@
 
 #include "VBO.h"
 
-static const int CHUNK_SIZE = 16;
+const int CHUNK_SIZE = 16;
 
 class Vec3Comparator {
 public:
@@ -30,10 +30,14 @@ public:
     std::set<glm::vec3, Vec3Comparator> Blocks;
     VBO vbo;
 
+    bool Empty = true;
+
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
 
     Chunk(glm::vec3 position);
+
+    int GetBlock(glm::vec3 position);
 
     void Generate();
     void Mesh();

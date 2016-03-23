@@ -76,6 +76,10 @@ Chunk::Chunk(glm::vec3 position) {
     Position = position;
 }
 
+int Chunk::GetBlock(glm::vec3 position) {
+    return BlockMap[(int) position.x][(int) position.y][(int) position.z];
+}
+
 void Chunk::Generate() {
     noiseModule.SetPersistence(0.5);
     noiseModule.SetOctaveCount(3);
@@ -104,27 +108,33 @@ void Chunk::Generate() {
                     if (y_in_chunk && z_in_chunk) {
                         if (x > 0) {
                             SeesAir[x - 1][y][z] += pow(2, RIGHT);
+                            Empty = false;
                         }
                         if (x < CHUNK_SIZE - 1) {
                             SeesAir[x + 1][y][z] += pow(2, LEFT);
+                            Empty = false;
                         }
                     }
 
                     if (x_in_chunk && z_in_chunk) {
                         if (y > 0) {
                             SeesAir[x][y - 1][z] += pow(2, UP);
+                            Empty = false;
                         }
                         if (y < CHUNK_SIZE - 1) {
                             SeesAir[x][y + 1][z] += pow(2, DOWN);
+                            Empty = false;
                         }
                     }
 
                     if (x_in_chunk && y_in_chunk) {
                         if (z > 0) {
                             SeesAir[x][y][z - 1] += pow(2, FRONT);
+                            Empty = false;
                         }
                         if (z < CHUNK_SIZE - 1) {
                             SeesAir[x][y][z + 1] += pow(2, BACK);
+                            Empty = false;
                         }
                     }
                 }
@@ -134,10 +144,9 @@ void Chunk::Generate() {
 }
 
 void Chunk::Mesh() {
-    if (Blocks.size() == 0) {
+    if (Empty || Blocks.size() == 0) {
         return;
     }
-
     std::vector<float> data;
     std::set<glm::vec3>::iterator block = Blocks.begin();
 

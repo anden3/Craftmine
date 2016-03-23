@@ -23,7 +23,10 @@ void Camera::UpdateCameraVectors() {
     front.y = (float) sin(glm::radians(Pitch));
     front.z = (float) (sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
 
+    FrontDirection = glm::normalize(glm::vec3(front.x, 0, front.z));
+    RightDirection = glm::vec3(-FrontDirection.z, 0, FrontDirection.x);
+
     Front = glm::normalize(front);
-    Right = glm::normalize(glm::cross(Front, glm::vec3(0.0f, 1.0f, 0.0f)));
+    Right = glm::normalize(glm::cross(Front, glm::vec3(0, 1, 0)));
     Up    = glm::normalize(glm::cross(Right, Front));
 }

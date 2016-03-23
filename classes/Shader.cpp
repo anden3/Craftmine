@@ -5,7 +5,6 @@
 #include <sstream>
 #include <iostream>
 
-//#include <GLFW/glfw3.h>
 #include <OpenGL/gl3.h>
 
 Shader::Shader(const char *vertexPath, const char *geometryPath, const char *fragmentPath, bool vertActive,

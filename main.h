@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <GLFW/glfw3.h>
-
 #include "classes/Shader.h"
 #include "classes/Player.h"
 
@@ -14,30 +12,31 @@ struct Character {
     unsigned int Advance;
 };
 
-static const int SCREEN_WIDTH  = 1440;
-static const int SCREEN_HEIGHT = 900;
+const int SCREEN_WIDTH  = 1440;
+const int SCREEN_HEIGHT = 900;
 
-static const int AVG_FPS_RANGE = 10;
-static const int TEXT_UPDATE_FRAME_FREQ = 10;
+const int AVG_FPS_RANGE = 10;
+const int TEXT_UPDATE_FRAME_FREQ = 10;
 
-static const int TEXT_TEXTURE_UNIT = 10;
+const int TEXT_TEXTURE_UNIT = 10;
 
-static double last_fps[AVG_FPS_RANGE] = {0.0};
+const glm::vec3 TEXT_COLOR = glm::vec3(0.2f, 0.8f, 0.2f);
 
-static std::string current_RAM;
-static std::string current_FPS;
+double last_fps[AVG_FPS_RANGE] = {0.0};
 
-static int text_counter = TEXT_UPDATE_FRAME_FREQ;
+std::string current_RAM;
+std::string current_FPS;
+
+int text_counter = TEXT_UPDATE_FRAME_FREQ;
 
 unsigned int UBO;
 unsigned int textVAO, textVBO;
 
-float lastX = SCREEN_WIDTH / 2, lastY = SCREEN_HEIGHT / 2;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-bool keys[1024];
-bool firstMouse = true;
+bool wireframe = false;
+bool toggleWireframe = false;
 
 Player player = Player();
 
@@ -50,14 +49,14 @@ void Generate_Chunk();
 void Draw_UI(Shader shader, float deltaTime);
 void Render_Scene(Shader shader);
 
-void Do_Movement(float deltaTime);
-
 void Init_Text(Shader shader);
 void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color);
 
 unsigned int loadTexture(std::string image);
 std::string getMemoryUsage();
+std::string formatVector(glm::vec3 vector, bool tuple = true, std::string separator = ", ");
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_proxy(GLFWwindow* window, double posX, double posY);
+void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
+void click_proxy(GLFWwindow* window, int button, int action, int mods);
