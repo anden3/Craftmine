@@ -15,7 +15,6 @@ enum Directions {
 };
 
 extern std::vector<Chunk*> ChunkQueue;
-std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 
 class Player {
 public:

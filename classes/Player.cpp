@@ -20,7 +20,7 @@ const float JUMP_HEIGHT = 0.1f;
 
 const float WIDTH = 0.2f;
 
-const int RENDER_DISTANCE = 5;
+const int RENDER_DISTANCE = 2;
 
 bool CONSTRAIN_PITCH = true;
 
@@ -235,8 +235,7 @@ void Player::ClickHandler(int button, int action) {
                 glm::vec3 hitChunk = hit[0];
                 glm::vec3 hitTile = hit[1];
 
-                std::cout << hitChunk.x << " " << hitChunk.y << " " << hitChunk.z << std::endl;
-                std::cout << hitTile.x << " " << hitTile.y << " " << hitTile.z << "\n" << std::endl;
+                ChunkMap[hitChunk]->RemoveBlock(hitTile);
             }
         }
     }
@@ -276,11 +275,4 @@ void Player::RenderChunks() {
             }
         }
     }
-}
-
-std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
-    glm::vec3 chunk(floor(worldPos.x / CHUNK_SIZE), floor(worldPos.y / CHUNK_SIZE), floor(worldPos.z / CHUNK_SIZE));
-    glm::vec3 tile(floor(worldPos.x - (chunk.x * CHUNK_SIZE)), floor(worldPos.y - (chunk.y * CHUNK_SIZE)), floor(worldPos.z - (chunk.z * CHUNK_SIZE)));
-
-    return std::vector<glm::vec3>{chunk, tile};
 }

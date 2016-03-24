@@ -2,9 +2,9 @@
 
 #include <map>
 #include <set>
-#include <vector>
 
 #include <glm/glm.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "VBO.h"
 
@@ -38,9 +38,16 @@ public:
     Chunk(glm::vec3 position);
 
     int GetBlock(glm::vec3 position);
+    void SetBlock(glm::vec3 position, char value);
 
     void Generate();
     void Mesh();
+
+    void RemoveBlock(glm::vec3 position);
 };
+
+std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
+std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
+glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile);
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;

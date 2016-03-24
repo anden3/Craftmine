@@ -2,8 +2,6 @@
 
 #include <math.h>
 
-#include <OpenGL/gl3.h>
-
 static const int CHUNK_SIZE = 16;
 
 VBO::VBO() {
@@ -11,10 +9,6 @@ VBO::VBO() {
 
     glGenVertexArrays(1, &VertexArrayObject);
     glGenBuffers(1, &VertexBufferObject);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
-    glBufferData(GL_ARRAY_BUFFER, (int) pow(CHUNK_SIZE, 3) * 8 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 VBO::~VBO() {
@@ -26,8 +20,7 @@ void VBO::Data(std::vector<float> data) {
     glBindVertexArray(VertexArrayObject);
 
     glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
-    // glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, data.size() * sizeof(float), data.data());
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);

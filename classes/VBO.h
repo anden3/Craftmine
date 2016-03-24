@@ -2,8 +2,13 @@
 
 #include <vector>
 
+#include <OpenGL/gl3.h>
+
 class VBO {
 public:
+    unsigned int VertexArrayObject;
+    unsigned int VertexBufferObject;
+
     VBO();
     ~VBO();
 
@@ -12,6 +17,4 @@ public:
 
 private:
     int vertexCount;
-    unsigned int VertexArrayObject;
-    unsigned int VertexBufferObject;
 };

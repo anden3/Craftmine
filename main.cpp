@@ -3,8 +3,6 @@
 
 #include "main.h"
 
-#include <OpenGl/gl3.h>
-
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SOIL.h>
