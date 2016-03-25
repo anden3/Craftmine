@@ -152,6 +152,7 @@ void Chunk::Generate() {
 
 void Chunk::Mesh() {
     if (Empty || Blocks.size() == 0) {
+        EmptyChunks.insert(Position);
         return;
     }
 

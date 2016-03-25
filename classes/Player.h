@@ -32,6 +32,10 @@ public:
     bool Jumping = false;
     bool OnGround = false;
     bool MovedMouse = false;
+    bool LookingAtBlock = false;
+
+    glm::vec3 LookingChunk;
+    glm::vec3 LookingTile;
 
     glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
 

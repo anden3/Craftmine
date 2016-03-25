@@ -20,6 +20,8 @@ const int TEXT_UPDATE_FRAME_FREQ = 10;
 
 const int TEXT_TEXTURE_UNIT = 10;
 
+const int CHUNKS_RENDER_PER_FRAME = 3;
+
 const glm::vec3 TEXT_COLOR = glm::vec3(0.2f, 0.8f, 0.2f);
 
 double last_fps[AVG_FPS_RANGE] = {0.0};
@@ -47,7 +49,7 @@ std::vector<Chunk*> ChunkQueue;
 void Generate_Chunk();
 
 void Draw_UI(Shader shader, float deltaTime);
-void Render_Scene(Shader shader);
+void Render_Scene(Shader shader, Shader outline);
 
 void Init_Text(Shader shader);
 void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color);

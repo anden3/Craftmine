@@ -20,7 +20,7 @@ const float JUMP_HEIGHT = 0.1f;
 
 const float WIDTH = 0.2f;
 
-const int RENDER_DISTANCE = 2;
+const int RENDER_DISTANCE = 5;
 
 bool CONSTRAIN_PITCH = true;
 
@@ -29,6 +29,8 @@ glm::vec3 lastChunk(-5);
 bool keys[1024];
 
 Player::Player() {}
+
+std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 
 void Player::ColDetection() {
     if (!ChunkMap.size()) {
@@ -207,9 +209,20 @@ void Player::MouseHandler(double posX, double posY) {
         }
     }
 
-
     LastMousePos = glm::dvec2(posX, posY);
     Cam.UpdateCameraVectors();
+
+    std::vector<glm::vec3> hit = Hitscan();
+
+    if (hit.size() == 2) {
+        LookingAtBlock = true;
+
+        LookingChunk = hit[0];
+        LookingTile = hit[1];
+    }
+    else {
+        LookingAtBlock = false;
+    }
 }
 
 void Player::ScrollHandler(double offsetY) {
@@ -229,13 +242,9 @@ void Player::ScrollHandler(double offsetY) {
 void Player::ClickHandler(int button, int action) {
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            std::vector<glm::vec3> hit = Hitscan();
-
-            if (hit.size() == 2) {
-                glm::vec3 hitChunk = hit[0];
-                glm::vec3 hitTile = hit[1];
-
-                ChunkMap[hitChunk]->RemoveBlock(hitTile);
+            if (LookingAtBlock) {
+                ChunkMap[LookingChunk]->RemoveBlock(LookingTile);
+                MouseHandler(LastMousePos.x, LastMousePos.y);
             }
         }
     }
@@ -265,7 +274,7 @@ void Player::RenderChunks() {
             for (int z = (int) CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
                 glm::vec3 pos(x, y, z);
 
-                if (pos != CurrentChunk && ChunkMap.count(pos) == 0) {
+                if (pos != CurrentChunk && EmptyChunks.find(pos) == EmptyChunks.end() && ChunkMap.count(pos) == 0) {
                     double dist = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.y - y, 2) + pow(CurrentChunk.z - z, 2);
 
                     if (dist <= pow(RENDER_DISTANCE, 2)) {

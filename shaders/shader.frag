@@ -12,11 +12,15 @@ struct Light {
 
 in vec3 Normal;
 in vec2 TexCoords;
+in vec3 VertexPos;
 
 out vec4 fragColor;
 
 uniform Light light;
 uniform Material material;
+
+uniform bool DrawOutline;
+uniform vec3 BlockPos;
 
 void main() {
     float diff = max(dot(Normal, light.direction), 0.0f);
@@ -24,5 +28,19 @@ void main() {
     vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
     vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
 
-    fragColor = vec4(ambient + diffuse, 1.0f);
+    vec4 color = vec4(ambient + diffuse, 1.0f);
+
+    if (DrawOutline) {
+        vec3 posDiff = VertexPos - BlockPos;
+
+        if (posDiff.x <= 1 && posDiff.x >= 0) {
+            if (posDiff.y <= 1 && posDiff.y >= 0) {
+                if (posDiff.z <= 1 && posDiff.z >= 0) {
+                    color += vec4(0.1f, 0.1f, 0.1f, 0.0f);
+                }
+            }
+        }
+    }
+
+    fragColor = color;
 }

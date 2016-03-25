@@ -18,8 +18,7 @@ Time t1("Timer 1");
 int main() {
     glfwInit();
 
-    // -------------------------------
-    // GLFW config
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -30,8 +29,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
-    // -------------------------------
-    // Callbacks
+
     glfwSetKeyCallback(window, key_proxy);
     glfwSetCursorPosCallback(window, mouse_proxy);
     glfwSetScrollCallback(window, scroll_proxy);
@@ -39,8 +37,7 @@ int main() {
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // -------------------------------
-    // OpenGL Config
+
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -49,20 +46,18 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-    // -------------------------------
-    // Textures
+
     unsigned int texture = loadTexture("../images/grass.png");
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
 
-    // -------------------------------
-    // Shaders
-    Shader lighting("../shaders/shader.vert", "", "../shaders/shader.frag", true, false, true);
-    Shader text("../shaders/text.vert", "", "../shaders/text.frag", true, false, true);
 
-    // -------------------------------
-    // Uniform Buffer Object
+    Shader lighting("../shaders/shader.vert", "", "../shaders/shader.frag");
+    Shader outline("../shaders/outline.vert", "", "../shaders/outline.frag");
+    Shader text("../shaders/text.vert", "", "../shaders/text.frag");
+
+
     glGenBuffers(1, &UBO);
     glUniformBlockBinding(lighting.Program, glGetUniformBlockIndex(lighting.Program, "Matrices"), 0);
 
@@ -77,18 +72,16 @@ int main() {
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    // -------------------------------
-    // Light
+
     lighting.Use();
     Light::Add_Dir_Light(lighting, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
 
-    // -------------------------------
-    // Material
+
     glUniform1i(glGetUniformLocation(lighting.Program, "material.diffuse"), 0);
 
-    // -------------------------------
-    // Text
+
     Init_Text(text);
+
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = (float) glfwGetTime();
@@ -101,7 +94,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Generate_Chunk();
-        Render_Scene(lighting);
+        Render_Scene(lighting, outline);
         Draw_UI(text, deltaTime);
 
         glfwSwapBuffers(window);
@@ -113,27 +106,29 @@ int main() {
 }
 
 void Generate_Chunk() {
-    if (ChunkQueue.size() > 0) {
-        t1.Add();
-        ChunkQueue.back()->Generate();
-        ChunkQueue.back()->Mesh();
-        t1.Add();
+    for (int i = 0; i < CHUNKS_RENDER_PER_FRAME; i++) {
+        if (ChunkQueue.size() > 0) {
+            ChunkQueue.back()->Generate();
 
-        ChunkMap[ChunkQueue.back()->Position] = ChunkQueue.back();
-        ChunkQueue.pop_back();
+            if (EmptyChunks.find(ChunkQueue.back()->Position) == EmptyChunks.end()) {
+                ChunkQueue.back()->Mesh();
+                ChunkMap[ChunkQueue.back()->Position] = ChunkQueue.back();
+            }
+
+            ChunkQueue.pop_back();
+        }
+        else {
+            return;
+        }
     }
 }
 
-void Render_Scene(Shader shader) {
+void Render_Scene(Shader shader, Shader outline) {
     shader.Use();
 
-    // -------------------------------
-    // Set Matrices
     glm::mat4 view = player.Cam.GetViewMatrix();
     glm::mat4 model;
 
-    // -------------------------------
-    // Upload Uniforms
     glBindBuffer(GL_UNIFORM_BUFFER, UBO);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -154,9 +149,25 @@ void Render_Scene(Shader shader) {
         }
     }
 
-    // -------------------------------
-    // Render Chunks
+    glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 0);
+
+    bool disableOutline = false;
+
     for (auto const chunk: ChunkMap) {
+        if (disableOutline) {
+            glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 0);
+            disableOutline = false;
+        }
+
+        if (player.LookingAtBlock && player.LookingChunk == chunk.second->Position) {
+            glm::vec3 blockPos = Get_World_Pos(player.LookingChunk, player.LookingTile);
+
+            glUniform3f(glGetUniformLocation(shader.Program, "BlockPos"), blockPos.x, blockPos.y, blockPos.z);
+            glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 1);
+
+            disableOutline = true;
+        }
+
         chunk.second->vbo.Draw();
     }
 }

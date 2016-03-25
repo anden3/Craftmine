@@ -51,3 +51,4 @@ std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile);
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
+extern std::set<glm::vec3, Vec3Comparator> EmptyChunks;
