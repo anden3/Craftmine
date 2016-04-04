@@ -24,6 +24,7 @@ struct String {
 	float X;
 	float Y;
 	float Scale;
+	float Opacity;
 
 	glm::vec3 Color;
 };
@@ -126,6 +127,7 @@ void Text::Add(std::string name, std::string text, float yTop) {
 
 	string.Scale = Scale;
 	string.Color = Color;
+	string.Opacity = Opacity;
 
 	Strings[name] = string;
 }
@@ -146,6 +148,10 @@ void Text::Set_Scale(std::string name, float scale) {
 	Strings[name].Scale = scale;
 }
 
+void Text::Set_Opacity(std::string name, float opacity) {
+	Strings[name].Opacity = opacity;
+}
+
 void Text::Set_Color(std::string name, glm::vec3 color) {
 	Strings[name].Color = color;
 }
@@ -157,7 +163,7 @@ void Text::Draw(std::string name) {
 
 	textShader->Bind();
 
-	glUniform3f(glGetUniformLocation(textShader->Program, "textColor"), string.Color.x, string.Color.y, string.Color.z);
+	glUniform4f(glGetUniformLocation(textShader->Program, "textColor"), string.Color.x, string.Color.y, string.Color.z, string.Opacity);
 
 	glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
 	glBindVertexArray(textVAO);

@@ -297,7 +297,7 @@ void Player::ClickHandler(int button, int action) {
 					if (LookingAirTile.x == CurrentTile.x && LookingAirTile.z == CurrentTile.z) {
 						int diff = (int)newBlockPos.y - (int)floor(WorldPos.y);
 
-						if (diff >= 0 && diff < 3) {
+						if (diff >= 0 && diff < 2) {
 							return;
 						}
 					}
@@ -328,9 +328,8 @@ void Player::PlaySound(glm::vec3 chunk, glm::vec3 tile) {
 }
 
 void Player::RenderChunks() {
-    std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
-
 	EditingChunkMap = true;
+    std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
 
     while (it != ChunkMap.end()) {
         double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.y - it->first.y, 2) + pow(CurrentChunk.z - it->first.z, 2);
@@ -346,10 +345,6 @@ void Player::RenderChunks() {
 
 	EditingChunkQueue = true;
 
-    if (ChunkMap.count(CurrentChunk) == 0) {
-		ChunkQueue[CurrentChunk] = new Chunk(CurrentChunk);
-    }
-
     for (int x = (int) CurrentChunk.x - RENDER_DISTANCE; x <= CurrentChunk.x + RENDER_DISTANCE; x++) {
         for (int z = (int) CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
 			for (int y = (int) CurrentChunk.y + RENDER_DISTANCE; y >= CurrentChunk.y - RENDER_DISTANCE; y--) {
@@ -364,6 +359,9 @@ void Player::RenderChunks() {
 				}
 
 				if (EmptyChunks.find(pos) != EmptyChunks.end()) {
+					continue;
+				}
+				if (ChunkQueue.find(pos) != ChunkQueue.end()) {
 					continue;
 				}
 

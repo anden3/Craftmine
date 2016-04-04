@@ -90,9 +90,9 @@ void Init_GL() {
 }
 
 void Init_Textures() {
-	unsigned int texture = Load_Texture("images/grass.png");
+	unsigned int atlas = Load_Texture("atlas.png");
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(GL_TEXTURE_2D, atlas);
 }
 
 void Init_Text() {
@@ -109,7 +109,7 @@ void Init_Text() {
 		}
 	}
 
-	text_counter = 0;
+	lastUIUpdate = lastFrame;
 
 	double fps_sum = 0.0;
 	double cpu_sum = 0.0;
@@ -251,8 +251,8 @@ void Draw_UI() {
 		}
 	}
 
-	if (text_counter == TEXT_UPDATE_FRAME_FREQ) {  // TODO Make UI updates independent of frame rate
-		text_counter = 0;
+	if (lastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
+		lastUIUpdate = lastFrame;
 
 		double fps_sum = 0.0;
 		double cpu_sum = 0.0;
@@ -267,9 +267,6 @@ void Draw_UI() {
 		text->Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
 		text->Set_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage());
 		text->Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
-	}
-	else {
-		text_counter++;
 	}
 
 	text->Set_Text("playerChunk", "Chunk: " + Format_Vector(player.CurrentChunk, true));
@@ -288,7 +285,9 @@ void Draw_UI() {
 	}
 }
 
-unsigned int Load_Texture(std::string image_path) {
+unsigned int Load_Texture(std::string file) {
+	std::string path = "images/" + file;
+
     unsigned int texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -300,7 +299,7 @@ unsigned int Load_Texture(std::string image_path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     int width, height;
-    unsigned char* image = SOIL_load_image(image_path.c_str(), &width, &height, 0, SOIL_LOAD_RGB);
+    unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGB);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);

@@ -59,7 +59,8 @@ private:
 	std::vector<glm::vec3> Hitscan();
 
 	void PlaySound(glm::vec3 chunk, glm::vec3 tile);
-    void RenderChunks();
+
+	void RenderChunks();
 };
 
 bool IsBlock(glm::vec3 pos);

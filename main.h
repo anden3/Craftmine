@@ -8,7 +8,7 @@ const int SCREEN_WIDTH  = 1920;
 const int SCREEN_HEIGHT = 1080;
 
 const int AVG_UPDATE_RANGE = 10;
-const int TEXT_UPDATE_FRAME_FREQ = 10;
+const double UI_UPDATE_FREQUENCY = 1.0;
 
 const int CHUNKS_RENDER_PER_FRAME = 2;
 
@@ -19,7 +19,7 @@ const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 double last_fps[AVG_UPDATE_RANGE] = { 0.0 };
 double last_cpu[AVG_UPDATE_RANGE] = { 0.0 };
 
-int text_counter = TEXT_UPDATE_FRAME_FREQ;
+double lastUIUpdate;
 
 unsigned int UBO;
 

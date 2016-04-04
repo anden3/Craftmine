@@ -9,6 +9,8 @@ class Text {
 public:
 	float X = 0;
 	float Scale = 1.0f;
+	float Opacity = 1.0f;
+
 	glm::vec3 Color = glm::vec3(1.0f);
 
 	Text(std::string font, int font_size);
@@ -20,6 +22,7 @@ public:
 	void Set_X(std::string name, float x);
 	void Set_Y(std::string name, float y);
 	void Set_Scale(std::string name, float scale);
+	void Set_Opacity(std::string name, float opacity);
 	void Set_Color(std::string name, glm::vec3 color);
 
 	void Draw(std::string name);

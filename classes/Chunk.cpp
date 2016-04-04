@@ -16,61 +16,159 @@ enum Directions {
     FRONT
 };
 
-float vertices[36][8] = {
-        // Left
-        { 0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f},
-        { 0.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f},
-        { 0.0f,  1.0f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f},
+std::map<unsigned char, glm::vec2> textureCoords = {
+	{1, glm::vec2(2, 1)}, // Stone
+	{2, glm::vec2(1, 1)}, // Grass
+	{3, glm::vec2(3, 1)}, // Dirt
+	{4, glm::vec2(1, 2)}, // Cobblestone
+	{5, glm::vec2(1, 5)}, // Wooden Planks
 
-        { 0.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f},
-        { 0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f},
-        { 0.0f,  0.0f,  1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f},
+	{7, glm::vec2(2, 2)}, // Bedrock
+	
+	{9, glm::vec2(13, 14)}, // Water
+	{11, glm::vec2(15, 14)}, // Lava
 
-        // Right
-        { 1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f},
-        { 1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f},
-        { 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f},
+	{12, glm::vec2(2, 3)}, // Sand
+	{13, glm::vec2(2, 4)}, // Gravel
 
-        { 1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f},
-        { 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f},
-        { 1.0f,  0.0f,  1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f},
+	{14, glm::vec2(3, 1)}, // Gold Ore
+	{15, glm::vec2(3, 2)}, // Iron Ore
+	{16, glm::vec2(3, 3)} // Coal Ore
+};
 
-        // Down
-        { 0.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f},
-        { 1.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f},
-        { 1.0f,  0.0f,  1.0f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f},
+float vertices[6][6][3] = {        
+		{
+			{ 0.0f,  0.0f,  0.0f },
+			{ 0.0f,  1.0f,  1.0f },
+			{ 0.0f,  1.0f,  0.0f },
 
-        { 1.0f,  0.0f,  1.0f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f},
-        { 0.0f,  0.0f,  1.0f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f},
-        { 0.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f},
+			{ 0.0f,  1.0f,  1.0f },
+			{ 0.0f,  0.0f,  0.0f },
+			{ 0.0f,  0.0f,  1.0f },
+		},
+		
+		{
+			{ 1.0f,  0.0f,  0.0f },
+			{ 1.0f,  1.0f,  0.0f },
+			{ 1.0f,  1.0f,  1.0f },
 
-        // Up
-        { 0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f},
-        { 1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f},
-        { 1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f},
+			{ 1.0f,  0.0f,  0.0f },
+			{ 1.0f,  1.0f,  1.0f },
+			{ 1.0f,  0.0f,  1.0f },
+		},
+        
+		{
+			{ 0.0f,  0.0f,  0.0f },
+			{ 1.0f,  0.0f,  0.0f },
+			{ 1.0f,  0.0f,  1.0f },
 
-        { 0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f},
-        { 0.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f},
-        { 1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f},
+			{ 1.0f,  0.0f,  1.0f },
+			{ 0.0f,  0.0f,  1.0f },
+			{ 0.0f,  0.0f,  0.0f },
+		},
+        
+		{
+			{ 0.0f,  1.0f,  0.0f },
+			{ 1.0f,  1.0f,  1.0f },
+			{ 1.0f,  1.0f,  0.0f },
 
-        // Back
-        { 0.0f,  0.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f},
-        { 1.0f,  1.0f,  0.0f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f},
-        { 1.0f,  0.0f,  0.0f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f},
+			{ 0.0f,  1.0f,  0.0f },
+			{ 0.0f,  1.0f,  1.0f },
+			{ 1.0f,  1.0f,  1.0f },
+		},
+		        
+		{
+			{ 0.0f,  0.0f,  0.0f },
+			{ 1.0f,  1.0f,  0.0f },
+			{ 1.0f,  0.0f,  0.0f },
 
-        { 0.0f,  0.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f},
-        { 0.0f,  1.0f,  0.0f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f},
-        { 1.0f,  1.0f,  0.0f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f},
+			{ 0.0f,  0.0f,  0.0f },
+			{ 0.0f,  1.0f,  0.0f },
+			{ 1.0f,  1.0f,  0.0f },
+		},
 
-        // Front
-        { 0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f},
-        { 1.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f},
-        { 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f},
+		{
+			{ 0.0f,  0.0f,  1.0f },
+			{ 1.0f,  0.0f,  1.0f },
+			{ 1.0f,  1.0f,  1.0f },
 
-        { 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f},
-        { 0.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f},
-        { 0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f}
-    };
+			{ 1.0f,  1.0f,  1.0f },
+			{ 0.0f,  1.0f,  1.0f },
+			{ 0.0f,  0.0f,  1.0f }
+		}
+};
+
+float normals[6][3] = {
+	{-1.0f,  0.0f,  0.0f },
+	{ 1.0f,  0.0f,  0.0f },
+	{ 0.0f, -1.0f,  0.0f },
+	{ 0.0f,  1.0f,  0.0f },
+	{ 0.0f,  0.0f, -1.0f },
+	{ 0.0f,  0.0f,  1.0f }
+
+};
+
+float tex_coords[6][6][2] = {
+	{
+		{ 0.0f, 1.0f },
+		{ 1.0f, 0.0f },
+		{ 0.0f, 0.0f },
+
+		{ 1.0f, 0.0f },
+		{ 0.0f, 1.0f },
+		{ 1.0f, 1.0f },
+	},
+
+	{
+		{ 1.0f, 1.0f },
+		{ 1.0f, 0.0f },
+		{ 0.0f, 0.0f },
+
+		{ 1.0f, 1.0f },
+		{ 0.0f, 0.0f },
+		{ 0.0f, 1.0f },
+	},
+
+	{
+		{ 0.0f, 0.0f },
+		{ 1.0f, 0.0f },
+		{ 1.0f, 1.0f },
+
+		{ 1.0f, 1.0f },
+		{ 0.0f, 1.0f },
+		{ 0.0f, 0.0f },
+	},
+
+	{
+		{ 0.0f, 0.0f },
+		{ 1.0f, 1.0f },
+		{ 1.0f, 0.0f },
+
+		{ 0.0f, 0.0f },
+		{ 0.0f, 1.0f },
+		{ 1.0f, 1.0f },
+	},
+
+	{
+		{ 1.0f, 1.0f },
+		{ 0.0f, 0.0f },
+		{ 0.0f, 1.0f },
+
+		{ 1.0f, 1.0f },
+		{ 1.0f, 0.0f },
+		{ 0.0f, 0.0f },
+	},
+
+	{
+		{ 0.0f, 1.0f },
+		{ 1.0f, 1.0f },
+		{ 1.0f, 0.0f },
+
+		{ 1.0f, 0.0f },
+		{ 0.0f, 0.0f },
+		{ 0.0f, 1.0f },
+	}
+};
 
 Chunk::Chunk(glm::vec3 position) {
     Position = position;
@@ -194,7 +292,13 @@ void Chunk::Generate() {
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
-                        BlockMap[x][y][z] = 1;
+						unsigned char blockID;
+						int height = int(Position.y) * CHUNK_SIZE + y;
+
+						if (height < 0) blockID = 1;
+						else blockID = 2;
+
+                        BlockMap[x][y][z] = blockID;
                         Blocks.insert(glm::vec3(x, y, z));
                     }
                 }
@@ -206,8 +310,8 @@ void Chunk::Generate() {
     }
 }
 
-int Chunk::GetAO(glm::vec3 block, int face, int offset) {
-	glm::ivec3 vertex(vertices[offset][0], vertices[offset][1], vertices[offset][2]);
+int Chunk::GetAO(glm::vec3 block, int face, int index) {
+	glm::ivec3 vertex(vertices[face][index][0], vertices[face][index][1], vertices[face][index][2]);
 	int ao = 3;
 
 	glm::vec3 offsets[6][2][2][3] = {
@@ -282,6 +386,8 @@ void Chunk::Mesh() {
     std::vector<float> data;
     std::set<glm::vec3>::iterator block = Blocks.begin();
 
+	float textureStep = (1.0f / 16.0f);
+
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[(int)block->x][(int)block->y][(int)block->z];
 
@@ -290,17 +396,25 @@ void Chunk::Mesh() {
         }
         else {
             int bit = 0;
+			unsigned char blockType = GetBlock(*block);
+			glm::vec2 texPosition = textureCoords[blockType];
+
+			float texStartX = textureStep * (texPosition.x - 1.0f);
+			float texStartY = textureStep * (texPosition.y - 1.0f);
 
             while (bit < 6) {
                 if (seesAir & 1) {
-                    for (int j = bit * 6; j < bit * 6 + 6; j++) {
-                        data.push_back(vertices[j][0] + Position.x * CHUNK_SIZE + block->x);
-                        data.push_back(vertices[j][1] + Position.y * CHUNK_SIZE + block->y);
-                        data.push_back(vertices[j][2] + Position.z * CHUNK_SIZE + block->z);
+                    for (int j = 0; j < 6; j++) {
+                        data.push_back(vertices[bit][j][0] + Position.x * CHUNK_SIZE + block->x);
+                        data.push_back(vertices[bit][j][1] + Position.y * CHUNK_SIZE + block->y);
+                        data.push_back(vertices[bit][j][2] + Position.z * CHUNK_SIZE + block->z);
 
-                        for (int k = 3; k < 8; k++) {
-                            data.push_back(vertices[j][k]);
-                        }
+						data.push_back(normals[bit][0]);
+						data.push_back(normals[bit][1]);
+						data.push_back(normals[bit][2]);
+
+						data.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
+						data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
 
 						data.push_back(float(GetAO(*block, bit, j)));
                     }
