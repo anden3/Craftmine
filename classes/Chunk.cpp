@@ -18,7 +18,7 @@ enum Directions {
 
 std::map<unsigned char, glm::vec2> textureCoords = {
 	{1, glm::vec2(2, 1)}, // Stone
-	{2, glm::vec2(1, 1)}, // Grass
+
 	{3, glm::vec2(3, 1)}, // Dirt
 	{4, glm::vec2(1, 2)}, // Cobblestone
 	{5, glm::vec2(1, 5)}, // Wooden Planks
@@ -33,8 +33,15 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 
 	{14, glm::vec2(3, 1)}, // Gold Ore
 	{15, glm::vec2(3, 2)}, // Iron Ore
-	{16, glm::vec2(3, 3)} // Coal Ore
+	{16, glm::vec2(3, 3)}, // Coal Ore
+
+	{17, glm::vec2(5, 4)}, // Transparent Leaves
+
+	{30, glm::vec2(12, 1)}, // Cobweb
 };
+
+std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
+std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
 float vertices[6][6][3] = {        
 		{
@@ -295,8 +302,7 @@ void Chunk::Generate() {
 						unsigned char blockID;
 						int height = int(Position.y) * CHUNK_SIZE + y;
 
-						if (height < 0) blockID = 1;
-						else blockID = 2;
+						blockID = 2;
 
                         BlockMap[x][y][z] = blockID;
                         Blocks.insert(glm::vec3(x, y, z));
@@ -382,6 +388,19 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 	return ao;
 }
 
+bool Chunk::Check_Grass(glm::vec3 pos) {
+	if (pos.y == CHUNK_SIZE - 1) {
+		glm::vec3 nextChunk = glm::vec3(Position.x, Position.y + 1, Position.z);
+
+		if (ChunkMap.count(nextChunk)) {
+			return !ChunkMap[nextChunk]->GetBlock(glm::vec3(pos.x, 0, pos.z));
+		}
+		return true;
+
+	}
+	return !GetBlock(glm::vec3(pos.x, pos.y + 1, pos.z));
+}
+
 void Chunk::Mesh() {
     std::vector<float> data;
     std::set<glm::vec3>::iterator block = Blocks.begin();
@@ -397,6 +416,15 @@ void Chunk::Mesh() {
         else {
             int bit = 0;
 			unsigned char blockType = GetBlock(*block);
+
+			if (blockType == 2) {
+				bool isGrass = Check_Grass(*block);
+
+				if (!isGrass) {
+					blockType = 3;
+					SetBlock(*block, 3);
+				}
+			}
 			glm::vec2 texPosition = textureCoords[blockType];
 
 			float texStartX = textureStep * (texPosition.x - 1.0f);
@@ -413,8 +441,15 @@ void Chunk::Mesh() {
 						data.push_back(normals[bit][1]);
 						data.push_back(normals[bit][2]);
 
-						data.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
-						data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
+						if (blockType == 2) {
+							data.push_back(textureStep * (grassTextures[bit].x - 1.0f) + tex_coords[bit][j][0] * textureStep);
+							data.push_back(textureStep * (grassTextures[bit].y - 1.0f) + tex_coords[bit][j][1] * textureStep);
+						}
+
+						else {
+							data.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
+							data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
+						}
 
 						data.push_back(float(GetAO(*block, bit, j)));
                     }

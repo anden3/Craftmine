@@ -41,6 +41,8 @@ public:
 
     void Generate();
 
+	bool Check_Grass(glm::vec3 pos);
+
     void Mesh();
 
     void RemoveBlock(glm::vec3 position);
