@@ -14,9 +14,9 @@ public:
     glm::vec3 FrontDirection;
     glm::vec3 RightDirection;
 
-    float Yaw;
-    float Pitch;
-    float Zoom;
+    double Yaw;
+    double Pitch;
+    double Zoom;
 
     Camera();
 

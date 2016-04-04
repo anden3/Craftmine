@@ -1,12 +1,12 @@
 #include "Camera.h"
 
-static const float DEFAULT_FOV = 90.0f;
+static const double DEFAULT_FOV = 90.0;
 
 Camera::Camera() {
     Position = glm::vec3(0.0f);
 
-    Yaw = 270.0f;
-    Pitch = 0.0f;
+    Yaw = 270.0;
+    Pitch = 0.0;
     Zoom = DEFAULT_FOV;
 
     UpdateCameraVectors();

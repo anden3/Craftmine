@@ -2,7 +2,8 @@
 
 #include <vector>
 
-#include <OpenGL/gl3.h>
+#include <GLEW/glew.h>
+#include <GLFW/glfw3.h>
 
 class VBO {
 public:

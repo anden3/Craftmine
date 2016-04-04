@@ -1,26 +1,28 @@
 #include "Player.h"
 
-#include <iostream>
-
 #include "Time.h"
 
-Time timer1("Timer 1");
-
 const float PLAYER_BASE_SPEED  = 3.0f;
-const float PLAYER_SENSITIVITY = 0.25f;
+const float PLAYER_SPRINT_MODIFIER = 3.0f;
+
+const double PLAYER_SENSITIVITY = 0.25;
 const float PLAYER_RANGE = 5.0f;
+
+const float PLAYER_WIDTH = 0.1f;
+
+const float CAMERA_HEIGHT = 1.7f;
+
+const float VOLUME = 0.1f;
 
 const float HITSCAN_STEP_SIZE = 0.1f;
 
-const float MAX_FOV = 120.0f;
-const float MIN_FOV = 1.0f;
+const double MAX_FOV = 120.0;
+const double MIN_FOV = 1.0;
 
 const float GRAVITY = 0.004f;
 const float JUMP_HEIGHT = 0.1f;
 
-const float WIDTH = 0.2f;
-
-const int RENDER_DISTANCE = 5;
+const int RENDER_DISTANCE = 10;
 
 bool CONSTRAIN_PITCH = true;
 
@@ -28,62 +30,34 @@ glm::vec3 lastChunk(-5);
 
 bool keys[1024];
 
-Player::Player() {}
-
 std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 
-void Player::ColDetection() {
-    if (!ChunkMap.size()) {
-        return;
-    }
+std::vector<SoundPlayer> soundPlayers;
 
-    glm::vec3 checkingPos = glm::vec3(WorldPos.x, ceil(WorldPos.y), WorldPos.z) + Velocity;
+void Player::PollSounds() {
+	if (soundPlayers.size() > 0) {
+		std::vector<SoundPlayer>::iterator player = soundPlayers.begin();
 
-    std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(checkingPos);
-    glm::vec3 checkingChunk = chunkPos[0];
-    glm::vec3 checkingTile = chunkPos[1];
-
-    if (ChunkMap.count(checkingChunk) && ChunkMap[checkingChunk]->GetBlock(checkingTile) > 0) {
-        glm::vec3 blockDist(-(checkingTile.x - CurrentTile.x), 0, -(checkingTile.z - CurrentTile.z));
-        glm::vec3 result = blockDist * glm::dot(blockDist, Velocity);
-
-        if (fabs(result.x) > fabs(Velocity.x)) {
-            result.x = Velocity.x;
-        }
-
-        if (fabs(result.z) > fabs(Velocity.z)) {
-            result.z = Velocity.z;
-        }
-
-        Velocity -= result;
-    }
-
-    OnGround = false;
-
-    if (Velocity.y <= 0 && ChunkMap.count(CurrentChunk)) {
-        if (ChunkMap[CurrentChunk]->GetBlock(CurrentTile) > 0) {
-            OnGround = true;
-            Velocity.y = 0;
-        }
-    }
-
-    if (!OnGround) {
-        Velocity.y -= GRAVITY;
-    }
+		while (player != soundPlayers.end()) {
+			if (!player->Playing()) {
+				player = soundPlayers.erase(player);
+			}
+			else {
+				player++;
+			}
+		}
+	}
 }
 
 void Player::Move(float deltaTime) {
     Velocity.x = 0;
     Velocity.z = 0;
 
-    if (keys[GLFW_KEY_LEFT_SHIFT]) {
-        SpeedModifier = 2.0f;
-    }
-    else {
-        SpeedModifier = 1.0f;
-    }
+	float speed = PLAYER_BASE_SPEED * deltaTime;
 
-    float speed = PLAYER_BASE_SPEED * SpeedModifier * deltaTime;
+    if (keys[GLFW_KEY_LEFT_SHIFT]) {
+		speed *= PLAYER_SPRINT_MODIFIER;
+    }
 
     if (Flying) {
         Velocity = glm::vec3(0);
@@ -127,15 +101,14 @@ void Player::Move(float deltaTime) {
         }
 
         ColDetection();
-        
-        WorldPos += Velocity;
-    }
+	}
 
     std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(WorldPos);
     CurrentChunk = chunkPos[0];
     CurrentTile = chunkPos[1];
 
-    Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + 1.7, WorldPos.z);
+    Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
+	listener.Set_Position(Cam.Position);
 
     if (CurrentChunk != lastChunk) {
         lastChunk = CurrentChunk;
@@ -143,27 +116,90 @@ void Player::Move(float deltaTime) {
     }
 }
 
+void Player::ColDetection() {
+	if (!ChunkMap.size() || !ChunkMap.count(CurrentChunk)) {
+		return;
+	}
+
+	Velocity.y -= GRAVITY;
+	
+	if (Velocity.y < 0) {
+		if (!IsBlock(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z))) {
+			WorldPos.y += Velocity.y;
+			OnGround = false;
+		}
+		else {
+			Velocity.y = 0;
+			OnGround = true;
+		}
+	}
+	else if (Velocity.y > 0) {
+		OnGround = false;
+
+		if (!IsBlock(glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT + Velocity.y, WorldPos.z))) {
+			WorldPos.y += Velocity.y;
+		}
+		else {
+			Velocity.y = 0;
+		}
+	}
+
+	if (Velocity.x != 0) {
+		glm::vec3 checkingPos = glm::vec3(WorldPos.x + Velocity.x + (PLAYER_WIDTH * std::copysign(1, Velocity.x)), WorldPos.y, WorldPos.z);
+
+		if (!IsBlock(checkingPos)) {
+			checkingPos.y += CAMERA_HEIGHT;
+
+			if (!IsBlock(checkingPos)) {
+				WorldPos.x += Velocity.x;
+			}
+		}
+	}
+
+	if (Velocity.z != 0) {
+		glm::vec3 checkingPos = glm::vec3(WorldPos.x, WorldPos.y, WorldPos.z + Velocity.z + (PLAYER_WIDTH * std::copysign(1, Velocity.z)));
+
+		if (!IsBlock(checkingPos)) {
+			checkingPos.y += CAMERA_HEIGHT;
+
+			if (!IsBlock(checkingPos)) {
+				WorldPos.z += Velocity.z;
+			}
+		}
+	}
+}
 
 std::vector<glm::vec3> Player::Hitscan() {
     std::vector<glm::vec3> checkingChunkTile;
     std::vector<glm::vec3> failedScan = {glm::vec3(0)};
 
     glm::vec3 checkingPos;
-    glm::vec3 checkingChunk;
-    glm::vec3 checkingTile;
+	glm::vec3 lastPos;
+
+	bool started = false;
 
     for (float t = 0; t < PLAYER_RANGE; t += HITSCAN_STEP_SIZE) {
         checkingPos = Cam.Position + Cam.Front * t;
 
-        checkingChunkTile = Get_Chunk_Pos(checkingPos);
-        checkingChunk = checkingChunkTile[0];
-        checkingTile = checkingChunkTile[1];
+		EditingChunkMap = true;
 
-        if (ChunkMap.count(checkingChunk)) {
-            if (ChunkMap[checkingChunk]->GetBlock(checkingTile) > 0) {
-                return checkingChunkTile;
-            }
-        }
+		if (IsBlock(checkingPos)) {
+			if (started) {
+				std::vector<glm::vec3> result1 = Get_Chunk_Pos(checkingPos);
+				std::vector<glm::vec3> result2 = Get_Chunk_Pos(lastPos);
+
+				result1.insert(result1.end(), result2.begin(), result2.end());
+
+				return result1;
+			}
+
+			return Get_Chunk_Pos(checkingPos);
+		}
+
+		EditingChunkMap = false;
+
+		lastPos = checkingPos;
+		started = true;
     }
 
     return failedScan;
@@ -200,25 +236,30 @@ void Player::MouseHandler(double posX, double posY) {
     Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
 
     if (CONSTRAIN_PITCH) {
-        if (Cam.Pitch > 89.0f) {
-            Cam.Pitch = 89.0f;
+        if (Cam.Pitch > 89.9) {
+            Cam.Pitch = 89.9;
         }
 
-        if (Cam.Pitch < -89.0f) {
-            Cam.Pitch = -89.0f;
+        if (Cam.Pitch < -89.9) {
+            Cam.Pitch = -89.9;
         }
     }
 
     LastMousePos = glm::dvec2(posX, posY);
     Cam.UpdateCameraVectors();
 
+	listener.Set_Orientation(Cam.Front);
+
     std::vector<glm::vec3> hit = Hitscan();
 
-    if (hit.size() == 2) {
+    if (hit.size() == 4) {
         LookingAtBlock = true;
 
         LookingChunk = hit[0];
         LookingTile = hit[1];
+
+		LookingAirChunk = hit[2];
+		LookingAirTile = hit[3];
     }
     else {
         LookingAtBlock = false;
@@ -243,15 +284,53 @@ void Player::ClickHandler(int button, int action) {
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (LookingAtBlock) {
+				// PlaySound(LookingChunk, LookingTile);
                 ChunkMap[LookingChunk]->RemoveBlock(LookingTile);
                 MouseHandler(LastMousePos.x, LastMousePos.y);
             }
         }
+		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+			if (LookingAtBlock) {
+				glm::vec3 newBlockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
+
+				if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {
+					if (LookingAirTile.x == CurrentTile.x && LookingAirTile.z == CurrentTile.z) {
+						int diff = (int)newBlockPos.y - (int)floor(WorldPos.y);
+
+						if (diff >= 0 && diff < 3) {
+							return;
+						}
+					}
+				}
+
+				glm::vec3 diff = newBlockPos - Get_World_Pos(LookingChunk, LookingTile);
+
+				ChunkMap[LookingAirChunk]->AddBlock(LookingAirTile, diff);
+				MouseHandler(LastMousePos.x, LastMousePos.y);
+			}
+		}
     }
+}
+
+void Player::PlaySound(glm::vec3 chunk, glm::vec3 tile) {
+	SoundPlayer player;
+
+	player.Set_Position(Get_World_Pos(chunk, tile));
+	player.Set_Volume(VOLUME);
+
+	Sound sound = Sound("dirt_1");
+	player.Add(sound);
+	sound.Delete();
+
+	player.Play();
+
+	soundPlayers.push_back(player);
 }
 
 void Player::RenderChunks() {
     std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
+
+	EditingChunkMap = true;
 
     while (it != ChunkMap.end()) {
         double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.y - it->first.y, 2) + pow(CurrentChunk.z - it->first.z, 2);
@@ -265,23 +344,56 @@ void Player::RenderChunks() {
         }
     }
 
+	EditingChunkQueue = true;
+
     if (ChunkMap.count(CurrentChunk) == 0) {
-        ChunkQueue.push_back(new Chunk(CurrentChunk));
+		ChunkQueue[CurrentChunk] = new Chunk(CurrentChunk);
     }
 
     for (int x = (int) CurrentChunk.x - RENDER_DISTANCE; x <= CurrentChunk.x + RENDER_DISTANCE; x++) {
-        for (int y = (int) CurrentChunk.y - RENDER_DISTANCE; y <= CurrentChunk.y + RENDER_DISTANCE; y++) {
-            for (int z = (int) CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
+        for (int z = (int) CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
+			for (int y = (int) CurrentChunk.y + RENDER_DISTANCE; y >= CurrentChunk.y - RENDER_DISTANCE; y--) {
                 glm::vec3 pos(x, y, z);
 
-                if (pos != CurrentChunk && EmptyChunks.find(pos) == EmptyChunks.end() && ChunkMap.count(pos) == 0) {
-                    double dist = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.y - y, 2) + pow(CurrentChunk.z - z, 2);
+				if (pos == CurrentChunk) {
+					continue;
+				}
 
-                    if (dist <= pow(RENDER_DISTANCE, 2)) {
-                        ChunkQueue.push_back(new Chunk(pos));
-                    }
+				if (ChunkMap.count(pos) != 0) {
+					continue;
+				}
+
+				if (EmptyChunks.find(pos) != EmptyChunks.end()) {
+					continue;
+				}
+
+                bool inRange = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.y - y, 2) + pow(CurrentChunk.z - z, 2) <= pow(RENDER_DISTANCE, 2);
+
+                if (!inRange) {
+					continue;
                 }
+
+				ChunkQueue[pos] = new Chunk(pos);
             }
         }
     }
+
+	EditingChunkQueue = false;
+	EditingChunkMap = true;
+}
+
+bool IsBlock(glm::vec3 pos) {
+	std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(pos);
+
+	bool isBlock = false;
+
+	EditingChunkMap = true;
+
+	if (ChunkMap.count(chunkPos[0])) {
+		isBlock = ChunkMap[chunkPos[0]]->GetBlock(chunkPos[1]) > 0;
+	}
+
+	EditingChunkMap = false;
+
+	return isBlock;
 }

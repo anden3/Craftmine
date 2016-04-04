@@ -1,354 +1,294 @@
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-
 #include "main.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include <SOIL.h>
+#include <SOIL/SOIL.h>
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
-#include "classes/Time.h"
 #include "classes/Light.h"
+#include "classes/Time.h"
+#include "classes/System.h"
 
-Time t1("Timer 1");
+#include <thread>
+#include <chrono>
 
 int main() {
-    glfwInit();
+	Init_GL();
+	Init_Textures();
+	Init_Text();
 
+	shader = new Shader("shader");
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	Init_UBO();
+	Init_Rendering();
 
-    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test", nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+	std::thread chunkGeneration(BackgroundThread);
 
+	while (!glfwWindowShouldClose(Window)) {
+		double currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 
-    glfwSetKeyCallback(window, key_proxy);
-    glfwSetCursorPosCallback(window, mouse_proxy);
-    glfwSetScrollCallback(window, scroll_proxy);
-    glfwSetMouseButtonCallback(window, click_proxy);
+		glfwPollEvents();
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		player.PollSounds();
+		player.Move((float)deltaTime);
+		
+		Update_Data_Queue();
+		Render_Scene();
+		Draw_UI();
 
+		glfwSwapBuffers(Window);
+	}
 
-    glEnable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
+	chunkGeneration.detach();
+	
+	delete shader;
+	delete text;
 
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-
-
-    unsigned int texture = loadTexture("../images/grass.png");
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-
-    Shader lighting("../shaders/shader.vert", "", "../shaders/shader.frag");
-    Shader outline("../shaders/outline.vert", "", "../shaders/outline.frag");
-    Shader text("../shaders/text.vert", "", "../shaders/text.frag");
-
-
-    glGenBuffers(1, &UBO);
-    glUniformBlockBinding(lighting.Program, glGetUniformBlockIndex(lighting.Program, "Matrices"), 0);
-
-    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-    glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
-
-    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-    glm::mat4 projection = glm::perspective(glm::radians(player.Cam.Zoom), (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 1000.0f);
-    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-
-    lighting.Use();
-    Light::Add_Dir_Light(lighting, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
-
-
-    glUniform1i(glGetUniformLocation(lighting.Program, "material.diffuse"), 0);
-
-
-    Init_Text(text);
-
-
-    while (!glfwWindowShouldClose(window)) {
-        float currentFrame = (float) glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        glfwPollEvents();
-        player.Move(deltaTime);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        Generate_Chunk();
-        Render_Scene(lighting, outline);
-        Draw_UI(text, deltaTime);
-
-        glfwSwapBuffers(window);
-    }
-
-    t1.Get("all");
     glfwTerminate();
     return 0;
 }
 
-void Generate_Chunk() {
-    for (int i = 0; i < CHUNKS_RENDER_PER_FRAME; i++) {
-        if (ChunkQueue.size() > 0) {
-            ChunkQueue.back()->Generate();
+void Init_GL() {
+	glfwInit();
 
-            if (EmptyChunks.find(ChunkQueue.back()->Position) == EmptyChunks.end()) {
-                ChunkQueue.back()->Mesh();
-                ChunkMap[ChunkQueue.back()->Position] = ChunkQueue.back();
-            }
+	glfwWindowHint(GLFW_DECORATED, GL_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-            ChunkQueue.pop_back();
-        }
-        else {
-            return;
-        }
-    }
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", nullptr, nullptr);
+
+	glfwSetWindowPos(Window, 0, 0);
+
+	glfwMakeContextCurrent(Window);
+	glfwSwapInterval(ENABLE_VSYNC);
+
+	glewExperimental = GL_TRUE;
+	glewInit();
+
+	glfwSetKeyCallback(Window, key_proxy);
+	glfwSetCursorPosCallback(Window, mouse_proxy);
+	glfwSetScrollCallback(Window, scroll_proxy);
+	glfwSetMouseButtonCallback(Window, click_proxy);
+
+	glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	glEnable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glClearColor(CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, 1.0f);
 }
 
-void Render_Scene(Shader shader, Shader outline) {
-    shader.Use();
-
-    glm::mat4 view = player.Cam.GetViewMatrix();
-    glm::mat4 model;
-
-    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-    if (toggleWireframe) {
-        toggleWireframe = false;
-        wireframe = !wireframe;
-
-        if (wireframe) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glUniform1i(glGetUniformLocation(shader.Program, "material.diffuse"), 50);
-        }
-        else {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            glUniform1i(glGetUniformLocation(shader.Program, "material.diffuse"), 0);
-        }
-    }
-
-    glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 0);
-
-    bool disableOutline = false;
-
-    for (auto const chunk: ChunkMap) {
-        if (disableOutline) {
-            glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 0);
-            disableOutline = false;
-        }
-
-        if (player.LookingAtBlock && player.LookingChunk == chunk.second->Position) {
-            glm::vec3 blockPos = Get_World_Pos(player.LookingChunk, player.LookingTile);
-
-            glUniform3f(glGetUniformLocation(shader.Program, "BlockPos"), blockPos.x, blockPos.y, blockPos.z);
-            glUniform1i(glGetUniformLocation(shader.Program, "DrawOutline"), 1);
-
-            disableOutline = true;
-        }
-
-        chunk.second->vbo.Draw();
-    }
+void Init_Textures() {
+	unsigned int texture = Load_Texture("images/grass.png");
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
 }
 
-void Draw_UI(Shader shader, float deltaTime) {
-    std::string fps = "FPS: ";
-    std::string ram = "RAM: ";
+void Init_Text() {
+	text = new Text("Minecraftia", 24);
 
-    std::string playerChunk = "Chunk: " + formatVector(player.CurrentChunk, true);
-    std::string playerTile = "Tile:      " + formatVector(player.CurrentTile, true);
-    std::string playerPos = formatVector(player.WorldPos, false, "    ");
+	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
+		if (i < AVG_UPDATE_RANGE - 1) {
+			last_fps[i] = last_fps[i + 1];
+			last_cpu[i] = last_cpu[i + 1];
+		}
+		else {
+			last_fps[i] = (1.0f / deltaTime + 0.5);
+			last_cpu[i] = System::GetCPUUsage();
+		}
+	}
 
-    for (int i = 0; i < AVG_FPS_RANGE; i++) {
-        if (i < AVG_FPS_RANGE - 1) {
-            last_fps[i] = last_fps[i + 1];
-        }
-        else {
-            last_fps[i] = (1.0f / deltaTime + 0.5);
-        }
-    }
+	text_counter = 0;
 
-    if (text_counter == TEXT_UPDATE_FRAME_FREQ) {
-        text_counter = 0;
+	double fps_sum = 0.0;
+	double cpu_sum = 0.0;
 
-        ram += getMemoryUsage();
+	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
+		fps_sum += last_fps[i];
+		cpu_sum += last_cpu[i];
+	}
 
-        double fps_sum = 0.0;
+	text->X = 30.0f;
+	text->Scale = 0.5f;
 
-        for (int i = 0; i < AVG_FPS_RANGE; i++) {
-            fps_sum += last_fps[i];
-        }
+	text->Add("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)), 50);
+	text->Add("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%", 80);
 
-        fps += std::to_string((int) (fps_sum / AVG_FPS_RANGE));
+	text->Add("vram", "VRAM: " + System::GetVRAMUsage(), 120);
+	text->Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 150);
+	text->Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 180);
 
-        current_RAM = ram;
-        current_FPS = fps;
-    }
-    else {
-        ram = current_RAM;
-        fps = current_FPS;
+	text->Add("playerChunk", "Chunk: " + Format_Vector(player.CurrentChunk, true), 220);
+	text->Add("playerTile", "Tile: " + Format_Vector(player.CurrentTile, true), 250);
 
-        text_counter++;
-    }
+	text->Add("playerPos", Format_Vector(player.WorldPos, false, "    "), 290);
 
-    if (wireframe) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
-
-    Render_Text(shader, fps, 30.0f, SCREEN_HEIGHT - 50.0f, 0.5f, TEXT_COLOR);
-    Render_Text(shader, ram, 30.0f, SCREEN_HEIGHT - 80.0f, 0.5f, TEXT_COLOR);
-
-    Render_Text(shader, playerChunk, 30.0f, SCREEN_HEIGHT - 120.0f, 0.5f, TEXT_COLOR);
-    Render_Text(shader, playerTile, 30.0f, SCREEN_HEIGHT - 150.0f, 0.5f, TEXT_COLOR);
-
-    Render_Text(shader, playerPos, 30.0f, SCREEN_HEIGHT - 200.0f, 0.5f, TEXT_COLOR);
-
-    if (wireframe) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
+	text->Add("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()), 330);
 }
 
-void Init_Text(Shader shader) {
-    FT_Library ft;
-    FT_Face face;
+void Init_UBO() {
+	glGenBuffers(1, &UBO);
+	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
 
-    if (FT_Init_FreeType(&ft)) {
-        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-    }
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    if (FT_New_Face(ft, "../fonts/Arial.ttf", 0, &face)) {
-        std::cout << "ERROR::FREETYPE: Failed to load Font" << std::endl;
-    }
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
 
-    FT_Set_Pixel_Sizes(face, 0, 48);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    for (GLubyte c = 0; c < 128; c++) {
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-            std::cout << "ERROR::FREETYPE: Failed to load Glyph " << c << std::endl;
-            continue;
-        }
-
-        unsigned int texture;
-        glGenTextures(1, &texture);
-        glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
-        glBindTexture(GL_TEXTURE_2D, texture);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-                     face->glyph->bitmap.width,
-                     face->glyph->bitmap.rows,
-                     0, GL_RED, GL_UNSIGNED_BYTE,
-                     face->glyph->bitmap.buffer
-        );
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        Character character = {
-                texture,
-                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                (unsigned int) face->glyph->advance.x
-        };
-
-        Characters.insert(std::pair<GLchar, Character>(c, character));
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
-
-    glGenVertexArrays(1, &textVAO);
-    glGenBuffers(1, &textVBO);
-
-    glBindVertexArray(textVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    shader.Use();
-
-    glm::mat4 projection = glm::ortho(0.0f, (float) SCREEN_WIDTH, 0.0f, (float) SCREEN_HEIGHT);
-    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(shader.Program, "text"), TEXT_TEXTURE_UNIT);
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+	glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color) {
-    shader.Use();
+void Init_Rendering() {
+	shader->Bind();
+	Light::Add_Dir_Light(*shader, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
 
-    glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
-
-    glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
-    glBindVertexArray(textVAO);
-
-    std::string::const_iterator c;
-
-    for (c = text.begin(); c != text.end(); c++) {
-        Character ch = Characters[*c];
-
-        float xPos = x + ch.Bearing.x * scale;
-        float yPos = y - (ch.Size.y - ch.Bearing.y) * scale;
-
-        float w = ch.Size.x * scale;
-        float h = ch.Size.y * scale;
-
-        float text_vertices[6][4] = {
-                {xPos,     yPos + h,   0.0, 0.0},
-                {xPos,     yPos,       0.0, 1.0},
-                {xPos + w, yPos,       1.0, 1.0},
-
-                {xPos,     yPos + h,   0.0, 0.0},
-                {xPos + w, yPos,       1.0, 1.0},
-                {xPos + w, yPos + h,   1.0, 0.0}
-        };
-
-        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-
-        glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(text_vertices), text_vertices);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        x += (ch.Advance >> 6) * scale;
-    }
-
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+	glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 0);
+	shader->Unbind();
 }
 
-unsigned int loadTexture(std::string image_path) {
+void Update_Data_Queue() {
+	EditingDataQueue = true;
+
+	if (DataQueue.size() > 0) {
+		EditingChunkMap = true;
+
+		std::map<glm::vec3, std::vector<float>, Vec3Comparator>::iterator it = DataQueue.begin();
+
+		while (it != DataQueue.end()) {
+			if (ChunkMap.count(it->first)) {
+				ChunkMap[it->first]->vbo.Data(it->second);
+				it = DataQueue.erase(it);
+			}
+			else {
+				it++;
+			}
+		}
+
+		EditingChunkMap = false;
+	}
+
+	EditingDataQueue = false;
+}
+
+void Render_Scene() {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glm::mat4 view = player.Cam.GetViewMatrix();
+	glm::mat4 model;
+
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	shader->Bind();
+	glUniformMatrix4fv(glGetUniformLocation(shader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+	if (toggleWireframe) {
+		wireframe = !wireframe;
+		toggleWireframe = false;
+
+		if (wireframe) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 50);
+		}
+		else {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 0);
+		}
+	}
+
+	EditingChunkMap = true;
+
+	bool disableOutline = false;
+
+	for (auto const chunk : ChunkMap) {
+		if (player.LookingAtBlock && player.LookingChunk == chunk.second->Position) {
+			glm::vec3 blockPos = Get_World_Pos(player.LookingChunk, player.LookingTile);
+
+			glUniform3f(glGetUniformLocation(shader->Program, "BlockPos"), blockPos.x, blockPos.y, blockPos.z);
+			glUniform1i(glGetUniformLocation(shader->Program, "DrawOutline"), 1);
+
+			disableOutline = true;
+		}
+
+		chunk.second->vbo.Draw();
+
+		if (disableOutline) {
+			glUniform1i(glGetUniformLocation(shader->Program, "DrawOutline"), 0);
+			disableOutline = false;
+		}
+	}
+
+	EditingChunkMap = false;
+
+	shader->Unbind();
+}
+
+void Draw_UI() {
+	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
+		if (i < AVG_UPDATE_RANGE - 1) {
+			last_fps[i] = last_fps[i + 1];
+			last_cpu[i] = last_cpu[i + 1];
+		}
+		else {
+			last_fps[i] = (1.0f / deltaTime + 0.5);
+			last_cpu[i] = System::GetCPUUsage();
+		}
+	}
+
+	if (text_counter == TEXT_UPDATE_FRAME_FREQ) {  // TODO Make UI updates independent of frame rate
+		text_counter = 0;
+
+		double fps_sum = 0.0;
+		double cpu_sum = 0.0;
+
+		for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
+			fps_sum += last_fps[i];
+			cpu_sum += last_cpu[i];
+		}
+
+		text->Set_Text("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)));
+		text->Set_Text("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%");
+		text->Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
+		text->Set_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage());
+		text->Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
+	}
+	else {
+		text_counter++;
+	}
+
+	text->Set_Text("playerChunk", "Chunk: " + Format_Vector(player.CurrentChunk, true));
+	text->Set_Text("playerTile", "Tile: " + Format_Vector(player.CurrentTile, true));
+	text->Set_Text("playerPos", Format_Vector(player.WorldPos, false, "    "));
+	text->Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()));
+
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
+	text->Draw_All();
+
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+}
+
+unsigned int Load_Texture(std::string image_path) {
     unsigned int texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -368,23 +308,7 @@ unsigned int loadTexture(std::string image_path) {
     return texture;
 }
 
-std::string getMemoryUsage() {
-    std::vector<std::string> units = {"B", "KB", "MB", "GB"};
-    int unitIndex = 0;
-
-    struct rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    long memUsage = usage.ru_maxrss;
-
-    while (memUsage >= 1024) {
-        memUsage /= 1024;
-        unitIndex++;
-    }
-
-    return std::to_string(memUsage) + " " + units[unitIndex];
-}
-
-std::string formatVector(glm::vec3 vector, bool tuple, std::string separator) {
+std::string Format_Vector(glm::vec3 vector, bool tuple, std::string separator) {
     std::string result;
 
     std::string x = std::to_string(int(vector.x));
@@ -399,6 +323,36 @@ std::string formatVector(glm::vec3 vector, bool tuple, std::string separator) {
     }
 
     return result;
+}
+
+void BackgroundThread() {
+	while (true) {
+		while (EditingChunkQueue) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		if (ChunkQueue.size() > 0) {
+			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
+				it->second->Generate();
+
+				while (EditingDataQueue) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+
+				it->second->Mesh();
+
+				while (EditingChunkMap) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+
+				ChunkMap[it->first] = it->second;
+				ChunkQueue.erase(it++);
+			}
+		}
+		else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+	}
 }
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -423,5 +377,3 @@ void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
 void click_proxy(GLFWwindow* window, int button, int action, int mods) {
     player.ClickHandler(button, action);
 }
-
-#pragma clang diagnostic pop

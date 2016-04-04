@@ -1,9 +1,13 @@
 #include "Time.h"
 
 #include <iostream>
-#include <mach/mach_time.h>
 
-static const int SPACING = 50;
+#include <Windows.h>
+
+const int Spacing = 50;
+LARGE_INTEGER Frequency;
+
+bool Initialized = false;
 
 Time::Time(std::string id) {
     ID = id;
@@ -11,23 +15,33 @@ Time::Time(std::string id) {
     t0 = 0;
     count = 0;
     begun_last = false;
+
+	if (!Initialized) {
+		QueryPerformanceFrequency(&Frequency);
+		Initialized = false;
+	}
 }
 
 void Time::Add() {
-    uint64_t t = mach_absolute_time();
+	LARGE_INTEGER t;
+	QueryPerformanceCounter(&t);
 
     if (timings.size() == 0) {
-        t0 = t;
+        t0 = t.QuadPart;
         timings[0] = 0;
     }
     else {
         if (t0 != 0) {
-            timings[count] = t - t0;
+			uint64_t ticks = t.QuadPart - t0;
+			ticks *= 1000000;
+			ticks /= Frequency.QuadPart;
+            timings[count] = ticks;
+
             count += 1;
             t0 = 0;
         }
         else {
-            t0 = t;
+            t0 = t.QuadPart;
         }
     }
 }
@@ -60,7 +74,7 @@ void Time::Get(std::string type) {
 
     else if (type == "avg") {
         if (count > 0) {
-            int64_t avg = Get_Sum() / count;
+			uint64_t avg = Get_Sum() / count;
             Convert_Time(avg, ID + " Average");
         }
         else {
@@ -81,12 +95,12 @@ void Time::Get(std::string type) {
     }
 
     else {
-        std::cout << "ERROR::TIME::INVALID_GET_TYPE" << std::endl;
+        std::cerr << "ERROR::TIME::INVALID_GET_TYPE" << std::endl;
     }
 }
 
-int64_t Time::Get_Sum() {
-    int64_t sum = 0;
+uint64_t Time::Get_Sum() {
+	uint64_t sum = 0;
 
     for (int i = 0; i <= count; i++) {
         sum += timings[i];
@@ -95,8 +109,8 @@ int64_t Time::Get_Sum() {
     return sum;
 }
 
-int64_t Time::Get_Min() {
-    int64_t min = 0;
+uint64_t Time::Get_Min() {
+	uint64_t min = 0;
 
     for (int i = 0; i <= count; i++) {
         if (timings[i] < min || min == 0) {
@@ -109,8 +123,8 @@ int64_t Time::Get_Min() {
     return min;
 }
 
-int64_t Time::Get_Max() {
-    int64_t max = 0;
+uint64_t Time::Get_Max() {
+	uint64_t max = 0;
 
     for (int i = 0; i < count; i++) {
         if (timings[i] > max) {
@@ -121,9 +135,8 @@ int64_t Time::Get_Max() {
     return max;
 }
 
-void Convert_Time(int64_t t, std::string text) {
+void Convert_Time(uint64_t t, std::string text) {
     std::string units[4] = {
-            "nanosecond",
             "microsecond",
             "millisecond",
             "second"
@@ -149,7 +162,7 @@ void Convert_Time(int64_t t, std::string text) {
         value = value.substr(0, 7);
     }
 
-    for (int i = 0; i < (int) ((SPACING - desc.length()) / 4); i++) {
+    for (int i = 0; i < (int) ((Spacing - desc.length()) / 4); i++) {
         desc += "\t";
     }
 

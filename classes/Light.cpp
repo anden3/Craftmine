@@ -1,7 +1,5 @@
 #include "Light.h"
 
-#include <GLFW/glfw3.h>
-
 void Light::Add_Dir_Light(Shader shader, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse) {
     glm::vec3 lightDir = glm::normalize(-direction);
 
