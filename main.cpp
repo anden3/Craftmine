@@ -59,9 +59,15 @@ void Init_GL() {
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
+    
+    SCREEN_WIDTH = videoMode->width;
+    SCREEN_HEIGHT = videoMode->height;
 
 	Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", nullptr, nullptr);
 
@@ -124,8 +130,11 @@ void Init_Text() {
 
 	text->Add("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)), 50);
 	text->Add("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%", 80);
-
-	text->Add("vram", "VRAM: " + System::GetVRAMUsage(), 120);
+    
+    if (Windows) {
+        text->Add("vram", "VRAM: " + System::GetVRAMUsage(), 120);
+    }
+    
 	text->Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 150);
 	text->Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 180);
 

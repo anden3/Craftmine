@@ -1,11 +1,21 @@
 #pragma once
 
+#ifdef _WIN32
+
+const bool Windows = true;
+
+#elif __APPLE__
+
+const bool Windows = false;
+
+#endif
+
 #include "classes/Shader.h"
 #include "classes/Player.h"
 #include "classes/Text.h"
 
-const int SCREEN_WIDTH  = 1920;
-const int SCREEN_HEIGHT = 1080;
+int SCREEN_WIDTH  = 1920;
+int SCREEN_HEIGHT = 1080;
 
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;

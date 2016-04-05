@@ -5,17 +5,11 @@
 static int totalVRAM;
 bool initiated = false;
 
-std::string units[4] = { "B", "KB", "MB", "GB" };
-
-std::string FormatOutput(int usage) {
-    int unitIndex = 0;
+std::string System::GetVRAMUsage() {
+    int availableMemory;
+    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableMemory);
     
-    while (usage >= 1024) {
-        usage /= 1024;
-        unitIndex++;
-    }
-    
-    return std::string(std::to_string(usage) + " " + units[unitIndex]);
+    return FormatOutput((totalVRAM - availableMemory) * 1024);
 }
 
 #ifdef _WIN32
@@ -36,19 +30,12 @@ PROCESS_MEMORY_COUNTERS_EX GetMemoryInfo() {
     return info;
 }
 
-std::string System::GetVirtualMemoryUsage() {
-    return FormatOutput(GetMemoryInfo().PrivateUsage);
-}
-
 std::string System::GetPhysicalMemoryUsage() {
     return FormatOutput(GetMemoryInfo().WorkingSetSize);
 }
 
-std::string System::GetVRAMUsage() {
-    int availableMemory;
-    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableMemory);
-    
-    return FormatOutput((totalVRAM - availableMemory) * 1024);
+std::string System::GetVirtualMemoryUsage() {
+    return FormatOutput(GetMemoryInfo().PrivateUsage);
 }
 
 double System::GetCPUUsage() {
@@ -104,49 +91,29 @@ void InitSystem() {
 #include <mach/mach_host.h>
 #include <mach/task.h>
 
-static unsigned long long _previousTotalTicks = 0;
-static unsigned long long _previousIdleTicks = 0;
+static unsigned long long previousTotalTicks = 0;
+static unsigned long long previousIdleTicks = 0;
 
-std::string System::GetVirtualMemoryUsage() {
+task_basic_info GetMemoryInfo() {
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
     
-    task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+    task_info(mach_task_self(), TASK_BASIC_INFO, task_info_t(&t_info), &t_info_count);
     
-    return FormatOutput(int(t_info.virtual_size));
+    return t_info;
 }
 
 std::string System::GetPhysicalMemoryUsage() {
-    struct task_basic_info t_info;
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-    
-    task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
-    
-    return FormatOutput(int(t_info.resident_size));
+    return FormatOutput(GetMemoryInfo().resident_size);
 }
 
-std::string System::GetVRAMUsage() {
-    int availableMemory;
-    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableMemory);
-    
-    return FormatOutput((totalVRAM - availableMemory) * 1024);
-}
-
-double CalculateCPULoad(unsigned long long idleTicks, unsigned long long totalTicks) {
-    unsigned long long totalTicksSinceLastTime = totalTicks - _previousTotalTicks;
-    unsigned long long idleTicksSinceLastTime  = idleTicks - _previousIdleTicks;
-    
-    _previousTotalTicks = totalTicks;
-    _previousIdleTicks  = idleTicks;
-    
-    if (totalTicksSinceLastTime > 0) {
-        return 1.0f - double(idleTicksSinceLastTime) / totalTicksSinceLastTime;
-    }
-    return 1.0f;
+std::string System::GetVirtualMemoryUsage() {
+    return FormatOutput(GetMemoryInfo().virtual_size);
 }
 
 double System::GetCPUUsage() {
     unsigned long long totalTicks = 0;
+    
     host_cpu_load_info_data_t cpuinfo;
     mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
     
@@ -156,12 +123,18 @@ double System::GetCPUUsage() {
         totalTicks += cpuinfo.cpu_ticks[i];
     }
     
-    return CalculateCPULoad(cpuinfo.cpu_ticks[CPU_STATE_IDLE], totalTicks) * 100.0;
-}
-
-void InitSystem() {
-    initiated = true;
-    glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &totalVRAM);
+    unsigned long long idleTicks = cpuinfo.cpu_ticks[CPU_STATE_IDLE];
+    
+    unsigned long long totalTicksSinceLastTime = totalTicks - previousTotalTicks;
+    unsigned long long idleTicksSinceLastTime  = idleTicks - previousIdleTicks;
+    
+    previousTotalTicks = totalTicks;
+    previousIdleTicks  = idleTicks;
+    
+    if (totalTicksSinceLastTime > 0) {
+        return (1.0 - double(idleTicksSinceLastTime) / totalTicksSinceLastTime) * 100.0;
+    }
+    return 100.0;
 }
 
 #endif

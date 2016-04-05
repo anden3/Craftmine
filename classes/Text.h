@@ -2,8 +2,8 @@
 
 #include <glm/glm.hpp>
 
-extern const int SCREEN_WIDTH;
-extern const int SCREEN_HEIGHT;
+extern int SCREEN_WIDTH;
+extern int SCREEN_HEIGHT;
 
 class Text {
 public:

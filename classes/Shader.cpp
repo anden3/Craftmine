@@ -25,14 +25,14 @@ std::string Shader::Load_File(std::string path) {
 		return contents.str().c_str();
 	}
 
-	return "";
+	return "ERROR";
 }
 
 void Shader::Add_Shader(unsigned int shader, std::string type, std::string path) {
 	std::string shaderString = Load_File(path);
 	const char* shaderCode = shaderString.c_str();
     
-    if (strcmp(shaderCode, "")) {
+    if (strcmp(shaderCode, "ERROR") == 0) {
         std::cout << "ERROR::SHADER::" << type << "::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
     }
 
