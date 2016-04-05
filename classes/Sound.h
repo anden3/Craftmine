@@ -1,15 +1,13 @@
 #pragma once
 
-#include <OpenAL\al.h>
-#include <OpenAL\alc.h>
-#include <OpenAL\alext.h>
+#include <OpenAL/OpenAL.h>
 
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 
 #include <vector>
 #include <string>
 
-#include <Vorbis\vorbisfile.h>
+#include <vorbis/vorbisfile.h>
 
 class Listener {
 public:

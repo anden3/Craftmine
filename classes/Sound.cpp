@@ -69,8 +69,8 @@ std::vector<char> Sound::Load_OGG(std::string path) {
 		buffer.insert(buffer.end(), array, array + bytes);
 	} while (bytes > 0);
 
-	Frequency = pInfo->rate;
-	Length = buffer.size();
+	Frequency = int(pInfo->rate);
+	Length = ALsizei(buffer.size());
 	Duration = (float)Length / Frequency / 2;
 
 	ov_clear(&oggFile);

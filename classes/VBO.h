@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <GLEW/glew.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 class VBO {

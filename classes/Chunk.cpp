@@ -300,7 +300,7 @@ void Chunk::Generate() {
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
 						unsigned char blockID;
-						int height = int(Position.y) * CHUNK_SIZE + y;
+						// int height = int(Position.y) * CHUNK_SIZE + y;
 
 						blockID = 2;
 

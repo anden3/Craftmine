@@ -31,10 +31,10 @@ std::string Shader::Load_File(std::string path) {
 void Shader::Add_Shader(unsigned int shader, std::string type, std::string path) {
 	std::string shaderString = Load_File(path);
 	const char* shaderCode = shaderString.c_str();
-
-	if (shaderCode == "") {
-		std::cout << "ERROR::SHADER::" << type << "::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
-	}
+    
+    if (strcmp(shaderCode, "")) {
+        std::cout << "ERROR::SHADER::" << type << "::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
+    }
 
 	glShaderSource(shader, 1, &shaderCode, NULL);
 

@@ -41,3 +41,6 @@ Debug/vc140.idb
 Debug/vc140.pdb
 
 build/
+
+Base.lproj
+Info.plist
