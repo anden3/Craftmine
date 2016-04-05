@@ -18,6 +18,8 @@ extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkQueue;
 extern bool EditingChunkQueue;
 extern bool EditingChunkMap;
 
+extern const int RENDER_DISTANCE;
+
 class Player {
 public:
     glm::vec3 WorldPos = glm::vec3(0.0f);

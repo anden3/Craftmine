@@ -20,7 +20,7 @@ int SCREEN_HEIGHT = 1080;
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
 
-const int CHUNKS_RENDER_PER_FRAME = 2;
+const int RENDER_DISTANCE = 10;
 
 const bool ENABLE_VSYNC = true;
 
@@ -66,7 +66,9 @@ void Render_Scene();
 void Draw_UI();
 
 unsigned int Load_Texture(std::string image_path);
-std::string Format_Vector(glm::vec3 vector, bool tuple = true, std::string separator = ", ");
+
+std::string Format_Vector(glm::vec3 vector);
+std::string Pad(std::string value, int pad_length = 4);
 
 void BackgroundThread();
 

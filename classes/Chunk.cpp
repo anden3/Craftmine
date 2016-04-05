@@ -41,138 +41,24 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
-float vertices[6][6][3] = {        
-		{
-			{ 0.0f,  0.0f,  0.0f },
-			{ 0.0f,  1.0f,  1.0f },
-			{ 0.0f,  1.0f,  0.0f },
-
-			{ 0.0f,  1.0f,  1.0f },
-			{ 0.0f,  0.0f,  0.0f },
-			{ 0.0f,  0.0f,  1.0f },
-		},
-		
-		{
-			{ 1.0f,  0.0f,  0.0f },
-			{ 1.0f,  1.0f,  0.0f },
-			{ 1.0f,  1.0f,  1.0f },
-
-			{ 1.0f,  0.0f,  0.0f },
-			{ 1.0f,  1.0f,  1.0f },
-			{ 1.0f,  0.0f,  1.0f },
-		},
-        
-		{
-			{ 0.0f,  0.0f,  0.0f },
-			{ 1.0f,  0.0f,  0.0f },
-			{ 1.0f,  0.0f,  1.0f },
-
-			{ 1.0f,  0.0f,  1.0f },
-			{ 0.0f,  0.0f,  1.0f },
-			{ 0.0f,  0.0f,  0.0f },
-		},
-        
-		{
-			{ 0.0f,  1.0f,  0.0f },
-			{ 1.0f,  1.0f,  1.0f },
-			{ 1.0f,  1.0f,  0.0f },
-
-			{ 0.0f,  1.0f,  0.0f },
-			{ 0.0f,  1.0f,  1.0f },
-			{ 1.0f,  1.0f,  1.0f },
-		},
-		        
-		{
-			{ 0.0f,  0.0f,  0.0f },
-			{ 1.0f,  1.0f,  0.0f },
-			{ 1.0f,  0.0f,  0.0f },
-
-			{ 0.0f,  0.0f,  0.0f },
-			{ 0.0f,  1.0f,  0.0f },
-			{ 1.0f,  1.0f,  0.0f },
-		},
-
-		{
-			{ 0.0f,  0.0f,  1.0f },
-			{ 1.0f,  0.0f,  1.0f },
-			{ 1.0f,  1.0f,  1.0f },
-
-			{ 1.0f,  1.0f,  1.0f },
-			{ 0.0f,  1.0f,  1.0f },
-			{ 0.0f,  0.0f,  1.0f }
-		}
+float vertices[6][6][3] = {
+		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
+		{ {1, 0, 0}, {1, 1, 0}, {1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {1, 0, 1} },
+		{ {0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {1, 0, 1}, {0, 0, 1}, {0, 0, 0} },
+		{ {0, 1, 0}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}, {0, 1, 1}, {1, 1, 1} },
+		{ {0, 0, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0} },
+		{ {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1} }
 };
 
-float normals[6][3] = {
-	{-1.0f,  0.0f,  0.0f },
-	{ 1.0f,  0.0f,  0.0f },
-	{ 0.0f, -1.0f,  0.0f },
-	{ 0.0f,  1.0f,  0.0f },
-	{ 0.0f,  0.0f, -1.0f },
-	{ 0.0f,  0.0f,  1.0f }
-
-};
+float normals[6][3] = { {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1} };
 
 float tex_coords[6][6][2] = {
-	{
-		{ 0.0f, 1.0f },
-		{ 1.0f, 0.0f },
-		{ 0.0f, 0.0f },
-
-		{ 1.0f, 0.0f },
-		{ 0.0f, 1.0f },
-		{ 1.0f, 1.0f },
-	},
-
-	{
-		{ 1.0f, 1.0f },
-		{ 1.0f, 0.0f },
-		{ 0.0f, 0.0f },
-
-		{ 1.0f, 1.0f },
-		{ 0.0f, 0.0f },
-		{ 0.0f, 1.0f },
-	},
-
-	{
-		{ 0.0f, 0.0f },
-		{ 1.0f, 0.0f },
-		{ 1.0f, 1.0f },
-
-		{ 1.0f, 1.0f },
-		{ 0.0f, 1.0f },
-		{ 0.0f, 0.0f },
-	},
-
-	{
-		{ 0.0f, 0.0f },
-		{ 1.0f, 1.0f },
-		{ 1.0f, 0.0f },
-
-		{ 0.0f, 0.0f },
-		{ 0.0f, 1.0f },
-		{ 1.0f, 1.0f },
-	},
-
-	{
-		{ 1.0f, 1.0f },
-		{ 0.0f, 0.0f },
-		{ 0.0f, 1.0f },
-
-		{ 1.0f, 1.0f },
-		{ 1.0f, 0.0f },
-		{ 0.0f, 0.0f },
-	},
-
-	{
-		{ 0.0f, 1.0f },
-		{ 1.0f, 1.0f },
-		{ 1.0f, 0.0f },
-
-		{ 1.0f, 0.0f },
-		{ 0.0f, 0.0f },
-		{ 0.0f, 1.0f },
-	}
+	{ {0, 1}, {1, 0}, {0, 0}, {1, 0}, {0, 1}, {1, 1} },
+	{ {1, 1}, {1, 0}, {0, 0}, {1, 1}, {0, 0}, {0, 1} },
+	{ {0, 0}, {1, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 0} },
+	{ {0, 0}, {1, 1}, {1, 0}, {0, 0}, {0, 1}, {1, 1} },
+	{ {1, 1}, {0, 0}, {0, 1}, {1, 1}, {1, 0}, {0, 0} },
+	{ {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1} }
 };
 
 Chunk::Chunk(glm::vec3 position) {
@@ -180,11 +66,11 @@ Chunk::Chunk(glm::vec3 position) {
 }
 
 int Chunk::GetBlock(glm::vec3 position) {
-    return BlockMap[(int) position.x][(int) position.y][(int) position.z];
+    return BlockMap[int(position.x)][int(position.y)][int(position.z)];
 }
 
 void Chunk::SetBlock(glm::vec3 position, char value) {
-    BlockMap[int(position.x)][(int) position.y][(int) position.z] = value;
+    BlockMap[int(position.x)][int(position.y)][int(position.z)] = value;
 }
 
 bool Chunk::Is_Empty() {
@@ -393,9 +279,14 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 		if (ChunkMap.count(nextChunk)) {
 			return !ChunkMap[nextChunk]->GetBlock(glm::vec3(pos.x, 0, pos.z));
 		}
-		return true;
-
+        
+        double nx = (Position.x * CHUNK_SIZE + pos.x) / CHUNK_ZOOM;
+        double ny = (Position.y * CHUNK_SIZE + pos.y + 1) / CHUNK_ZOOM;
+        double nz = (Position.z * CHUNK_SIZE + pos.z) / CHUNK_ZOOM;
+        
+        return noiseModule.GetValue(nx, ny, nz) - ny * 2 < NOISE_DENSITY_BLOCK;
 	}
+    
 	return !GetBlock(glm::vec3(pos.x, pos.y + 1, pos.z));
 }
 

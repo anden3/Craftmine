@@ -22,8 +22,6 @@ const double MIN_FOV = 1.0;
 const float GRAVITY = 0.004f;
 const float JUMP_HEIGHT = 0.1f;
 
-const int RENDER_DISTANCE = 10;
-
 bool CONSTRAIN_PITCH = true;
 
 glm::vec3 lastChunk(-5);

@@ -20,7 +20,7 @@ int main() {
 	Init_Text();
 
 	shader = new Shader("shader");
-
+    
 	Init_UBO();
 	Init_Rendering();
 
@@ -55,12 +55,12 @@ int main() {
 void Init_GL() {
 	glfwInit();
 
-	glfwWindowHint(GLFW_DECORATED, GL_FALSE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	glfwWindowHint(GLFW_DECORATED, false);
+	glfwWindowHint(GLFW_RESIZABLE, false);
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -69,7 +69,7 @@ void Init_GL() {
     SCREEN_WIDTH = videoMode->width;
     SCREEN_HEIGHT = videoMode->height;
 
-	Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", nullptr, nullptr);
+	Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", monitor, nullptr);
 
 	glfwSetWindowPos(Window, 0, 0);
 
@@ -102,7 +102,7 @@ void Init_Textures() {
 }
 
 void Init_Text() {
-	text = new Text("Minecraftia", 24);
+	text = new Text("Minecraftia", 30);
 
 	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
 		if (i < AVG_UPDATE_RANGE - 1) {
@@ -138,12 +138,11 @@ void Init_Text() {
 	text->Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 150);
 	text->Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 180);
 
-	text->Add("playerChunk", "Chunk: " + Format_Vector(player.CurrentChunk, true), 220);
-	text->Add("playerTile", "Tile: " + Format_Vector(player.CurrentTile, true), 250);
+	text->Add("playerChunk", "Chunk:    " + Format_Vector(player.CurrentChunk), 220);
+	text->Add("playerTile",  "Tile:     " + Format_Vector(player.CurrentTile), 250);
+	text->Add("playerPos",   "Position: " + Format_Vector(player.WorldPos), 280);
 
-	text->Add("playerPos", Format_Vector(player.WorldPos, false, "    "), 290);
-
-	text->Add("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()), 330);
+	text->Add("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()), 320);
 }
 
 void Init_UBO() {
@@ -278,9 +277,10 @@ void Draw_UI() {
 		text->Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
 	}
 
-	text->Set_Text("playerChunk", "Chunk: " + Format_Vector(player.CurrentChunk, true));
-	text->Set_Text("playerTile", "Tile: " + Format_Vector(player.CurrentTile, true));
-	text->Set_Text("playerPos", Format_Vector(player.WorldPos, false, "    "));
+	text->Set_Text("playerChunk", "Chunk:      " + Format_Vector(player.CurrentChunk));
+	text->Set_Text("playerTile", "Tile:            " + Format_Vector(player.CurrentTile));
+	text->Set_Text("playerPos", "Position:  " + Format_Vector(player.WorldPos));
+    
 	text->Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()));
 
 	if (wireframe) {
@@ -309,27 +309,30 @@ unsigned int Load_Texture(std::string file) {
 
     int width, height;
     unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image); // TODO Switch to RGBA-format
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
 
     return texture;
 }
 
-std::string Format_Vector(glm::vec3 vector, bool tuple, std::string separator) {
-    std::string result;
+std::string Format_Vector(glm::vec3 vector) {
+    std::string x = Pad(std::to_string(int(vector.x)));
+    std::string y = Pad(std::to_string(int(vector.y)));
+    std::string z = Pad(std::to_string(int(vector.z)));
+    
+    return std::string("X: " + x + "Y: " + y + "Z: " + z);
+}
 
-    std::string x = std::to_string(int(vector.x));
-    std::string y = std::to_string(int(vector.y));
-    std::string z = std::to_string(int(vector.z));
-
-    if (tuple) {
-        result += "(" + x + separator + y + separator + z + ")";
+std::string Pad(std::string value, int pad_length) {
+    std::string result = value;
+    
+    if (value.length() < pad_length) {
+        for (int i = 0; i < pad_length - value.length(); i++) {
+            result += "  ";
+        }
     }
-    else {
-        result += "X: " + x + separator + "Y: " + y + separator + "Z: " + z;
-    }
-
+    
     return result;
 }
 
@@ -341,20 +344,25 @@ void BackgroundThread() {
 
 		if (ChunkQueue.size() > 0) {
 			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
-				it->second->Generate();
-
-				while (EditingDataQueue) {
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				}
-
-				it->second->Mesh();
-
-				while (EditingChunkMap) {
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				}
-
-				ChunkMap[it->first] = it->second;
-				ChunkQueue.erase(it++);
+                bool inRange = pow(it->first.x - player.CurrentChunk.x, 2) + pow(it->first.y - player.CurrentChunk.y, 2) + pow(it->first.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
+                
+                if (inRange) {
+                    it->second->Generate();
+                    
+                    while (EditingDataQueue) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+                    
+                    it->second->Mesh();
+                    
+                    while (EditingChunkMap) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+                    
+                    ChunkMap[it->first] = it->second;
+                }
+                
+                ChunkQueue.erase(it++);
 			}
 		}
 		else {
