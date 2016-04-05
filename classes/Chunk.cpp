@@ -36,8 +36,6 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 	{16, glm::vec2(3, 3)}, // Coal Ore
 
 	{17, glm::vec2(5, 4)}, // Transparent Leaves
-
-	{30, glm::vec2(12, 1)}, // Cobweb
 };
 
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2

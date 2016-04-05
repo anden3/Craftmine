@@ -25,11 +25,13 @@ uniform vec3 BlockPos;
 
 void main() {
     float diff = max(dot(Normal, light.direction), 0.0f);
+    
+    vec4 tex = texture(material.diffuse, TexCoords);
+    
+    vec3 ambient = light.ambient * tex.rgb;
+    vec3 diffuse = light.diffuse * diff * tex.rgb;
 
-    vec3 ambient = light.ambient * texture(material.diffuse, TexCoords).rgb;
-    vec3 diffuse = light.diffuse * diff * texture(material.diffuse, TexCoords).rgb;
-
-    vec4 color = vec4(ambient + diffuse, 1.0f);
+    vec4 color = vec4(ambient + diffuse, tex.a);
 
     if (DrawOutline) {
         vec3 posDiff = VertexPos - BlockPos;
