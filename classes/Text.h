@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 #include <glm/glm.hpp>
@@ -5,26 +7,40 @@
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 
-class Text {
-public:
-	float X = 0;
-	float Scale = 1.0f;
-	float Opacity = 1.0f;
+extern const int FONT_SIZE;
 
-	glm::vec3 Color = glm::vec3(1.0f);
-
-	Text(std::string font, int font_size);
-	~Text();
-
-	void Add(std::string name, std::string text, float yTop);
-
-	void Set_Text(std::string name, std::string newText);
-	void Set_X(std::string name, float x);
-	void Set_Y(std::string name, float y);
-	void Set_Scale(std::string name, float scale);
-	void Set_Opacity(std::string name, float opacity);
-	void Set_Color(std::string name, glm::vec3 color);
-
-	void Draw(std::string name);
-	void Draw_All();
+struct String {
+    std::string Text;
+    
+    float X = -1;
+    float Y = -1;
+    float Scale = -1;
+    float Opacity = -1;
+    
+    float Width = 0;
+    float Height;
+    
+    glm::vec3 Color = glm::vec3(-1);
 };
+
+namespace Text {
+    void Init(std::string font, int font_size);
+    void Add(std::string name, std::string text, float y = -1);
+    
+    void Set_Group(std::string group);
+    void Unset_Group();
+    
+    float Get_Width(std::string name);
+    
+    void Set_Text(std::string name, std::string text);
+    void Set_X(std::string name, float x);
+    void Set_Y(std::string name, float y);
+    void Set_Scale(std::string name, float scale);
+    void Set_Opacity(std::string name, float opacity);
+    void Set_Color(std::string name, glm::vec3 color);
+    
+    void Draw(String string);
+    
+    void Draw_String(std::string name);
+    void Draw_Group(std::string group);
+}

@@ -205,55 +205,42 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 	int ao = 3;
 
 	glm::vec3 offsets[6][2][2][3] = {
-		{ // Left
-			{ { glm::vec3(-1, -1, 0), glm::vec3(-1, 0, -1), glm::vec3(-1, -1, -1) },
+		{ { { glm::vec3(-1, -1, 0), glm::vec3(-1, 0, -1), glm::vec3(-1, -1, -1) },
 			{ glm::vec3(-1, 1, 0), glm::vec3(-1, 0, -1), glm::vec3(-1, 1, -1) } },
 
 			{ { glm::vec3(-1, -1, 0), glm::vec3(-1, 0, 1), glm::vec3(-1, -1, 1) },
-			{ glm::vec3(-1, 1, 0), glm::vec3(-1, 0, 1), glm::vec3(-1, 1, 1) } }
-		},
+			{ glm::vec3(-1, 1, 0), glm::vec3(-1, 0, 1), glm::vec3(-1, 1, 1) } } },
 
-		{ // Right
-			{ { glm::vec3(1, -1, 0), glm::vec3(1, 0, -1), glm::vec3(1, -1, -1) },
+		{ { { glm::vec3(1, -1, 0), glm::vec3(1, 0, -1), glm::vec3(1, -1, -1) },
 			{ glm::vec3(1, 1, 0), glm::vec3(1, 0, -1), glm::vec3(1, 1, -1) } },
 
 			{ { glm::vec3(1, -1, 0), glm::vec3(1, 0, 1), glm::vec3(1, -1, 1) },
-			{ glm::vec3(1, 1, 0), glm::vec3(1, 0, 1), glm::vec3(1, 1, 1) } }
-		},
+			{ glm::vec3(1, 1, 0), glm::vec3(1, 0, 1), glm::vec3(1, 1, 1) } } },
 
-		{ // Down
-			{ { glm::vec3(-1, -1, 0), glm::vec3(0, -1, -1), glm::vec3(-1, -1, -1) },
+		{ { { glm::vec3(-1, -1, 0), glm::vec3(0, -1, -1), glm::vec3(-1, -1, -1) },
 			{ glm::vec3(-1, -1, 0), glm::vec3(0, -1, 1), glm::vec3(-1, -1, 1) } },
 
 			{ { glm::vec3(1, -1, 0), glm::vec3(0, -1, -1), glm::vec3(1, -1, -1) },
-			{ glm::vec3(1, -1, 0), glm::vec3(0, -1, 1), glm::vec3(1, -1, 1) } }
+			{ glm::vec3(1, -1, 0), glm::vec3(0, -1, 1), glm::vec3(1, -1, 1) } } },
 
-		},
-
-		{ // Up
-			{ { glm::vec3(-1, 1, 0), glm::vec3(0, 1, -1), glm::vec3(-1, 1, -1) },
+		{ { { glm::vec3(-1, 1, 0), glm::vec3(0, 1, -1), glm::vec3(-1, 1, -1) },
 			{ glm::vec3(-1, 1, 0), glm::vec3(0, 1, 1), glm::vec3(-1, 1, 1) } },
 
 			{ { glm::vec3(1, 1, 0), glm::vec3(0, 1, -1), glm::vec3(1, 1, -1) },
 			{ glm::vec3(1, 1, 0), glm::vec3(0, 1, 1), glm::vec3(1, 1, 1) } }
 		},
 
-		{ // Back
-			{ { glm::vec3(0, -1, -1), glm::vec3(-1, 0, -1), glm::vec3(-1, -1, -1) },
+		{ { { glm::vec3(0, -1, -1), glm::vec3(-1, 0, -1), glm::vec3(-1, -1, -1) },
 			{ glm::vec3(0, 1, -1), glm::vec3(-1, 0, -1), glm::vec3(-1, 1, -1) } },
 
 			{ { glm::vec3(0, -1, -1), glm::vec3(1, 0, -1), glm::vec3(1, -1, -1) },
-			{ glm::vec3(0, 1, -1), glm::vec3(1, 0, -1), glm::vec3(1, 1, -1) } }
+			{ glm::vec3(0, 1, -1), glm::vec3(1, 0, -1), glm::vec3(1, 1, -1) } } },
 
-		},
-
-		{ // Front
-			{ { glm::vec3(0, -1, 1), glm::vec3(-1, 0, 1), glm::vec3(-1, -1, 1) },
+		{ { { glm::vec3(0, -1, 1), glm::vec3(-1, 0, 1), glm::vec3(-1, -1, 1) },
 			{ glm::vec3(0, 1, 1), glm::vec3(-1, 0, 1), glm::vec3(-1, 1, 1) }, },
 
 			{ { glm::vec3(0, -1, 1), glm::vec3(1, 0, 1), glm::vec3(1, -1, 1) },
-			{ glm::vec3(0, 1, 1), glm::vec3(1, 0, 1), glm::vec3(1, 1, 1) } }
-		}
+			{ glm::vec3(0, 1, 1), glm::vec3(1, 0, 1), glm::vec3(1, 1, 1) } } }
 	};
 
 	int vertexIndex[6][2] = {

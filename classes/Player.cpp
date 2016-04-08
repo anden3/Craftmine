@@ -229,6 +229,11 @@ void Player::MouseHandler(double posX, double posY) {
         LastMousePos = glm::dvec2(posX, posY);
         MovedMouse = false;
     }
+    
+    if (ShowMenu) {
+        LastMousePos = glm::dvec2(posX, posY);
+        return;
+    }
 
     Cam.Yaw += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
     Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
@@ -242,7 +247,7 @@ void Player::MouseHandler(double posX, double posY) {
             Cam.Pitch = -89.9;
         }
     }
-
+    
     LastMousePos = glm::dvec2(posX, posY);
     Cam.UpdateCameraVectors();
 

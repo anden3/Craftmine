@@ -10,6 +10,7 @@
 #include "classes/Light.h"
 #include "classes/Time.h"
 #include "classes/System.h"
+#include "classes/Button.h"
 
 #include <thread>
 #include <chrono>
@@ -17,15 +18,14 @@
 int main() {
 	Init_GL();
 	Init_Textures();
-	Init_Text();
-
-	shader = new Shader("shader");
+	
+    UI::Init();
     
-	Init_UBO();
+	Init_Shaders();
 	Init_Rendering();
-
+    
 	std::thread chunkGeneration(BackgroundThread);
-
+    
 	while (!glfwWindowShouldClose(Window)) {
 		double currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -34,19 +34,21 @@ int main() {
 		glfwPollEvents();
 
 		player.PollSounds();
-		player.Move((float)deltaTime);
+        
+        if (!ShowMenu) player.Move(float(deltaTime));
 		
 		Update_Data_Queue();
 		Render_Scene();
-		Draw_UI();
-
+        
+        UI::Draw();
+        
 		glfwSwapBuffers(Window);
 	}
 
 	chunkGeneration.detach();
-	
+    UI::Clean();
+    
 	delete shader;
-	delete text;
 
     glfwTerminate();
     return 0;
@@ -74,7 +76,7 @@ void Init_GL() {
 	glfwSetWindowPos(Window, 0, 0);
 
 	glfwMakeContextCurrent(Window);
-	glfwSwapInterval(ENABLE_VSYNC);
+	glfwSwapInterval(VSYNC);
 
 	glewExperimental = GL_TRUE;
 	glewInit();
@@ -101,51 +103,9 @@ void Init_Textures() {
 	glBindTexture(GL_TEXTURE_2D, atlas);
 }
 
-void Init_Text() {
-	text = new Text("Minecraftia", 30);
-
-	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-		if (i < AVG_UPDATE_RANGE - 1) {
-			last_fps[i] = last_fps[i + 1];
-			last_cpu[i] = last_cpu[i + 1];
-		}
-		else {
-			last_fps[i] = (1.0f / deltaTime + 0.5);
-			last_cpu[i] = System::GetCPUUsage();
-		}
-	}
-
-	lastUIUpdate = lastFrame;
-
-	double fps_sum = 0.0;
-	double cpu_sum = 0.0;
-
-	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-		fps_sum += last_fps[i];
-		cpu_sum += last_cpu[i];
-	}
-
-	text->X = 30.0f;
-	text->Scale = 0.5f;
-
-	text->Add("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)), 50);
-	text->Add("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%", 80);
+void Init_Shaders() {
+    shader = new Shader("shader");
     
-    if (Windows) {
-        text->Add("vram", "VRAM: " + System::GetVRAMUsage(), 120);
-    }
-    
-	text->Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 150);
-	text->Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 180);
-
-	text->Add("playerChunk", "Chunk:    " + Format_Vector(player.CurrentChunk), 220);
-	text->Add("playerTile",  "Tile:     " + Format_Vector(player.CurrentTile), 250);
-	text->Add("playerPos",   "Position: " + Format_Vector(player.WorldPos), 280);
-
-	text->Add("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()), 320);
-}
-
-void Init_UBO() {
 	glGenBuffers(1, &UBO);
 	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
 
@@ -206,11 +166,11 @@ void Render_Scene() {
 	shader->Bind();
 	glUniformMatrix4fv(glGetUniformLocation(shader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-	if (toggleWireframe) {
-		wireframe = !wireframe;
-		toggleWireframe = false;
+	if (ToggleWireframe) {
+		Wireframe = !Wireframe;
+		ToggleWireframe = false;
 
-		if (wireframe) {
+		if (Wireframe) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 50);
 		}
@@ -247,53 +207,6 @@ void Render_Scene() {
 	shader->Unbind();
 }
 
-void Draw_UI() {
-	for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-		if (i < AVG_UPDATE_RANGE - 1) {
-			last_fps[i] = last_fps[i + 1];
-			last_cpu[i] = last_cpu[i + 1];
-		}
-		else {
-			last_fps[i] = (1.0f / deltaTime + 0.5);
-			last_cpu[i] = System::GetCPUUsage();
-		}
-	}
-
-	if (lastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
-		lastUIUpdate = lastFrame;
-
-		double fps_sum = 0.0;
-		double cpu_sum = 0.0;
-
-		for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-			fps_sum += last_fps[i];
-			cpu_sum += last_cpu[i];
-		}
-
-		text->Set_Text("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)));
-		text->Set_Text("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%");
-		text->Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
-		text->Set_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage());
-		text->Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
-	}
-
-	text->Set_Text("playerChunk", "Chunk:      " + Format_Vector(player.CurrentChunk));
-	text->Set_Text("playerTile", "Tile:            " + Format_Vector(player.CurrentTile));
-	text->Set_Text("playerPos", "Position:  " + Format_Vector(player.WorldPos));
-    
-	text->Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()));
-
-	if (wireframe) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
-
-	text->Draw_All();
-
-	if (wireframe) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
-}
-
 unsigned int Load_Texture(std::string file) {
 	std::string path = "images/" + file;
 
@@ -314,26 +227,6 @@ unsigned int Load_Texture(std::string file) {
     SOIL_free_image_data(image);
 
     return texture;
-}
-
-std::string Format_Vector(glm::vec3 vector) {
-    std::string x = Pad(std::to_string(int(vector.x)));
-    std::string y = Pad(std::to_string(int(vector.y)));
-    std::string z = Pad(std::to_string(int(vector.z)));
-    
-    return std::string("X: " + x + "Y: " + y + "Z: " + z);
-}
-
-std::string Pad(std::string value, int pad_length) {
-    std::string result = value;
-    
-    if (value.length() < pad_length) {
-        for (int i = 0; i < pad_length - value.length(); i++) {
-            result += "  ";
-        }
-    }
-    
-    return result;
 }
 
 void BackgroundThread() {
@@ -373,13 +266,9 @@ void BackgroundThread() {
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_ESCAPE) {
-            glfwSetWindowShouldClose(window, GL_TRUE);
-            return;
-        }
-        else if (key == GLFW_KEY_I) {
-            toggleWireframe = true;
-        }
+        if (key == GLFW_KEY_I) ToggleWireframe = true;
+        else if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
+        else if (key == GLFW_KEY_U) UI::Toggle_Debug();
     }
 
     player.KeyHandler(key, action);
@@ -391,5 +280,7 @@ void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
     player.ScrollHandler(offsetY);
 }
 void click_proxy(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+    
     player.ClickHandler(button, action);
 }
