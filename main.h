@@ -1,7 +1,7 @@
 #pragma once
 
-#include "classes/Shader.h"
-#include "classes/UI.h"
+#include "Shader.h"
+#include "UI.h"
 
 #ifdef _WIN32
 const bool Windows = true;

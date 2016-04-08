@@ -6,9 +6,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include "Text.h"
 #include "Shader.h"
 
@@ -18,15 +15,7 @@ const glm::vec3 backgroundColor = glm::vec3(0.5f);
 const glm::vec3 backgroundHoverColor = glm::vec3(0.7f);
 const glm::vec3 backgroundClickColor = glm::vec3(0.3f, 0.3f, 0.8f);
 
-bool createdShaders = false;
-
-int colorLocation;
-int alphaLocation;
-
 std::string activeButton = "";
-
-Shader* UIShader;
-Shader* UIBorderShader;
 
 struct ButtonStruct {
     std::string Name;
@@ -43,7 +32,7 @@ struct ButtonStruct {
     glm::vec3 BackgroundColor = backgroundColor;
     glm::vec3 TextColor = glm::vec3(1.0f);
     
-    unsigned int VAO, VBO;
+    unsigned int BackgroundVAO, BackgroundVBO;
     unsigned int BorderVAO, BorderVBO;
     
     bool IsHovering = false;
@@ -55,13 +44,6 @@ struct ButtonStruct {
 std::map<std::string, ButtonStruct> Buttons;
 
 void Button::Add(std::string name, std::string text, Func &function, float x, float y, float w, std::string group) {
-    if (!createdShaders) {
-        createdShaders = true;
-        
-        UIShader = new Shader("ui");
-        UIBorderShader = new Shader("uiBorder");
-    }
-    
     float h = padding * 2.0f;
     
     ButtonStruct button;
@@ -86,15 +68,15 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     std::vector<float> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
     std::vector<float> border = {x, y,  x + w, y,  x + w, y + h,  x - 0.5f, y + h};
     
-    glGenBuffers(1, &button.VBO);
+    glGenBuffers(1, &button.BackgroundVBO);
     glGenBuffers(1, &button.BorderVBO);
     
-    glGenVertexArrays(1, &button.VAO);
+    glGenVertexArrays(1, &button.BackgroundVAO);
     glGenVertexArrays(1, &button.BorderVAO);
     
-    glBindVertexArray(button.VAO);
+    glBindVertexArray(button.BackgroundVAO);
     
-    glBindBuffer(GL_ARRAY_BUFFER, button.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, button.BackgroundVBO);
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
@@ -111,26 +93,17 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
-    glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
-    
-    UIShader->Bind();
-    colorLocation = glGetUniformLocation(UIShader->Program, "color");
-    alphaLocation = glGetUniformLocation(UIShader->Program, "alpha");
-    glUniformMatrix4fv(glGetUniformLocation(UIShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    UIShader->Unbind();
-    
-    UIBorderShader->Bind();
-    glUniformMatrix4fv(glGetUniformLocation(UIShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    UIBorderShader->Unbind();
-    
     Buttons[name] = button;
 }
 
 void Button::Delete(std::string name) {
     ButtonStruct button = Buttons[name];
     
-    glDeleteBuffers(1, &button.VBO);
-    glDeleteVertexArrays(1, &button.VAO);
+    glDeleteBuffers(1, &button.BackgroundVBO);
+    glDeleteBuffers(1, &button.BorderVBO);
+    
+    glDeleteVertexArrays(1, &button.BackgroundVAO);
+    glDeleteVertexArrays(1, &button.BorderVAO);
 }
 
 void Button::Draw(std::string name) {
@@ -141,7 +114,7 @@ void Button::Draw(std::string name) {
     glUniform1f(alphaLocation, button.BackgroundOpacity);
     glUniform3f(colorLocation, button.BackgroundColor.r, button.BackgroundColor.g, button.BackgroundColor.b);
     
-    glBindVertexArray(button.VAO);
+    glBindVertexArray(button.BackgroundVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
     
@@ -208,14 +181,4 @@ void Button::Draw_All(std::string group) {
         Buttons[button.first].Active = (button.second.Group == group);
         if (Buttons[button.first].Active) Draw(button.first);
     }
-}
-
-void Button::Clean() {
-    createdShaders = false;
-    
-    delete UIShader;
-    UIShader = nullptr;
-    
-    delete UIBorderShader;
-    UIBorderShader = nullptr;
 }

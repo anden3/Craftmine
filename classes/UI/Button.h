@@ -2,7 +2,15 @@
 
 #include <string>
 
+#include "Shader.h"
+
 typedef void (Func)(void);
+
+extern int colorLocation;
+extern int alphaLocation;
+
+extern Shader* UIShader;
+extern Shader* UIBorderShader;
 
 namespace Button {
     void Add(std::string name, std::string text, Func &function, float x, float y, float w, std::string group = "default");
@@ -15,5 +23,4 @@ namespace Button {
     void Check_Click(double mouseX, double mouseY, int state);
     
     void Draw_All(std::string group = "default");
-    void Clean();
 };

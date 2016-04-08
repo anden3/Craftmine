@@ -7,10 +7,9 @@
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
-#include "classes/Light.h"
-#include "classes/Time.h"
-#include "classes/System.h"
-#include "classes/Button.h"
+#include "Light.h"
+#include "Time.h"
+#include "System.h"
 
 #include <thread>
 #include <chrono>
@@ -266,8 +265,7 @@ void BackgroundThread() {
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_I) ToggleWireframe = true;
-        else if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
+        if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
         else if (key == GLFW_KEY_U) UI::Toggle_Debug();
     }
 
@@ -280,7 +278,9 @@ void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
     player.ScrollHandler(offsetY);
 }
 void click_proxy(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        UI::Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+    }
     
     player.ClickHandler(button, action);
 }

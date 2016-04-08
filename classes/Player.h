@@ -42,6 +42,8 @@ public:
 
 	void PollSounds();
     void Move(float deltaTime);
+    
+    void RenderChunks();
 
     void KeyHandler(int key, int action);
     void MouseHandler(double posX, double posY);
@@ -64,8 +66,6 @@ private:
 	std::vector<glm::vec3> Hitscan();
 
 	void PlaySound(glm::vec3 chunk, glm::vec3 tile);
-
-	void RenderChunks();
 };
 
 bool IsBlock(glm::vec3 pos);

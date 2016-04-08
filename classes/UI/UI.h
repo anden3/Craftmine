@@ -6,11 +6,16 @@
 #include "Text.h"
 #include "Player.h"
 
+#include "Button.h"
+#include "Slider.h"
+
 extern const bool Windows;
 
 extern bool VSYNC;
 extern bool Wireframe;
 extern bool ToggleWireframe;
+
+extern int RENDER_DISTANCE;
 
 extern double deltaTime;
 extern double lastFrame;
@@ -22,6 +27,8 @@ namespace UI {
     void Init();
     void Draw();
     void Clean();
+    
+    void Click(double mouseX, double mouseY, int action);
     
     void Toggle_Menu();
     void Toggle_Debug();

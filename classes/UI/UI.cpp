@@ -1,7 +1,9 @@
 #include "UI.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "System.h"
-#include "Button.h"
 
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
@@ -16,8 +18,15 @@ bool ShowMenu = false;
 bool ShowDebug = false;
 bool ShowOptions = false;
 
+int colorLocation;
+int alphaLocation;
+
+Shader* UIShader;
+Shader* UIBorderShader;
+
 std::string BoolStrings[2] = {"False", "True"};
 
+void Init_UI_Shaders();
 void Init_UI();
 void Init_Menu();
 void Init_Debug();
@@ -30,12 +39,15 @@ void Toggle_Options_Menu();
 void Toggle_VSync();
 void Toggle_Wireframe();
 
+void Change_Render_Distance();
+
 void Exit();
 
 
 void UI::Init() {
     Text::Init(FONT, FONT_SIZE);
     
+    Init_UI_Shaders();
     Init_UI();
     Init_Menu();
     Init_Debug();
@@ -59,7 +71,16 @@ void UI::Draw() {
 }
 
 void UI::Clean() {
-    Button::Clean();
+    delete UIShader;
+    UIShader = nullptr;
+    
+    delete UIBorderShader;
+    UIBorderShader = nullptr;
+}
+
+void UI::Click(double mouseX, double mouseY, int action) {
+    Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+    Slider::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
 }
 
 void UI::Toggle_Menu() {
@@ -74,6 +95,24 @@ void UI::Toggle_Debug() {
     ShowDebug = !ShowDebug;
 }
 
+void Init_UI_Shaders() {
+    UIShader = new Shader("ui");
+    UIBorderShader = new Shader("uiBorder");
+    
+    colorLocation = glGetUniformLocation(UIShader->Program, "color");
+    alphaLocation = glGetUniformLocation(UIShader->Program, "alpha");
+    
+    glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
+    
+    UIShader->Bind();
+    glUniformMatrix4fv(glGetUniformLocation(UIShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    UIShader->Unbind();
+    
+    UIBorderShader->Bind();
+    glUniformMatrix4fv(glGetUniformLocation(UIBorderShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    UIBorderShader->Unbind();
+}
+
 void Init_UI() {
     return;
 }
@@ -84,6 +123,8 @@ void Init_Menu() {
     
     Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSYNC], Toggle_VSync, 420, 500, 200, "optionMenu");
     Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, 780, 500, 200, "optionMenu");
+    
+    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), Change_Render_Distance, 620, 700, 200, 0, 10, RENDER_DISTANCE, "optionMenu");
     
     Button::Add("option_back", "Back", Toggle_Options_Menu, 620, 200, 200, "optionMenu");
 }
@@ -119,12 +160,15 @@ void Draw_UI() {
 
 void Draw_Menu() {
     Button::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
+    Slider::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
     
     if (ShowOptions) {
         Button::Draw_All("optionMenu");
+        Slider::Draw_All("optionMenu");
     }
     else {
         Button::Draw_All("mainMenu");
+        Slider::Draw_All("mainMenu");
     }
 }
 
@@ -187,6 +231,15 @@ void Toggle_VSync() {
 void Toggle_Wireframe() {
     ToggleWireframe = true;
     Button::Set_Text("option_wireframe", "Wireframe: " + BoolStrings[!Wireframe]);
+}
+
+void Change_Render_Distance() {
+    float value = Slider::Get_Value("option_renderDistance");
+    
+    RENDER_DISTANCE = value;
+    Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(int(value)));
+    
+    player.RenderChunks();
 }
 
 void Exit() {
