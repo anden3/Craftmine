@@ -190,6 +190,13 @@ float Slider::Get_Value(std::string name) {
 void Slider::Move(std::string name, float position) {
     SliderStruct slider = Sliders[name];
     
+    if (position <= slider.X + (sliderWidth / 2)) {
+        position = slider.X + (sliderWidth / 2);
+    }
+    else if (position >= slider.X + slider.Width - 1) {
+        position = slider.X + slider.Width - 1;
+    }
+    
     float y = slider.Y;
     float w = sliderWidth / 2;
     float h = padding * 2.0f;
@@ -210,6 +217,7 @@ void Slider::Move(std::string name, float position) {
 void Slider::Check_Hover(double mouseX, double mouseY) {
     if (Dragging) {
         Move(activeSlider, mouseX);
+        Sliders[activeSlider].Function();
         return;
     }
     

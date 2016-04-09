@@ -234,12 +234,14 @@ void Toggle_Wireframe() {
 }
 
 void Change_Render_Distance() {
-    float value = Slider::Get_Value("option_renderDistance");
+    int value = ceil(Slider::Get_Value("option_renderDistance"));
     
-    RENDER_DISTANCE = value;
-    Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(int(value)));
-    
-    player.RenderChunks();
+    if (value != RENDER_DISTANCE) {
+        RENDER_DISTANCE = value;
+        Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(value));
+        
+        player.RenderChunks();
+    }
 }
 
 void Exit() {
