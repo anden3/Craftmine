@@ -11,21 +11,21 @@ const bool Windows = false;
 
 #endif
 
-int SCREEN_WIDTH  = 1920;
-int SCREEN_HEIGHT = 1080;
-
-int RENDER_DISTANCE = 10;
-
 const int FONT_SIZE = 15;
-
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 
-bool VSYNC = true;
+int SCREEN_WIDTH  = 1920;
+int SCREEN_HEIGHT = 1080;
+int RENDER_DISTANCE = 5;
 
+bool VSync = true;
+
+unsigned int DebugVBO, DebugVAO;
+unsigned int OutlineVBO, OutlineVAO;
 unsigned int UBO;
 
-double deltaTime = 0.0;
-double lastFrame = 0.0;
+double DeltaTime = 0.0;
+double LastFrame = 0.0;
 
 bool Wireframe = false;
 bool ToggleWireframe = false;
@@ -35,7 +35,12 @@ bool EditingDataQueue = false;
 bool EditingChunkMap = false;
 
 Player player = Player();
+
 Shader* shader;
+Shader* outlineShader;
+
+int modelMatrixLocation;
+int diffuseTextureLocation;
 
 GLFWwindow* Window;
 
@@ -46,15 +51,15 @@ std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkQueue;
 void Init_GL();
 void Init_Textures();
 void Init_Shaders();
+void Init_Buffers();
 void Init_Rendering();
 
 void Update_Data_Queue();
-
 void Render_Scene();
 
 unsigned int Load_Texture(std::string image_path);
 
-std::string Format_Vector(glm::vec3 vector);
+void Extend(std::vector<float>* storage, std::vector<float> input);
 
 void BackgroundThread();
 

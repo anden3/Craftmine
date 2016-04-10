@@ -2,8 +2,16 @@
 
 #include <noise/noise.h>
 
+#include <random>
+
 static const int CHUNK_ZOOM = 50;
 static const float NOISE_DENSITY_BLOCK = 0.5f;
+
+bool Seeded = false;
+
+std::random_device rd;
+std::mt19937 rng(rd());
+std::uniform_int_distribution<int> uni(0, 10000);
 
 noise::module::Perlin noiseModule;
 
@@ -61,7 +69,15 @@ float tex_coords[6][6][2] = {
 	{ {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1} }
 };
 
+void Seed() {
+    noiseModule.SetSeed(uni(rng));
+}
+
 Chunk::Chunk(glm::vec3 position) {
+    if (!Seeded) {
+        Seed();
+        Seeded = true;
+    }
     Position = position;
 }
 

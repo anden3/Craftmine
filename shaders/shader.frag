@@ -20,31 +20,15 @@ out vec4 FragColor;
 uniform Light light;
 uniform Material material;
 
-uniform bool DrawOutline = false;
-uniform vec3 BlockPos;
-
 void main() {
-    float diff = max(dot(Normal, light.direction), 0.0f);
-    
     vec4 tex = texture(material.diffuse, TexCoords);
+    
+    float diff = max(dot(Normal, light.direction), 0.0f);
     
     vec3 ambient = light.ambient * tex.rgb;
     vec3 diffuse = light.diffuse * diff * tex.rgb;
 
     vec4 color = vec4(ambient + diffuse, tex.a);
-
-    if (DrawOutline) {
-        vec3 posDiff = VertexPos - BlockPos;
-
-        if (posDiff.x <= 1.001 && posDiff.x >= -0.001) {
-            if (posDiff.y <= 1.001 && posDiff.y >= -0.001) {
-                if (posDiff.z <= 1.001 && posDiff.z >= -0.001) {
-                    color += vec4(0.1f, 0.1f, 0.1f, 0.0f);
-                }
-            }
-        }
-    }
-
 	vec4 aoAdjustment = vec4(vec3((3 - AO) * 0.05f), 0.0f);
 
 	FragColor = color - aoAdjustment;

@@ -21,6 +21,11 @@ bool ShowOptions = false;
 int colorLocation;
 int alphaLocation;
 
+unsigned int BackgroundVAO, BackgroundVBO;
+
+glm::vec3 BackgroundColor = glm::vec3(0);
+float BackgroundOpacity = 0.5f;
+
 Shader* UIShader;
 Shader* UIBorderShader;
 
@@ -28,10 +33,12 @@ std::string BoolStrings[2] = {"False", "True"};
 
 void Init_UI_Shaders();
 void Init_UI();
+void Init_Background();
 void Init_Menu();
 void Init_Debug();
 
 void Draw_UI();
+void Draw_Background();
 void Draw_Menu();
 void Draw_Debug();
 
@@ -49,6 +56,7 @@ void UI::Init() {
     
     Init_UI_Shaders();
     Init_UI();
+    Init_Background();
     Init_Menu();
     Init_Debug();
 }
@@ -57,6 +65,7 @@ void UI::Draw() {
     if (Wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
     if (ShowMenu) {
+        Draw_Background();
         Draw_Menu();
     }
     else {
@@ -117,11 +126,35 @@ void Init_UI() {
     return;
 }
 
+void Init_Background() {
+    glGenBuffers(1, &BackgroundVBO);
+    glGenVertexArrays(1, &BackgroundVAO);
+    
+    float w(SCREEN_WIDTH);
+    float h(SCREEN_HEIGHT);
+    
+    std::vector<float> data {
+        0, 0,  w, 0,  w, h,
+        0, 0,  w, h,  0, h
+    };
+    
+    glBindVertexArray(BackgroundVAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, BackgroundVBO);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
+    
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void Init_Menu() {
     Button::Add("options", "Options", Toggle_Options_Menu, 620, 500, 200, "mainMenu");
     Button::Add("exit", "Quit", Exit, 620, 200, 200, "mainMenu");
     
-    Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSYNC], Toggle_VSync, 420, 500, 200, "optionMenu");
+    Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, 420, 500, 200, "optionMenu");
     Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, 780, 500, 200, "optionMenu");
     
     Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), Change_Render_Distance, 620, 700, 200, 0, 10, RENDER_DISTANCE, "optionMenu");
@@ -158,6 +191,21 @@ void Draw_UI() {
     return;
 }
 
+void Draw_Background() {
+    UIShader->Bind();
+    
+    glUniform3f(colorLocation, BackgroundColor.r, BackgroundColor.g, BackgroundColor.b);
+    glUniform1f(alphaLocation, BackgroundOpacity);
+    
+    glBindVertexArray(BackgroundVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+    
+    UIShader->Unbind();
+    
+    glClear(GL_DEPTH_BUFFER_BIT);
+}
+
 void Draw_Menu() {
     Button::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
     Slider::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
@@ -179,13 +227,13 @@ void Draw_Debug() {
             last_cpu[i] = last_cpu[i + 1];
         }
         else {
-            last_fps[i] = (1.0f / deltaTime + 0.5);
+            last_fps[i] = (1.0f / DeltaTime + 0.5);
             last_cpu[i] = System::GetCPUUsage();
         }
     }
     
-    if (lastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
-        lastUIUpdate = lastFrame;
+    if (LastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
+        lastUIUpdate = LastFrame;
         
         double fps_sum = 0.0;
         double cpu_sum = 0.0;
@@ -222,10 +270,10 @@ void Toggle_Options_Menu() {
 }
 
 void Toggle_VSync() {
-    VSYNC = !VSYNC;
-    Button::Set_Text("option_vsync", "V-Sync: " + BoolStrings[VSYNC]);
+    VSync = !VSync;
+    Button::Set_Text("option_vsync", "V-Sync: " + BoolStrings[VSync]);
     
-    glfwSwapInterval(VSYNC);
+    glfwSwapInterval(VSync);
 }
 
 void Toggle_Wireframe() {

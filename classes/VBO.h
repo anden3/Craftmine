@@ -17,5 +17,5 @@ public:
     void Draw();
 
 private:
-    int vertexCount;
+    int vertexCount = 0;
 };

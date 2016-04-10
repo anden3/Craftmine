@@ -11,14 +11,14 @@
 
 extern const bool Windows;
 
-extern bool VSYNC;
+extern bool VSync;
 extern bool Wireframe;
 extern bool ToggleWireframe;
 
 extern int RENDER_DISTANCE;
 
-extern double deltaTime;
-extern double lastFrame;
+extern double DeltaTime;
+extern double LastFrame;
 
 extern GLFWwindow* Window;
 extern Player player;

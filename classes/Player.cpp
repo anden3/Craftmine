@@ -22,7 +22,7 @@ const double MIN_FOV = 1.0;
 const float GRAVITY = 0.004f;
 const float JUMP_HEIGHT = 0.1f;
 
-bool CONSTRAIN_PITCH = true;
+const bool CONSTRAIN_PITCH = true;
 
 glm::vec3 lastChunk(-5);
 
@@ -48,6 +48,8 @@ void Player::PollSounds() {
 }
 
 void Player::Move(float deltaTime) {
+    glm::vec3 prevPos = WorldPos;
+    
     Velocity.x = 0;
     Velocity.z = 0;
 
@@ -100,17 +102,34 @@ void Player::Move(float deltaTime) {
 
         ColDetection();
 	}
-
-    std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(WorldPos);
-    CurrentChunk = chunkPos[0];
-    CurrentTile = chunkPos[1];
-
-    Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
-	listener.Set_Position(Cam.Position);
-
-    if (CurrentChunk != lastChunk) {
-        lastChunk = CurrentChunk;
-        RenderChunks();
+    
+    if (WorldPos != prevPos) {
+        std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(WorldPos);
+        CurrentChunk = chunkPos[0];
+        CurrentTile = chunkPos[1];
+        
+        Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
+        listener.Set_Position(Cam.Position);
+        
+        std::vector<glm::vec3> hit = Hitscan();
+        
+        if (hit.size() == 4) {
+            LookingAtBlock = true;
+            
+            LookingChunk = hit[0];
+            LookingTile = hit[1];
+            
+            LookingAirChunk = hit[2];
+            LookingAirTile = hit[3];
+        }
+        else {
+            LookingAtBlock = false;
+        }
+        
+        if (CurrentChunk != lastChunk) {
+            lastChunk = CurrentChunk;
+            RenderChunks();
+        }
     }
 }
 

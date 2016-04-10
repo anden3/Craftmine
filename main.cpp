@@ -21,20 +21,21 @@ int main() {
     UI::Init();
     
 	Init_Shaders();
+    Init_Buffers();
 	Init_Rendering();
     
 	std::thread chunkGeneration(BackgroundThread);
     
 	while (!glfwWindowShouldClose(Window)) {
 		double currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
+		DeltaTime = currentFrame - LastFrame;
+		LastFrame = currentFrame;
 
 		glfwPollEvents();
 
 		player.PollSounds();
         
-        if (!ShowMenu) player.Move(float(deltaTime));
+        if (!ShowMenu) player.Move(float(DeltaTime));
 		
 		Update_Data_Queue();
 		Render_Scene();
@@ -75,7 +76,7 @@ void Init_GL() {
 	glfwSetWindowPos(Window, 0, 0);
 
 	glfwMakeContextCurrent(Window);
-	glfwSwapInterval(VSYNC);
+	glfwSwapInterval(VSync);
 
 	glewExperimental = GL_TRUE;
 	glewInit();
@@ -94,6 +95,11 @@ void Init_GL() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glClearColor(CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, 1.0f);
+    
+    // glEnable(GL_LINE_SMOOTH);
+    // glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    
+    glLineWidth(10.0f);
 }
 
 void Init_Textures() {
@@ -104,6 +110,7 @@ void Init_Textures() {
 
 void Init_Shaders() {
     shader = new Shader("shader");
+    outlineShader = new Shader("outline");
     
 	glGenBuffers(1, &UBO);
 	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
@@ -118,6 +125,51 @@ void Init_Shaders() {
 	glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void Init_Buffers() {
+    glGenBuffers(1, &OutlineVBO);
+    glGenVertexArrays(1, &OutlineVAO);
+    
+    std::vector<float> data;
+    
+    float points[8][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}, {1, 0}, {1, 1}, {0, 1} };
+    float n[2] {float(-1 / sqrt(3)), float(1 / sqrt(3))};
+    
+    for (float y = 0; y < 3; y++) {
+        for (int i = 0; i < 4; i++) {
+            float x1 = points[i][0], x2 = x1;
+            float y1 = y, y2 = y;
+            float z1 = points[i][1], z2 = z1;
+            
+            if (y == 2) y1 = 0, y2 = 1;
+            else {
+                if (i != 4) x2 = points[i + 1][0], z2 = points[i + 1][1];
+                else x2 = 0, z2 = 0;
+            }
+            
+            Extend(&data, std::vector<float> {x1, y1, z1});
+            Extend(&data, std::vector<float> {n[int(x1)], n[int(y1)], n[int(z1)]});
+            
+            Extend(&data, std::vector<float> {x2, y2, z2});
+            Extend(&data, std::vector<float> {n[int(x2)], n[int(y2)], n[int(z2)]});
+        }
+    }
+    
+    
+    glBindVertexArray(OutlineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, OutlineVBO);
+    
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 6 * sizeof(float), (void*)0);
+    
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void Init_Rendering() {
@@ -180,30 +232,25 @@ void Render_Scene() {
 	}
 
 	EditingChunkMap = true;
-
-	bool disableOutline = false;
-
 	for (auto const chunk : ChunkMap) {
-		if (player.LookingAtBlock && player.LookingChunk == chunk.second->Position) {
-			glm::vec3 blockPos = Get_World_Pos(player.LookingChunk, player.LookingTile);
-
-			glUniform3f(glGetUniformLocation(shader->Program, "BlockPos"), blockPos.x, blockPos.y, blockPos.z);
-			glUniform1i(glGetUniformLocation(shader->Program, "DrawOutline"), 1);
-
-			disableOutline = true;
-		}
-
-		chunk.second->vbo.Draw();
-
-		if (disableOutline) {
-			glUniform1i(glGetUniformLocation(shader->Program, "DrawOutline"), 0);
-			disableOutline = false;
-		}
+        chunk.second->vbo.Draw();
 	}
-
 	EditingChunkMap = false;
 
 	shader->Unbind();
+    
+    if (player.LookingAtBlock) {
+        outlineShader->Bind();
+        
+        model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile));
+        glUniformMatrix4fv(glGetUniformLocation(outlineShader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        
+        glBindVertexArray(OutlineVAO);
+        glDrawArrays(GL_LINES, 0, 24);
+        glBindVertexArray(0);
+        
+        outlineShader->Unbind();
+    }
 }
 
 unsigned int Load_Texture(std::string file) {
@@ -226,6 +273,10 @@ unsigned int Load_Texture(std::string file) {
     SOIL_free_image_data(image);
 
     return texture;
+}
+
+void Extend(std::vector<float>* storage, std::vector<float> input) {
+    for (auto const value : input) storage->push_back(value);
 }
 
 void BackgroundThread() {
