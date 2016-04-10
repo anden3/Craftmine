@@ -26,7 +26,7 @@ const bool CONSTRAIN_PITCH = true;
 
 glm::vec3 lastChunk(-5);
 
-bool keys[1024];
+bool keys[1024] = {0};
 
 std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 
@@ -241,6 +241,10 @@ void Player::KeyHandler(int key, int action) {
             keys[key] = false;
         }
     }
+}
+
+void Player::Clear_Keys() {
+    std::fill_n(keys, 1024, false);
 }
 
 void Player::MouseHandler(double posX, double posY) {

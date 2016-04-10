@@ -223,15 +223,15 @@ void Slider::Check_Hover(double mouseX, double mouseY) {
     
     bool activeSliders = false;
     
-    for (auto slider : Sliders) {
+    for (auto& slider : Sliders) {
         if (slider.second.Active) {
             if (mouseX > slider.second.HandleX && mouseX < slider.second.HandleX + sliderWidth) {
                 if (mouseY > slider.second.Y && mouseY < slider.second.Y + slider.second.Height) {
                     activeSliders = true;
                     
                     if (!slider.second.IsHovering) {
-                        Sliders[slider.first].IsHovering = true;
-                        Sliders[slider.first].HandleColor = handleHoverColor;
+                        slider.second.IsHovering = true;
+                        slider.second.HandleColor = handleHoverColor;
                         
                         activeSlider = slider.first;
                     }
@@ -240,8 +240,8 @@ void Slider::Check_Hover(double mouseX, double mouseY) {
             }
         }
         
-        Sliders[slider.first].IsHovering = false;
-        Sliders[slider.first].HandleColor = handleColor;
+        slider.second.IsHovering = false;
+        slider.second.HandleColor = handleColor;
     }
     
     if (!activeSliders) {
@@ -264,8 +264,8 @@ void Slider::Check_Click(double mouseX, double mouseY, int state) {
 }
 
 void Slider::Draw_All(std::string group) {
-    for (auto const slider : Sliders) {
-        Sliders[slider.first].Active = (slider.second.Group == group);
-        if (Sliders[slider.first].Active) Draw(slider.first);
+    for (auto& slider : Sliders) {
+        slider.second.Active = (slider.second.Group == group);
+        if (slider.second.Active) Draw(slider.first);
     }
 }

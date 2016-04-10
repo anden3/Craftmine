@@ -3,11 +3,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include "Text.h"
 #include "Player.h"
 
+#include "Text.h"
 #include "Button.h"
 #include "Slider.h"
+#include "Chat.h"
 
 extern const bool Windows;
 
@@ -22,6 +23,7 @@ extern double LastFrame;
 
 extern GLFWwindow* Window;
 extern Player player;
+extern Chat chat;
 
 namespace UI {
     void Init();

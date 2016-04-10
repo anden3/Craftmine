@@ -44,6 +44,8 @@ public:
     void Move(float deltaTime);
     
     void RenderChunks();
+    
+    void Clear_Keys();
 
     void KeyHandler(int key, int action);
     void MouseHandler(double posX, double posY);

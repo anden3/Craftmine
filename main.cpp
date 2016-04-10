@@ -35,7 +35,7 @@ int main() {
 
 		player.PollSounds();
         
-        if (!ShowMenu) player.Move(float(DeltaTime));
+        if (!ShowMenu && !chat.Focused) player.Move(float(DeltaTime));
 		
 		Update_Data_Queue();
 		Render_Scene();
@@ -98,8 +98,6 @@ void Init_GL() {
     
     // glEnable(GL_LINE_SMOOTH);
     // glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    
-    glLineWidth(10.0f);
 }
 
 void Init_Textures() {
@@ -315,12 +313,26 @@ void BackgroundThread() {
 }
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
-        else if (key == GLFW_KEY_U) UI::Toggle_Debug();
+    if (chat.Focused) {
+        player.Clear_Keys();
+        
+        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
+            chat.Focused = false;
+            chat.FocusToggled = true;
+        }
     }
-
-    player.KeyHandler(key, action);
+    else {
+        if (action == GLFW_PRESS) {
+            if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
+            else if (key == GLFW_KEY_U) UI::Toggle_Debug();
+            else if (key == GLFW_KEY_T) {
+                chat.Focused = true;
+                chat.FocusToggled = true;
+            }
+        }
+        
+        player.KeyHandler(key, action);
+    }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {
     player.MouseHandler(posX, posY);

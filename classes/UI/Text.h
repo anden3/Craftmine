@@ -25,12 +25,16 @@ struct String {
 
 namespace Text {
     void Init(std::string font, int font_size);
+    
     void Add(std::string name, std::string text, float y = -1);
+    void Remove(std::string name);
+    void Delete_Group(std::string group);
     
     void Set_Group(std::string group);
     void Unset_Group();
     
     float Get_Width(std::string name);
+    float Get_Opacity(std::string name);
     
     void Set_Text(std::string name, std::string text);
     void Set_X(std::string name, float x);

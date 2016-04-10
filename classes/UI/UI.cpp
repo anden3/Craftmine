@@ -50,7 +50,6 @@ void Change_Render_Distance();
 
 void Exit();
 
-
 void UI::Init() {
     Text::Init(FONT, FONT_SIZE);
     
@@ -81,9 +80,9 @@ void UI::Draw() {
 
 void UI::Clean() {
     delete UIShader;
-    UIShader = nullptr;
-    
     delete UIBorderShader;
+    
+    UIShader = nullptr;
     UIBorderShader = nullptr;
 }
 
@@ -123,7 +122,7 @@ void Init_UI_Shaders() {
 }
 
 void Init_UI() {
-    return;
+    chat.Init(*UIShader, *UIBorderShader, colorLocation, alphaLocation);
 }
 
 void Init_Background() {
@@ -133,10 +132,7 @@ void Init_Background() {
     float w(SCREEN_WIDTH);
     float h(SCREEN_HEIGHT);
     
-    std::vector<float> data {
-        0, 0,  w, 0,  w, h,
-        0, 0,  w, h,  0, h
-    };
+    std::vector<float> data {0, 0,  w, 0,  w, h,  0, 0,  w, h,  0, h};
     
     glBindVertexArray(BackgroundVAO);
     
@@ -188,7 +184,7 @@ void Init_Debug() {
 }
 
 void Draw_UI() {
-    return;
+    chat.Update();
 }
 
 void Draw_Background() {

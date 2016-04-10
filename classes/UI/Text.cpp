@@ -37,7 +37,7 @@ float Opacity = 1.0f;
 
 glm::vec3 Color = glm::vec3(1.0f);
 
-std::string currentGroup = "";
+std::string currentGroup = "default";
 
 const int TEXT_TEXTURE_UNIT = 10;
 unsigned int textVAO, textVBO;
@@ -45,7 +45,6 @@ unsigned int textVAO, textVBO;
 Shader* textShader;
 
 std::map<char, Character> Characters;
-std::map<std::string, String> Strings;
 std::map<std::string, Group> Groups;
 
 void Text::Init(std::string font, int font_size) {
@@ -140,13 +139,29 @@ void Text::Add(std::string name, std::string text, float y) {
         string.Width += (Characters[*c].Advance >> 6) * Scale;
     }
     
-    if (currentGroup != "") Groups[currentGroup].Strings[name] = string;
-    else Strings[name] = string;
+    Groups[currentGroup].Strings[name] = string;
+}
+
+void Text::Remove(std::string name) {
+    Groups[currentGroup].Strings.erase(name);
+}
+
+void Text::Delete_Group(std::string group) {
+    if (currentGroup == group) {
+        currentGroup = "default";
+    }
+    
+    Groups.erase(group);
 }
 
 float Text::Get_Width(std::string name) {
-    if (currentGroup != "") return Groups[currentGroup].Strings[name].Width;
-    return Strings[name].Width;
+    return Groups[currentGroup].Strings[name].Width;
+}
+
+float Text::Get_Opacity(std::string name) {
+    if (name == "global") return Opacity;
+    if (Groups[currentGroup].Strings.count(name)) return Groups[currentGroup].Strings[name].Opacity;
+    return Groups[name].Opacity;
 }
 
 void Text::Set_Group(std::string group) {
@@ -154,42 +169,41 @@ void Text::Set_Group(std::string group) {
 }
 
 void Text::Unset_Group() {
-    currentGroup = "";
+    currentGroup = "default";
 }
 
 void Text::Set_Text(std::string name, std::string text) {
-    if (currentGroup != "") Groups[currentGroup].Strings[name].Text = text;
-    else Strings[name].Text = text;
+    Groups[currentGroup].Strings[name].Text = text;
 }
 
 void Text::Set_X(std::string name, float x) {
     if (name == "global") X = x;
-    else if (currentGroup == "") Strings[name].X = x;
-    else Groups[currentGroup].X = x;
+    else if (Groups[currentGroup].Strings.count(name)) Groups[currentGroup].Strings[name].X = x;
+    else Groups[name].X = x;
 }
 
 void Text::Set_Y(std::string name, float y) {
     if (name == "global") Y = y;
-    else if (currentGroup == "") Strings[name].Y = y;
-    else Groups[currentGroup].Y = y;
+    else if (Groups[currentGroup].Strings.count(name)) Groups[currentGroup].Strings[name].Y = y;
+    else Groups[name].Y = y;
 }
 
 void Text::Set_Scale(std::string name, float scale) {
     if (name == "global") Scale = scale;
-    else if (currentGroup == "") Strings[name].Scale = scale;
-    else Groups[currentGroup].Scale = scale;
+    else if (Groups[currentGroup].Strings.count(name)) Groups[currentGroup].Strings[name].Scale = scale;
+    else Groups[name].Scale = scale;
 }
 
 void Text::Set_Opacity(std::string name, float opacity) {
     if (name == "global") Opacity = opacity;
-    else if (currentGroup == "") Strings[name].Opacity = opacity;
-    else Groups[currentGroup].Opacity = opacity;
+    else if (Groups[currentGroup].Strings.count(name)) Groups[currentGroup].Strings[name].Opacity = opacity;
+    else Groups[name].Opacity = opacity;
 }
 
 void Text::Set_Color(std::string name, glm::vec3 color) {
     if (name == "global") Color = color;
-    else if (currentGroup == "") Strings[name].Color = color;
-    else Groups[currentGroup].Color = color;
+    else if (Groups[currentGroup].Strings.count(name)) Groups[currentGroup].Strings[name].Color = color;
+    else Groups[name].Color = color;
 }
 
 void Text::Draw(String string) {
@@ -251,7 +265,7 @@ void Text::Draw(String string) {
 }
 
 void Text::Draw_String(std::string name) {
-    Text::Draw(Strings[name]);
+    Text::Draw(Groups[currentGroup].Strings[name]);
 }
 
 void Text::Draw_Group(std::string group) {

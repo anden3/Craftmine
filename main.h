@@ -35,6 +35,7 @@ bool EditingDataQueue = false;
 bool EditingChunkMap = false;
 
 Player player = Player();
+Chat chat = Chat();
 
 Shader* shader;
 Shader* outlineShader;

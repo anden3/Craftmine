@@ -58,12 +58,16 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     
     button.Function = function;
     
+    Text::Set_Group(group);
+    
     Text::Add(name, text);
     
     Text::Set_X(name, x + (w - Text::Get_Width(name)) / 2);
     Text::Set_Y(name, y + padding - (FONT_SIZE / 6));
     Text::Set_Color(name, button.TextColor);
     Text::Set_Opacity(name, button.TextOpacity);
+    
+    Text::Unset_Group();
     
     std::vector<float> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
     std::vector<float> border = {x, y,  x + w, y,  x + w, y + h,  x - 0.5f, y + h};
@@ -99,6 +103,10 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
 void Button::Delete(std::string name) {
     ButtonStruct button = Buttons[name];
     
+    Text::Set_Group(button.Group);
+    Text::Remove(button.Name);
+    Text::Unset_Group();
+    
     glDeleteBuffers(1, &button.BackgroundVBO);
     glDeleteBuffers(1, &button.BorderVBO);
     
@@ -128,7 +136,9 @@ void Button::Draw(std::string name) {
     glDrawArrays(GL_LINE_LOOP, 0, 4);
     glBindVertexArray(0);
     
+    Text::Set_Group(button.Group);
     Text::Draw_String(button.Name);
+    Text::Unset_Group();
 }
 
 void Button::Set_Text(std::string name, std::string text) {
@@ -138,15 +148,15 @@ void Button::Set_Text(std::string name, std::string text) {
 void Button::Check_Hover(double mouseX, double mouseY) {
     bool activeButtons = false;
     
-    for (auto button : Buttons) {
+    for (auto& button : Buttons) {
         if (button.second.Active) {
             if (mouseX > button.second.X && mouseX < button.second.X + button.second.Width) {
                 if (mouseY > button.second.Y && mouseY < button.second.Y + button.second.Height) {
                     activeButtons = true;
                     
                     if (!button.second.IsHovering) {
-                        Buttons[button.first].IsHovering = true;
-                        Buttons[button.first].BackgroundColor = backgroundHoverColor;
+                        button.second.IsHovering = true;
+                        button.second.BackgroundColor = backgroundHoverColor;
                         
                         activeButton = button.first;
                     }
@@ -155,8 +165,8 @@ void Button::Check_Hover(double mouseX, double mouseY) {
             }
         }
         
-        Buttons[button.first].IsHovering = false;
-        Buttons[button.first].BackgroundColor = backgroundColor;
+        button.second.IsHovering = false;
+        button.second.BackgroundColor = backgroundColor;
     }
     
     if (!activeButtons) {
@@ -177,8 +187,8 @@ void Button::Check_Click(double mouseX, double mouseY, int state) {
 }
 
 void Button::Draw_All(std::string group) {
-    for (auto const button : Buttons) {
-        Buttons[button.first].Active = (button.second.Group == group);
-        if (Buttons[button.first].Active) Draw(button.first);
+    for (auto& button : Buttons) {
+        button.second.Active = (button.second.Group == group);
+        if (button.second.Active) Draw(button.first);
     }
 }
