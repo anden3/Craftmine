@@ -67,6 +67,7 @@ void BackgroundThread();
 void Exit();
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void text_proxy(GLFWwindow* window, unsigned int codepoint);
 void mouse_proxy(GLFWwindow* window, double posX, double posY);
 void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
 void click_proxy(GLFWwindow* window, int button, int action, int mods);

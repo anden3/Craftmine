@@ -12,7 +12,7 @@ struct Message {
     std::string Text;
     double TimeLeft;
     
-    float OldOpacity = 1.0f;
+    float RealOpacity = 1.0f;
     
     bool Hidden = false;
 };
@@ -28,7 +28,7 @@ public:
     
     void Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned int alphaLoc);
     void Write(std::string text);
-    void Input(int key);
+    void Input(unsigned int key);
     void Draw_Background();
     void Update();
     
@@ -39,6 +39,8 @@ private:
     std::string NewMessage = "";
     
     unsigned int BackgroundVAO, BackgroundVBO;
+    unsigned int MessageVAO, MessageVBO;
+    
     void Init_Chat_Background();
     
     Shader* UIShader;
@@ -47,6 +49,6 @@ private:
     unsigned int ColorLocation;
     unsigned int AlphaLocation;
     
-    void Remove(unsigned int Id);
+    void Update_Message();
     void Move_Up();
 };

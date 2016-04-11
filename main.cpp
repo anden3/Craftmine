@@ -85,6 +85,7 @@ void Init_GL() {
 	glfwSetCursorPosCallback(Window, mouse_proxy);
 	glfwSetScrollCallback(Window, scroll_proxy);
 	glfwSetMouseButtonCallback(Window, click_proxy);
+    glfwSetCharCallback(Window, text_proxy);
 
 	glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -316,22 +317,54 @@ void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
     if (chat.Focused) {
         player.Clear_Keys();
         
-        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
-            chat.Focused = false;
-            chat.FocusToggled = true;
+        if (action == GLFW_PRESS) {
+            switch (key) {
+                case GLFW_KEY_ESCAPE:
+                    chat.Focused = false;
+                    chat.FocusToggled = true;
+                    
+                    chat.Input(0x001B);
+                    break;
+                    
+                case GLFW_KEY_BACKSPACE:
+                    chat.Input(0x0008);
+                    break;
+                    
+                case GLFW_KEY_ENTER:
+                    chat.Input(0x000D);
+                    
+                    chat.Focused = false;
+                    chat.FocusToggled = true;
+                    break;
+            }
         }
     }
     else {
         if (action == GLFW_PRESS) {
-            if (key == GLFW_KEY_ESCAPE) UI::Toggle_Menu();
-            else if (key == GLFW_KEY_U) UI::Toggle_Debug();
-            else if (key == GLFW_KEY_T) {
-                chat.Focused = true;
-                chat.FocusToggled = true;
+            switch (key) {
+                case GLFW_KEY_ESCAPE:
+                    UI::Toggle_Menu();
+                    break;
+                    
+                case GLFW_KEY_U:
+                    UI::Toggle_Debug();
+                    break;
+                    
+                case GLFW_KEY_T:
+                    chat.Focused = true;
+                    chat.FocusToggled = true;
+                    break;
             }
         }
         
         player.KeyHandler(key, action);
+    }
+}
+void text_proxy(GLFWwindow* window, unsigned int codepoint) {
+    if (chat.Focused) {
+        if (!chat.FocusToggled) {
+            chat.Input(codepoint);
+        }        
     }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {

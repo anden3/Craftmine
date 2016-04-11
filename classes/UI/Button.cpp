@@ -43,8 +43,8 @@ struct ButtonStruct {
 
 std::map<std::string, ButtonStruct> Buttons;
 
-void Button::Add(std::string name, std::string text, Func &function, float x, float y, float w, std::string group) {
-    float h = padding * 2.0f;
+void Button::Add(std::string name, std::string text, Func &function, int x, int y, int w, std::string group) {
+    int h = padding * 2;
     
     ButtonStruct button;
     
@@ -62,15 +62,15 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     
     Text::Add(name, text);
     
-    Text::Set_X(name, x + (w - Text::Get_Width(name)) / 2);
-    Text::Set_Y(name, y + padding - (FONT_SIZE / 6));
+    Text::Set_X(name, x + int((w - Text::Get_String_Width(text)) / 2.0f));
+    Text::Set_Y(name, y + padding - FONT_SIZE / 6);
     Text::Set_Color(name, button.TextColor);
     Text::Set_Opacity(name, button.TextOpacity);
     
     Text::Unset_Group();
     
-    std::vector<float> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
-    std::vector<float> border = {x, y,  x + w, y,  x + w, y + h,  x - 0.5f, y + h};
+    std::vector<int> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
+    std::vector<int> border = {x, y,  x + w, y,  x + w, y + h,  x, y + h};
     
     glGenBuffers(1, &button.BackgroundVBO);
     glGenBuffers(1, &button.BorderVBO);
@@ -81,18 +81,18 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     glBindVertexArray(button.BackgroundVAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, button.BackgroundVBO);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(int), data.data(), GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_INT, GL_FALSE, 2 * sizeof(int), (void*)0);
     
     glBindVertexArray(button.BorderVAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, button.BorderVBO);
-    glBufferData(GL_ARRAY_BUFFER, border.size() * sizeof(float), border.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, border.size() * sizeof(int), border.data(), GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_INT, GL_FALSE, 2 * sizeof(int), (void*)0);
     
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -189,6 +189,8 @@ void Button::Check_Click(double mouseX, double mouseY, int state) {
 void Button::Draw_All(std::string group) {
     for (auto& button : Buttons) {
         button.second.Active = (button.second.Group == group);
-        if (button.second.Active) Draw(button.first);
+        if (button.second.Active) {
+            Draw(button.first);
+        }
     }
 }
