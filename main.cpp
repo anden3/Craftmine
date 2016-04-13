@@ -1,18 +1,13 @@
 #include "main.h"
 
+#include <thread>
+#include <chrono>
+
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SOIL/SOIL.h>
 
-#include <freetype2/ft2build.h>
-#include FT_FREETYPE_H
-
 #include "Light.h"
-#include "Time.h"
-#include "System.h"
-
-#include <thread>
-#include <chrono>
 
 int main() {
 	Init_GL();
@@ -35,7 +30,9 @@ int main() {
 
 		player.PollSounds();
         
-        if (!ShowMenu && !chat.Focused) player.Move(float(DeltaTime));
+        if (!ShowMenu && !chat.Focused) {
+            player.Move(float(DeltaTime));
+        }
 		
 		Update_Data_Queue();
 		Render_Scene();
@@ -96,9 +93,6 @@ void Init_GL() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glClearColor(CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, 1.0f);
-    
-    // glEnable(GL_LINE_SMOOTH);
-    // glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 }
 
 void Init_Textures() {
@@ -111,8 +105,11 @@ void Init_Shaders() {
     shader = new Shader("shader");
     outlineShader = new Shader("outline");
     
+    glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
+    
 	glGenBuffers(1, &UBO);
 	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
+    glUniformBlockBinding(outlineShader->Program, glGetUniformLocation(outlineShader->Program, "Matrices"), 0);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
 	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
@@ -121,7 +118,6 @@ void Init_Shaders() {
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
 
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -147,11 +143,11 @@ void Init_Buffers() {
                 else x2 = 0, z2 = 0;
             }
             
-            Extend(&data, std::vector<float> {x1, y1, z1});
-            Extend(&data, std::vector<float> {n[int(x1)], n[int(y1)], n[int(z1)]});
+            Extend(data, std::vector<float> {x1, y1, z1});
+            Extend(data, std::vector<float> {n[int(x1)], n[int(y1)], n[int(z1)]});
             
-            Extend(&data, std::vector<float> {x2, y2, z2});
-            Extend(&data, std::vector<float> {n[int(x2)], n[int(y2)], n[int(z2)]});
+            Extend(data, std::vector<float> {x2, y2, z2});
+            Extend(data, std::vector<float> {n[int(x2)], n[int(y2)], n[int(z2)]});
         }
     }
     
@@ -175,7 +171,7 @@ void Init_Rendering() {
 	shader->Bind();
 	Light::Add_Dir_Light(*shader, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
 
-	glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 0);
+	glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
 	shader->Unbind();
 }
 
@@ -204,17 +200,17 @@ void Update_Data_Queue() {
 }
 
 void Render_Scene() {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glm::mat4 view = player.Cam.GetViewMatrix();
-	glm::mat4 model;
-
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	shader->Bind();
-	glUniformMatrix4fv(glGetUniformLocation(shader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    glm::mat4 model;
+    glm::mat4 view = player.Cam.GetViewMatrix();
+    
+    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    
+    shader->Bind();
+    glUniformMatrix4fv(glGetUniformLocation(shader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
@@ -222,11 +218,11 @@ void Render_Scene() {
 
 		if (Wireframe) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 50);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 50);
 		}
 		else {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			glUniform1i(glGetUniformLocation(shader->Program, "material.diffuse"), 0);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
 		}
 	}
 
@@ -236,7 +232,7 @@ void Render_Scene() {
 	}
 	EditingChunkMap = false;
 
-	shader->Unbind();
+    shader->Unbind();
     
     if (player.LookingAtBlock) {
         outlineShader->Bind();
@@ -274,18 +270,20 @@ unsigned int Load_Texture(std::string file) {
     return texture;
 }
 
-void Extend(std::vector<float>* storage, std::vector<float> input) {
-    for (auto const value : input) storage->push_back(value);
+void Extend(std::vector<float>& storage, std::vector<float> input) {
+    for (auto const value : input) {
+        storage.push_back(value);
+    }
 }
 
 void BackgroundThread() {
 	while (true) {
-		while (EditingChunkQueue) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
-
 		if (ChunkQueue.size() > 0) {
 			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
+                while (EditingChunkQueue) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                
                 bool inRange = pow(it->first.x - player.CurrentChunk.x, 2) + pow(it->first.y - player.CurrentChunk.y, 2) + pow(it->first.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
                 
                 if (inRange) {
@@ -361,10 +359,8 @@ void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
     }
 }
 void text_proxy(GLFWwindow* window, unsigned int codepoint) {
-    if (chat.Focused) {
-        if (!chat.FocusToggled) {
-            chat.Input(codepoint);
-        }        
+    if (chat.Focused && !chat.FocusToggled) {
+        chat.Input(codepoint);
     }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {

@@ -1,9 +1,5 @@
 #version 410 core
 
-struct Material {
-    sampler2D diffuse;
-};
-
 struct Light {
     vec3 direction;
     vec3 ambient;
@@ -18,10 +14,10 @@ in float AO;
 out vec4 FragColor;
 
 uniform Light light;
-uniform Material material;
+uniform sampler2D diffuse;
 
 void main() {
-    vec4 tex = texture(material.diffuse, TexCoords);
+    vec4 tex = texture(diffuse, TexCoords);
     
     float diff = max(dot(Normal, light.direction), 0.0f);
     

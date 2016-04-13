@@ -3,7 +3,7 @@
 #include "Time.h"
 
 const float PLAYER_BASE_SPEED  = 3.0f;
-const float PLAYER_SPRINT_MODIFIER = 3.0f;
+const float PLAYER_SPRINT_MODIFIER = 1.5f;
 
 const double PLAYER_SENSITIVITY = 0.25;
 const float PLAYER_RANGE = 5.0f;
@@ -29,7 +29,6 @@ glm::vec3 lastChunk(-5);
 bool keys[1024] = {0};
 
 std::set<glm::vec3, Vec3Comparator> EmptyChunks;
-
 std::vector<SoundPlayer> soundPlayers;
 
 void Player::PollSounds() {
@@ -56,7 +55,7 @@ void Player::Move(float deltaTime) {
 	float speed = PLAYER_BASE_SPEED * deltaTime;
 
     if (keys[GLFW_KEY_LEFT_SHIFT]) {
-		speed *= PLAYER_SPRINT_MODIFIER;
+		speed *= PLAYER_SPRINT_MODIFIER * (Flying + 1);
     }
 
     if (Flying) {
@@ -113,17 +112,14 @@ void Player::Move(float deltaTime) {
         
         std::vector<glm::vec3> hit = Hitscan();
         
-        if (hit.size() == 4) {
-            LookingAtBlock = true;
-            
+        LookingAtBlock = (hit.size() == 4);
+        
+        if (LookingAtBlock) {
             LookingChunk = hit[0];
             LookingTile = hit[1];
             
             LookingAirChunk = hit[2];
             LookingAirTile = hit[3];
-        }
-        else {
-            LookingAtBlock = false;
         }
         
         if (CurrentChunk != lastChunk) {
@@ -139,20 +135,19 @@ void Player::ColDetection() {
 	}
 
 	Velocity.y -= GRAVITY;
+    
+    OnGround = (Velocity.y < 0 && IsBlock(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z)));
+    
+    if (OnGround) {
+        Velocity.y = 0;
+    }
 	
 	if (Velocity.y < 0) {
 		if (!IsBlock(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z))) {
 			WorldPos.y += Velocity.y;
-			OnGround = false;
-		}
-		else {
-			Velocity.y = 0;
-			OnGround = true;
 		}
 	}
 	else if (Velocity.y > 0) {
-		OnGround = false;
-
 		if (!IsBlock(glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT + Velocity.y, WorldPos.z))) {
 			WorldPos.y += Velocity.y;
 		}
@@ -362,6 +357,7 @@ void Player::RenderChunks() {
 
         if (dist > pow(RENDER_DISTANCE, 2)) {
             delete it->second;
+            it->second = nullptr;
             it = ChunkMap.erase(it);
         }
         else {

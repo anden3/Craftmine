@@ -14,7 +14,7 @@ const bool Windows = false;
 const int FONT_SIZE = 15;
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 
-int SCREEN_WIDTH  = 1920;
+int SCREEN_WIDTH = 1920;
 int SCREEN_HEIGHT = 1080;
 int RENDER_DISTANCE = 5;
 
@@ -60,7 +60,7 @@ void Render_Scene();
 
 unsigned int Load_Texture(std::string image_path);
 
-void Extend(std::vector<float>* storage, std::vector<float> input);
+void Extend(std::vector<float>& storage, std::vector<float> input);
 
 void BackgroundThread();
 

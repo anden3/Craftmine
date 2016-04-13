@@ -8,7 +8,6 @@
 #include "Text.h"
 #include "Button.h"
 #include "Slider.h"
-#include "Chat.h"
 
 extern const bool Windows;
 

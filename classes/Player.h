@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Chunk.h"
 #include "Sound.h"
+#include "Chat.h"
 
 enum Directions {
     LEFT,
@@ -21,6 +22,8 @@ extern bool EditingChunkMap;
 extern bool ShowMenu;
 
 extern int RENDER_DISTANCE;
+
+extern Chat chat;
 
 class Player {
 public:
