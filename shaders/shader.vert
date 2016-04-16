@@ -3,11 +3,13 @@
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec2 texCoords;
-layout (location = 3) in float ao;
+layout (location = 3) in float lightLevel;
+layout (location = 4) in float ao;
 
 out vec3 Normal;
 out vec2 TexCoords;
 out vec3 VertexPos;
+out float LightLevel;
 out float AO;
 
 layout (std140) uniform Matrices {
@@ -23,5 +25,6 @@ void main() {
     VertexPos = vec4(model * vec4(position, 1.0f)).xyz;
     Normal = normal;
     TexCoords = texCoords;
+    LightLevel = lightLevel;
 	AO = ao;
 }

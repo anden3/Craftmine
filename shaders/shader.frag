@@ -9,6 +9,7 @@ struct Light {
 in vec3 Normal;
 in vec2 TexCoords;
 in vec3 VertexPos;
+in float LightLevel;
 in float AO;
 
 out vec4 FragColor;
@@ -19,13 +20,13 @@ uniform sampler2D diffuse;
 void main() {
     vec4 tex = texture(diffuse, TexCoords);
     
-    float diff = max(dot(Normal, light.direction), 0.0f);
+    // float diff = max(dot(Normal, light.direction), 0.0f);
     
     vec3 ambient = light.ambient * tex.rgb;
-    vec3 diffuse = light.diffuse * diff * tex.rgb;
-
+    vec3 diffuse = light.diffuse * (LightLevel / 16) * tex.rgb;
+    
     vec4 color = vec4(ambient + diffuse, tex.a);
-	vec4 aoAdjustment = vec4(vec3((3 - AO) * 0.05f), 0.0f);
-
-	FragColor = color - aoAdjustment;
+    vec4 aoAdjustment = vec4(vec3(AO * 0.05f), 0.0f);
+    
+    FragColor = color - aoAdjustment;
 }
