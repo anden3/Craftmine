@@ -129,8 +129,8 @@ void Init_Background() {
     glGenBuffers(1, &BackgroundVBO);
     glGenVertexArrays(1, &BackgroundVAO);
     
-    float w(SCREEN_WIDTH);
-    float h(SCREEN_HEIGHT);
+    float w = float(SCREEN_WIDTH);
+    float h = float(SCREEN_HEIGHT);
     
     std::vector<float> data {0, 0,  w, 0,  w, h,  0, 0,  w, h,  0, h};
     
@@ -153,7 +153,7 @@ void Init_Menu() {
     Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, 420, 500, 200, "optionMenu");
     Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, 780, 500, 200, "optionMenu");
     
-    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), Change_Render_Distance, 620, 700, 200, 0, 10, RENDER_DISTANCE, "optionMenu");
+    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), Change_Render_Distance, 620, 700, 200, 0, 10, float(RENDER_DISTANCE), "optionMenu");
     
     Button::Add("option_back", "Back", Toggle_Options_Menu, 620, 200, 200, "optionMenu");
 }
@@ -163,22 +163,24 @@ void Init_Debug() {
     
     Text::Set_Group("debug");
     Text::Set_X("debug", 30);
+
+	float height = float(SCREEN_HEIGHT);
     
-    Text::Add("fps", "FPS: 0", SCREEN_HEIGHT - 50);
-    Text::Add("cpu", "CPU: 0%", SCREEN_HEIGHT - 80);
+    Text::Add("fps", "FPS: 0", height - 50);
+    Text::Add("cpu", "CPU: 0%", height - 80);
     
     if (Windows) {
-        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), SCREEN_HEIGHT - 120);
+        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), height - 120);
     }
     
-    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), SCREEN_HEIGHT - 150);
-    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), SCREEN_HEIGHT - 180);
+    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), height - 150);
+    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), height - 180);
     
-    Text::Add("playerChunk", "Chunk:    ", SCREEN_HEIGHT - 220);
-    Text::Add("playerTile", "Tile:     ", SCREEN_HEIGHT - 250);
-    Text::Add("playerPos", "Position: ", SCREEN_HEIGHT - 280);
+    Text::Add("playerChunk", "Chunk:    ", height - 220);
+    Text::Add("playerTile", "Tile:     ", height - 250);
+    Text::Add("playerPos", "Position: ", height - 280);
     
-    Text::Add("chunkQueue", "Chunks Queued: ", SCREEN_HEIGHT - 320);
+    Text::Add("chunkQueue", "Chunks Queued: ", height - 320);
     
     Text::Unset_Group();
 }
@@ -278,7 +280,7 @@ void Toggle_Wireframe() {
 }
 
 void Change_Render_Distance() {
-    int value = ceil(Slider::Get_Value("option_renderDistance"));
+    int value = int(ceil(Slider::Get_Value("option_renderDistance")));
     
     if (value != RENDER_DISTANCE) {
         RENDER_DISTANCE = value;

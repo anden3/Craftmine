@@ -145,7 +145,7 @@ void Chat::Update() {
             }
             else {
                 if (it->second.TimeLeft <= FADE_TIME) {
-                    Text::Set_Opacity(std::to_string(it->first), it->second.TimeLeft / FADE_TIME);
+                    Text::Set_Opacity(std::to_string(it->first), float(it->second.TimeLeft / FADE_TIME));
                 }
             }
         }

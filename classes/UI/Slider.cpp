@@ -216,7 +216,7 @@ void Slider::Move(std::string name, float position) {
 
 void Slider::Check_Hover(double mouseX, double mouseY) {
     if (Dragging) {
-        Move(activeSlider, mouseX);
+        Move(activeSlider, float(mouseX));
         Sliders[activeSlider].Function();
         return;
     }

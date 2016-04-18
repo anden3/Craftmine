@@ -44,3 +44,5 @@ build/
 
 Base.lproj
 Info.plist
+*.obj
+*.sbr

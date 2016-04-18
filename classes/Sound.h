@@ -1,6 +1,13 @@
 #pragma once
 
+#ifdef _WIN32
+#include <OpenAL/al.h>
+#include <OpenAL/alc.h>
+
+#elif __APPLE__
 #include <OpenAL/OpenAL.h>
+
+#endif
 
 #include <glm/glm.hpp>
 
