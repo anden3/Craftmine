@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Chunk.h"
 #include "Sound.h"
+#include "Chat.h"
 
 enum Directions {
     LEFT,
@@ -21,6 +22,8 @@ extern bool EditingChunkMap;
 extern bool ShowMenu;
 
 extern int RENDER_DISTANCE;
+
+extern Chat chat;
 
 class Player {
 public:
@@ -59,6 +62,8 @@ private:
 	bool MovedMouse = false;
 
 	float SpeedModifier = 1.0f;
+    
+    int CurrentBlock = 11;
 
 	glm::vec3 Velocity;
 
@@ -68,6 +73,12 @@ private:
 	std::vector<glm::vec3> Hitscan();
 
 	void PlaySound(glm::vec3 chunk, glm::vec3 tile);
+    
+    void Place_Torch();
+    void Remove_Torch();
 };
+
+void Process_Light_Queue();
+void Process_Light_Removal_Queue();
 
 bool IsBlock(glm::vec3 pos);

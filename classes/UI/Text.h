@@ -33,7 +33,10 @@ namespace Text {
     void Set_Group(std::string group);
     void Unset_Group();
     
-    float Get_Width(std::string name);
+    float Get_Width(std::string string);
+    float Get_String_Width(std::string string);
+    std::string Get_String_To_Width(std::string string, float width);
+    
     float Get_Opacity(std::string name);
     
     void Set_Text(std::string name, std::string text);

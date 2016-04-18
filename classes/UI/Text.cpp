@@ -133,11 +133,7 @@ void Text::Add(std::string name, std::string text, float y) {
     string.Y = yVal;
     string.Height = FONT_SIZE * Scale;
     
-    std::string::const_iterator c;
-    
-    for (c = text.begin(); c != text.end(); c++) {
-        string.Width += (Characters[*c].Advance >> 6) * Scale;
-    }
+    string.Width = Get_Width(text);
     
     Groups[currentGroup].Strings[name] = string;
 }
@@ -154,8 +150,37 @@ void Text::Delete_Group(std::string group) {
     Groups.erase(group);
 }
 
-float Text::Get_Width(std::string name) {
-    return Groups[currentGroup].Strings[name].Width;
+float Text::Get_Width(std::string string) {
+    return Groups[currentGroup].Strings[string].Width;
+}
+
+float Text::Get_String_Width(std::string string) {
+    float width = 0;
+    std::string::const_iterator c;
+    
+    for (c = string.begin(); c != string.end(); c++) {
+        width += (Characters[*c].Advance >> 6) * Scale;
+    }
+    
+    return width;
+}
+
+std::string Text::Get_String_To_Width(std::string string, float width) {
+    float currentWidth = 0;
+    float index = 1;
+    
+    std::string::const_iterator c;
+    
+    for (c = string.begin(); c != string.end(); c++) {
+        currentWidth += (Characters[*c].Advance >> 6) * Scale;
+        
+        if (currentWidth > width) {
+            return string.substr(0, index - 1);
+        }
+        index++;
+    }
+    
+    return string;
 }
 
 float Text::Get_Opacity(std::string name) {

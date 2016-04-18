@@ -163,8 +163,8 @@ void Init_Debug() {
     
     Text::Set_Group("debug");
     Text::Set_X("debug", 30);
-
-	float height = float(SCREEN_HEIGHT);
+    
+    float height = float(SCREEN_HEIGHT);
     
     Text::Add("fps", "FPS: 0", height - 50);
     Text::Add("cpu", "CPU: 0%", height - 80);

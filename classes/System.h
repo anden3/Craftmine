@@ -23,5 +23,4 @@ std::string FormatOutput(I usage) {
     return std::string(std::to_string(usage) + " " + units[unitIndex]);
 }
 
-// std::string FormatOutput(int usage);
 void InitSystem();

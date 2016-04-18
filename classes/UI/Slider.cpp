@@ -81,8 +81,8 @@ void Slider::Add(std::string name, std::string text, Func &function, float x, fl
     
     Text::Add(name, text);
     
-    Text::Set_X(name, x + (w - Text::Get_Width(name)) / 2);
-    Text::Set_Y(name, y + padding - (FONT_SIZE / 6));
+    Text::Set_X(name, x + int((w - Text::Get_String_Width(text)) / 2.0f));
+    Text::Set_Y(name, y + padding - FONT_SIZE / 6);
     Text::Set_Color(name, slider.TextColor);
     Text::Set_Opacity(name, slider.TextOpacity);
     

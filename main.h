@@ -14,7 +14,7 @@ const bool Windows = false;
 const int FONT_SIZE = 15;
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 
-int SCREEN_WIDTH  = 1920;
+int SCREEN_WIDTH = 1920;
 int SCREEN_HEIGHT = 1080;
 int RENDER_DISTANCE = 5;
 
@@ -60,13 +60,14 @@ void Render_Scene();
 
 unsigned int Load_Texture(std::string image_path);
 
-void Extend(std::vector<float>* storage, std::vector<float> input);
+void Extend(std::vector<float>& storage, std::vector<float> input);
 
 void BackgroundThread();
 
 void Exit();
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void text_proxy(GLFWwindow* window, unsigned int codepoint);
 void mouse_proxy(GLFWwindow* window, double posX, double posY);
 void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
 void click_proxy(GLFWwindow* window, int button, int action, int mods);
