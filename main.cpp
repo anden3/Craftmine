@@ -169,9 +169,9 @@ void Init_Buffers() {
 
 void Init_Rendering() {
 	shader->Bind();
-	Light::Add_Dir_Light(*shader, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
-
-	glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
+	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.2f, 0.2f, 0.2f);
+    glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
+	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
 }
 
@@ -218,11 +218,11 @@ void Render_Scene() {
 
 		if (Wireframe) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 50);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 50);
 		}
 		else {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 		}
 	}
 
@@ -306,6 +306,7 @@ void BackgroundThread() {
 			}
 		}
 		else {
+            player.Process_Sunlight();
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}

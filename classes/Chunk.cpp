@@ -1,11 +1,13 @@
 #include "Chunk.h"
 
-#include <noise/noise.h>
-
 #include <random>
+
+#include <noise/noise.h>
 
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
+
+const int SUN_LIGHT_LEVEL = 15;
 
 bool Seeded = false;
 
@@ -48,6 +50,8 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
+
+std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
 
 float vertices[6][6][3] = {
 		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
@@ -171,11 +175,13 @@ void Chunk::Generate() {
 		EmptyChunks.insert(Position);
 		return;
 	}
+    
+    glm::vec2 topPos(Position.x, Position.z);
 
     for (int x = -1; x <= CHUNK_SIZE; x++) {
         float nx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
 
-        for (int y = -1; y <= CHUNK_SIZE; y++) {
+        for (int y = CHUNK_SIZE; y >= -1; y--) {
             float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
 
             for (int z = -1; z <= CHUNK_SIZE; z++) {
@@ -191,6 +197,20 @@ void Chunk::Generate() {
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
+                        glm::vec2 topBlock(x, z);
+                        
+                        if (!topBlocks[topPos].count(topBlock)) {
+                            topBlocks[topPos].insert(topBlock);
+                            Set_Torchlight(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
+                            
+                            LightNode node;
+                            node.Chunk = Position;
+                            node.Tile = glm::vec3(x, y, z);
+                            node.LightLevel = SUN_LIGHT_LEVEL;
+                            
+                            sunlightQueue.push(node);
+                        }
+                        
                         BlockMap[x][y][z] = 2;
                         Blocks.insert(glm::vec3(x, y, z));
                     }

@@ -2,6 +2,7 @@
 
 #include <map>
 #include <set>
+#include <queue>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -19,6 +20,25 @@ public:
         else return false;
     }
 };
+
+class Vec2Comparator {
+public:
+    bool operator () (const glm::vec2 &a, const glm::vec2 &b) const {
+        if (a.x != b.x) return a.x < b.x;
+        else if (a.y != b.y) return a.y < b.y;
+        else return false;
+    }
+};
+
+struct LightNode {
+    glm::vec3 Chunk;
+    glm::vec3 Tile;
+    short LightLevel;
+};
+
+extern std::queue<LightNode> sunlightQueue;
+
+extern std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
 
 class Chunk {
 public:
@@ -67,6 +87,10 @@ public:
     
     inline void Set_Torchlight(glm::ivec3 pos, int value) {
         LightMap[pos.x][pos.y][pos.z] = (LightMap[pos.x][pos.y][pos.z] & 0xF0) | value;
+    }
+    
+    inline bool Is_Top(glm::vec3 pos) {
+        return topBlocks[glm::vec2(Position.x, Position.z)].count(glm::vec2(pos.x, pos.z));
     }
     
 private:

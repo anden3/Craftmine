@@ -1,7 +1,5 @@
 #include "Player.h"
 
-#include <queue>
-
 #include "Time.h"
 
 const float PLAYER_BASE_SPEED  = 3.0f;
@@ -28,21 +26,11 @@ const int TORCH_LIGHT_LEVEL = 12;
 
 const bool CONSTRAIN_PITCH = true;
 
-struct LightNode {
-    glm::vec3 Chunk;
-    glm::vec3 Tile;
-};
-
-struct LightRemovalNode {
-    glm::vec3 Chunk;
-    glm::vec3 Tile;
-    
-    short LightLevel;
-};
-
 std::queue<LightNode> lightQueue;
-std::queue<LightRemovalNode> lightRemovalQueue;
+std::queue<LightNode> lightRemovalQueue;
 std::set<glm::vec3, Vec3Comparator> lightMeshingList;
+
+std::queue<LightNode> sunlightQueue;
 
 glm::vec3 lastChunk(-5);
 
@@ -208,11 +196,11 @@ void Process_Light_Queue() {
         LightNode node = lightQueue.front();
         glm::vec3 chunk = node.Chunk;
         glm::vec3 tile = node.Tile;
+        short lightLevel = node.LightLevel;
         
         processedNodes.insert(Get_World_Pos(chunk, tile));
         lightQueue.pop();
         
-        int lightLevel = ChunkMap[chunk]->Get_Torchlight(tile);
         bool underground = !ChunkMap[chunk]->Get_Air(tile);
         
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
@@ -243,6 +231,7 @@ void Process_Light_Queue() {
             LightNode node;
             node.Chunk = neighbor.first;
             node.Tile = neighbor.second;
+            node.LightLevel = lightLevel - 1;
             
             lightQueue.push(node);
             lightMeshingList.insert(neighbor.first);
@@ -255,10 +244,8 @@ void Process_Light_Queue() {
 }
 
 void Process_Light_Removal_Queue() {
-    std::set<glm::vec3, Vec3Comparator> meshingList;
-    
     while (!lightRemovalQueue.empty()) {
-        LightRemovalNode node = lightRemovalQueue.front();
+        LightNode node = lightRemovalQueue.front();
         
         glm::vec3 chunk = node.Chunk;
         glm::vec3 tile = node.Tile;
@@ -288,7 +275,7 @@ void Process_Light_Removal_Queue() {
             if (neighborLight != 0 && neighborLight < lightLevel) {
                 ChunkMap[neighbor.first]->Set_Torchlight(neighbor.second, 0);
                 
-                LightRemovalNode node;
+                LightNode node;
                 node.Chunk = neighbor.first;
                 node.Tile = neighbor.second;
                 node.LightLevel = neighborLight;
@@ -300,6 +287,7 @@ void Process_Light_Removal_Queue() {
                 LightNode node;
                 node.Chunk = neighbor.first;
                 node.Tile = neighbor.second;
+                node.LightLevel = neighborLight;
                 
                 lightMeshingList.insert(neighbor.first);
                 lightQueue.push(node);
@@ -316,6 +304,7 @@ void Player::Place_Torch() {
     LightNode node;
     node.Tile = LookingAirTile;
     node.Chunk = LookingAirChunk;
+    node.LightLevel = TORCH_LIGHT_LEVEL;
     
     lightQueue.push(node);
     
@@ -323,7 +312,7 @@ void Player::Place_Torch() {
 }
 
 void Player::Remove_Torch() {
-    LightRemovalNode node;
+    LightNode node;
     node.Chunk = LookingChunk;
     node.Tile = LookingTile;
     
@@ -335,6 +324,50 @@ void Player::Remove_Torch() {
     lightRemovalQueue.push(node);
     
     Process_Light_Removal_Queue();
+}
+
+void Player::Process_Sunlight() {
+    if (sunlightQueue.empty()) {
+        return;
+    }
+    
+    std::set<glm::vec3, Vec3Comparator> meshingList;
+    
+    while (!sunlightQueue.empty()) {
+        LightNode node = sunlightQueue.front();
+        glm::vec3 chunk = node.Chunk;
+        glm::vec3 tile = node.Tile;
+        sunlightQueue.pop();
+        
+        if (ChunkMap.count(chunk)) {
+            int lightLevel = ChunkMap[chunk]->Get_Torchlight(tile);
+            bool underground = !ChunkMap[chunk]->Get_Air(tile);
+            
+            std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
+            
+            for (auto neighbor : neighbors) {
+                if (!ChunkMap.count(neighbor.first)) continue;
+                if (!ChunkMap[neighbor.first]->Get_Block(neighbor.second)) continue;
+                if (!ChunkMap[neighbor.first]->Get_Air(neighbor.second) && underground) continue;
+                if (!ChunkMap[neighbor.first]->Is_Top(neighbor.second)) continue;
+                if (ChunkMap[neighbor.first]->Get_Torchlight(neighbor.second) + 2 >= lightLevel) continue;
+                
+                ChunkMap[neighbor.first]->Set_Torchlight(neighbor.second, lightLevel - 1);
+                
+                LightNode node;
+                node.Chunk = neighbor.first;
+                node.Tile = neighbor.second;
+                node.LightLevel = lightLevel - 1;
+                
+                sunlightQueue.push(node);
+                meshingList.insert(neighbor.first);
+            }
+        }
+    }
+    
+    for (auto const ch : meshingList) {
+        ChunkMap[ch]->Mesh();
+    }
 }
 
 std::vector<glm::vec3> Player::Hitscan() {
@@ -465,8 +498,16 @@ void Player::ClickHandler(int button, int action) {
                     Remove_Torch();
                 }
                 
+                LightNode node;
+                node.Chunk = LookingChunk;
+                node.Tile = LookingTile;
+                node.LightLevel = ChunkMap[LookingChunk]->Get_Torchlight(LookingTile);
+                sunlightQueue.push(node);
+                
                 ChunkMap[LookingChunk]->Remove_Block(LookingTile);
                 MouseHandler(LastMousePos.x, LastMousePos.y);
+                
+                Process_Sunlight();
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
@@ -486,7 +527,10 @@ void Player::ClickHandler(int button, int action) {
                 glm::vec3 diff = newBlockPos - Get_World_Pos(LookingChunk, LookingTile);
 				ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
                 
-                Place_Torch();
+                if (CurrentBlock == 11) {
+                    Place_Torch();
+                }
+                
 				MouseHandler(LastMousePos.x, LastMousePos.y);
 			}
 		}
@@ -510,11 +554,13 @@ void Player::PlaySound(glm::vec3 chunk, glm::vec3 tile) {
 
 void Player::RenderChunks() {
 	EditingChunkMap = true;
+    
+    /*
     std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
     
     while (it != ChunkMap.end()) {
         double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.y - it->first.y, 2) + pow(CurrentChunk.z - it->first.z, 2);
-
+        
         if (dist > pow(RENDER_DISTANCE, 2)) {
             delete it->second;
             it->second = nullptr;
@@ -524,6 +570,7 @@ void Player::RenderChunks() {
             it++;
         }
     }
+    */
 
 	EditingChunkQueue = true;
 

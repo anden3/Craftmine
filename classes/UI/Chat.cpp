@@ -5,8 +5,6 @@
 #include "Text.h"
 
 #include <unicode/ustream.h>
-#pragma comment(lib, "icuio.lib")
-#pragma comment(lib, "icuuc.lib")
 
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
