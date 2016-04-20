@@ -7,8 +7,6 @@
 
 #include <SOIL/SOIL.h>
 
-#include "Light.h"
-
 int main() {
 	Init_GL();
 	Init_Textures();
@@ -42,7 +40,7 @@ int main() {
 		glfwSwapBuffers(Window);
 	}
 
-	chunkGeneration.detach();
+    chunkGeneration.join();
     UI::Clean();
     
 	delete shader;
@@ -169,9 +167,9 @@ void Init_Buffers() {
 
 void Init_Rendering() {
 	shader->Bind();
-	Light::Add_Dir_Light(*shader, glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.2f), glm::vec3(0.7f));
-
-	glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
+	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.2f, 0.2f, 0.2f);
+    glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
+	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
 }
 
@@ -218,17 +216,19 @@ void Render_Scene() {
 
 		if (Wireframe) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 50);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 50);
 		}
 		else {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffuse"), 0);
+			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 		}
 	}
 
 	EditingChunkMap = true;
 	for (auto const chunk : ChunkMap) {
+        if (chunk.second != nullptr) {
         chunk.second->vbo.Draw();
+	}
 	}
 	EditingChunkMap = false;
 
@@ -278,32 +278,40 @@ void Extend(std::vector<float>& storage, std::vector<float> input) {
 
 void BackgroundThread() {
 	while (true) {
+        if (glfwWindowShouldClose(Window)) return;
+        
 		if (ChunkQueue.size() > 0) {
-			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
+			while (!ChunkQueue.empty()) {
+                if (glfwWindowShouldClose(Window)) return;
+                
                 while (EditingChunkQueue) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
                 
-                bool inRange = pow(it->first.x - player.CurrentChunk.x, 2) + pow(it->first.y - player.CurrentChunk.y, 2) + pow(it->first.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
+                Chunk* chunk = ChunkQueue.front();
+                ChunkQueue.pop();
+                ChunkSet.erase(chunk->Position);
+                
+                bool inRange = pow(chunk->Position.x - player.CurrentChunk.x, 2) + pow(chunk->Position.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
                 
                 if (inRange) {
-                    it->second->Generate();
+                    chunk->Generate();
                     
                     while (EditingDataQueue) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                     
-                    it->second->Mesh();
+                    chunk->Mesh();
                     
                     while (EditingChunkMap) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                     
-                    ChunkMap[it->first] = it->second;
+                    ChunkMap[chunk->Position] = chunk;
+                }
                 }
                 
-                ChunkQueue.erase(it++);
-			}
+            player.Process_Sunlight();
 		}
 		else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));

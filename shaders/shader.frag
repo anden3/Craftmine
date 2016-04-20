@@ -1,11 +1,5 @@
 #version 410 core
 
-struct Light {
-    vec3 direction;
-    vec3 ambient;
-    vec3 diffuse;
-};
-
 in vec3 Normal;
 in vec2 TexCoords;
 in vec3 VertexPos;
@@ -14,19 +8,20 @@ in float AO;
 
 out vec4 FragColor;
 
-uniform Light light;
-uniform sampler2D diffuse;
+uniform vec3 ambient;
+uniform vec3 diffuse;
+
+uniform sampler2D diffTex;
 
 void main() {
-    vec4 tex = texture(diffuse, TexCoords);
+    vec4 tex = texture(diffTex, TexCoords);
+    float lightLevel = (LightLevel / 16.0f);
     
-    // float diff = max(dot(Normal, light.direction), 0.0f);
+    vec3 amb = ambient * tex.rgb;
+    vec3 diff = diffuse * tex.rgb * lightLevel;
     
-    vec3 ambient = light.ambient * tex.rgb;
-    vec3 diffuse = light.diffuse * (LightLevel / 16) * tex.rgb;
-    
-    vec4 color = vec4(ambient + diffuse, tex.a);
-    vec4 aoAdjustment = vec4(vec3(AO * 0.05f), 0.0f);
+    vec4 color = vec4(amb + diff, tex.a);
+    vec4 aoAdjustment = vec4(vec3(AO * 0.08f * lightLevel + 0.01f), 0.0f);
     
     FragColor = color - aoAdjustment;
 }

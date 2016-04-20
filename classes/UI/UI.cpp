@@ -5,6 +5,8 @@
 
 #include "System.h"
 
+const int FONT_SIZE = 15;
+
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
 

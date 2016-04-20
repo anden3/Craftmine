@@ -1,17 +1,15 @@
 #include "Chunk.h"
 
-#include <noise/noise.h>
-
 #include <random>
+
+#include <noise/noise.h>
 
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
 
-bool Seeded = false;
+const int SUN_LIGHT_LEVEL = 13;
 
-std::random_device rd;
-std::mt19937 rng(rd());
-std::uniform_int_distribution<int> uni(0, 10000);
+bool Seeded = false;
 
 noise::module::Perlin noiseModule;
 
@@ -49,6 +47,8 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
+std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+
 float vertices[6][6][3] = {
 		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
 		{ {1, 0, 0}, {1, 1, 0}, {1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {1, 0, 1} },
@@ -70,14 +70,20 @@ float tex_coords[6][6][2] = {
 };
 
 void Seed() {
+    Seeded = true;
+    
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uni(0, 10000);
+    
     noiseModule.SetSeed(uni(rng));
 }
 
 Chunk::Chunk(glm::vec3 position) {
     if (!Seeded) {
         Seed();
-        Seeded = true;
     }
+    
     Position = position;
 }
 
@@ -172,14 +178,20 @@ void Chunk::Generate() {
 		return;
 	}
 
+    glm::vec2 topPos(Position.x, Position.z);
+    
+    if (Position.y == 3) {
+        topBlocks[topPos].clear();
+    }
+
     for (int x = -1; x <= CHUNK_SIZE; x++) {
         float nx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
 
-        for (int y = -1; y <= CHUNK_SIZE; y++) {
-            float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
-
             for (int z = -1; z <= CHUNK_SIZE; z++) {
                 float nz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
+
+            for (int y = CHUNK_SIZE; y >= -1; y--) {
+                float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
 
 				glm::bvec3 inChunk = glm::bvec3(
 					x >= 0 && x < CHUNK_SIZE,
@@ -191,6 +203,18 @@ void Chunk::Generate() {
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
+                        glm::vec2 topBlock(x, z);
+                        
+                        if (!topBlocks[topPos].count(topBlock)) {
+                            topBlocks[topPos].insert(topBlock);
+                            Set_Light(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
+                            
+                            LightNode node;
+                            node.Chunk = Position;
+                            node.Tile = glm::vec3(x, y, z);
+                            sunlightQueue.push(node);
+                        }
+                        
                         BlockMap[x][y][z] = 2;
                         Blocks.insert(glm::vec3(x, y, z));
                     }
@@ -208,42 +232,41 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 	int ao = 0;
 
 	glm::vec3 offsets[6][2][2][3] = {
-		{ { {   glm::vec3(-1, -1,  0), glm::vec3(-1,  0, -1), glm::vec3(-1, -1, -1) },
-			{   glm::vec3(-1,  1,  0), glm::vec3(-1,  0, -1), glm::vec3(-1,  1, -1) } },
+		  { { { glm::vec3(-1, -1,  0), glm::vec3(-1,  0, -1), glm::vec3(-1, -1, -1) },
+			  { glm::vec3(-1,  1,  0), glm::vec3(-1,  0, -1), glm::vec3(-1,  1, -1) } },
 
 			{ { glm::vec3(-1, -1,  0), glm::vec3(-1,  0,  1), glm::vec3(-1, -1,  1) },
-			{   glm::vec3(-1,  1,  0), glm::vec3(-1,  0,  1), glm::vec3(-1,  1,  1) } } },
+			  { glm::vec3(-1,  1,  0), glm::vec3(-1,  0,  1), glm::vec3(-1,  1,  1) } } },
 
-		{ { {   glm::vec3( 1, -1,  0), glm::vec3( 1,  0, -1), glm::vec3( 1, -1, -1) },
-			{   glm::vec3( 1,  1,  0), glm::vec3( 1,  0, -1), glm::vec3( 1,  1, -1) } },
+		  { { { glm::vec3( 1, -1,  0), glm::vec3( 1,  0, -1), glm::vec3( 1, -1, -1) },
+			  { glm::vec3( 1,  1,  0), glm::vec3( 1,  0, -1), glm::vec3( 1,  1, -1) } },
 
 			{ { glm::vec3( 1, -1,  0), glm::vec3( 1,  0,  1), glm::vec3( 1, -1,  1) },
-			{   glm::vec3( 1,  1,  0), glm::vec3( 1,  0,  1), glm::vec3( 1,  1,  1) } } },
+			  { glm::vec3( 1,  1,  0), glm::vec3( 1,  0,  1), glm::vec3( 1,  1,  1) } } },
 
-		{ { {   glm::vec3(-1, -1,  0), glm::vec3( 0, -1, -1), glm::vec3(-1, -1, -1) },
-			{   glm::vec3(-1, -1,  0), glm::vec3( 0, -1,  1), glm::vec3(-1, -1,  1) } },
+		  { { { glm::vec3(-1, -1,  0), glm::vec3( 0, -1, -1), glm::vec3(-1, -1, -1) },
+			  { glm::vec3(-1, -1,  0), glm::vec3( 0, -1,  1), glm::vec3(-1, -1,  1) } },
 
 			{ { glm::vec3( 1, -1,  0), glm::vec3( 0, -1, -1), glm::vec3( 1, -1, -1) },
-			{   glm::vec3( 1, -1,  0), glm::vec3( 0, -1,  1), glm::vec3( 1, -1,  1) } } },
+			  { glm::vec3( 1, -1,  0), glm::vec3( 0, -1,  1), glm::vec3( 1, -1,  1) } } },
 
-		{ { {   glm::vec3(-1,  1,  0), glm::vec3( 0,  1, -1), glm::vec3(-1,  1, -1) },
-			{   glm::vec3(-1,  1,  0), glm::vec3( 0,  1,  1), glm::vec3(-1,  1,  1) } },
+		  { { { glm::vec3(-1,  1,  0), glm::vec3( 0,  1, -1), glm::vec3(-1,  1, -1) },
+			  { glm::vec3(-1,  1,  0), glm::vec3( 0,  1,  1), glm::vec3(-1,  1,  1) } },
 
 			{ { glm::vec3( 1,  1,  0), glm::vec3( 0,  1, -1), glm::vec3( 1,  1, -1) },
-			{   glm::vec3( 1,  1,  0), glm::vec3( 0,  1,  1), glm::vec3( 1,  1,  1) } }
-		},
+			  { glm::vec3( 1,  1,  0), glm::vec3( 0,  1,  1), glm::vec3( 1,  1,  1) } } },
 
-		{ { {   glm::vec3( 0, -1, -1), glm::vec3(-1,  0, -1), glm::vec3(-1, -1, -1) },
-			{   glm::vec3( 0,  1, -1), glm::vec3(-1,  0, -1), glm::vec3(-1,  1, -1) } },
+		  { { { glm::vec3( 0, -1, -1), glm::vec3(-1,  0, -1), glm::vec3(-1, -1, -1) },
+			  { glm::vec3( 0,  1, -1), glm::vec3(-1,  0, -1), glm::vec3(-1,  1, -1) } },
 
 			{ { glm::vec3( 0, -1, -1), glm::vec3( 1,  0, -1), glm::vec3( 1, -1, -1) },
-			{   glm::vec3( 0,  1, -1), glm::vec3( 1,  0, -1), glm::vec3( 1,  1, -1) } } },
+			  { glm::vec3( 0,  1, -1), glm::vec3( 1,  0, -1), glm::vec3( 1,  1, -1) } } },
 
-		{ { {   glm::vec3( 0, -1,  1), glm::vec3(-1,  0,  1), glm::vec3(-1, -1,  1) },
-			{   glm::vec3( 0,  1,  1), glm::vec3(-1,  0,  1), glm::vec3(-1,  1,  1) }, },
+		  { { { glm::vec3( 0, -1,  1), glm::vec3(-1,  0,  1), glm::vec3(-1, -1,  1) },
+			  { glm::vec3( 0,  1,  1), glm::vec3(-1,  0,  1), glm::vec3(-1,  1,  1) } },
 
 			{ { glm::vec3( 0, -1,  1), glm::vec3( 1,  0,  1), glm::vec3( 1, -1,  1) },
-			{   glm::vec3( 0,  1,  1), glm::vec3( 1,  0,  1), glm::vec3( 1,  1,  1) } } }
+			  { glm::vec3( 0,  1,  1), glm::vec3( 1,  0,  1), glm::vec3( 1,  1,  1) } } }
 	};
 
 	int vertexIndex[6][2] = {
@@ -266,7 +289,7 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 	if (pos.y == CHUNK_SIZE - 1) {
 		glm::vec3 nextChunk = glm::vec3(Position.x, Position.y + 1, Position.z);
 
-		if (ChunkMap.count(nextChunk)) {
+		if (ChunkMap.count(nextChunk) && ChunkMap[nextChunk] != nullptr) {
 			return !ChunkMap[nextChunk]->Get_Block(glm::vec3(pos.x, 0, pos.z));
 		}
         
@@ -288,7 +311,7 @@ void Chunk::Mesh() {
 
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
-        unsigned char lightValue = Get_Torchlight(*block);
+        float lightValue = float(Get_Light(*block));
 
         if (seesAir == 0) {
             block = Blocks.erase(block);
@@ -331,7 +354,7 @@ void Chunk::Mesh() {
 							data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
 						}
                         
-                        data.push_back(float(lightValue));
+                        data.push_back(lightValue);
 						data.push_back(float(GetAO(*block, bit, j)));
                     }
                 }

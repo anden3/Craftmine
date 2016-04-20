@@ -11,7 +11,6 @@ const bool Windows = false;
 
 #endif
 
-const int FONT_SIZE = 15;
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 
 int SCREEN_WIDTH = 1920;
@@ -47,7 +46,8 @@ GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 std::map<glm::vec3, std::vector<float>, Vec3Comparator> DataQueue;
-std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkQueue;
+std::queue<Chunk*> ChunkQueue;
+std::set<glm::vec3, Vec3Comparator> ChunkSet;
 
 void Init_GL();
 void Init_Textures();

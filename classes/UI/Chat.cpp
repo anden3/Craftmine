@@ -133,8 +133,11 @@ void Chat::Input(unsigned int key) {
             break;
             
         case 0x000D:
+            if (NewMessage.length() > 0) {
             Write(NewMessage);
             NewMessage.clear();
+            }
+            
             break;
             
         default:
