@@ -11,10 +11,6 @@ const int SUN_LIGHT_LEVEL = 13;
 
 bool Seeded = false;
 
-std::random_device rd;
-std::mt19937 rng(rd());
-std::uniform_int_distribution<int> uni(0, 10000);
-
 noise::module::Perlin noiseModule;
 
 enum Directions {
@@ -74,14 +70,20 @@ float tex_coords[6][6][2] = {
 };
 
 void Seed() {
+    Seeded = true;
+    
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uni(0, 10000);
+    
     noiseModule.SetSeed(uni(rng));
 }
 
 Chunk::Chunk(glm::vec3 position) {
     if (!Seeded) {
         Seed();
-        Seeded = true;
     }
+    
     Position = position;
 }
 
@@ -177,15 +179,19 @@ void Chunk::Generate() {
 	}
     
     glm::vec2 topPos(Position.x, Position.z);
+    
+    if (Position.y == 3) {
+        topBlocks[topPos].clear();
+    }
 
     for (int x = -1; x <= CHUNK_SIZE; x++) {
         float nx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
 
-        for (int y = CHUNK_SIZE; y >= -1; y--) {
-            float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
-
-            for (int z = -1; z <= CHUNK_SIZE; z++) {
-                float nz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
+        for (int z = -1; z <= CHUNK_SIZE; z++) {
+            float nz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
+            
+            for (int y = CHUNK_SIZE; y >= -1; y--) {
+                float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
 
 				glm::bvec3 inChunk = glm::bvec3(
 					x >= 0 && x < CHUNK_SIZE,
@@ -305,7 +311,7 @@ void Chunk::Mesh() {
 
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
-        unsigned char lightValue = Get_Light(*block);
+        float lightValue = float(Get_Light(*block));
 
         if (seesAir == 0) {
             block = Blocks.erase(block);
@@ -348,7 +354,7 @@ void Chunk::Mesh() {
 							data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
 						}
                         
-                        data.push_back(float(lightValue));
+                        data.push_back(lightValue);
 						data.push_back(float(GetAO(*block, bit, j)));
                     }
                 }

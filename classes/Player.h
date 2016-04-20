@@ -14,7 +14,8 @@ enum Directions {
     FRONT
 };
 
-extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkQueue;
+extern std::queue<Chunk*> ChunkQueue;
+extern std::set<glm::vec3, Vec3Comparator> ChunkSet;
 
 extern bool EditingChunkQueue;
 extern bool EditingChunkMap;

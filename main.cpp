@@ -281,35 +281,37 @@ void BackgroundThread() {
         if (glfwWindowShouldClose(Window)) return;
         
 		if (ChunkQueue.size() > 0) {
-			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
+			while (!ChunkQueue.empty()) {
                 if (glfwWindowShouldClose(Window)) return;
                 
                 while (EditingChunkQueue) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
                 
-                bool inRange = pow(it->first.x - player.CurrentChunk.x, 2) + pow(it->first.y - player.CurrentChunk.y, 2) + pow(it->first.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
+                Chunk* chunk = ChunkQueue.front();
+                ChunkQueue.pop();
+                ChunkSet.erase(chunk->Position);
+                
+                bool inRange = pow(chunk->Position.x - player.CurrentChunk.x, 2) + pow(chunk->Position.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
                 
                 if (inRange) {
-                    it->second->Generate();
+                    chunk->Generate();
                     
                     while (EditingDataQueue) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                     
-                    it->second->Mesh();
+                    chunk->Mesh();
                     
                     while (EditingChunkMap) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                     
-                    ChunkMap[it->first] = it->second;
+                    ChunkMap[chunk->Position] = chunk;
                 }
-                
-                ChunkQueue.erase(it++);
 			}
             
-            // player.Process_Sunlight();
+            player.Process_Sunlight();
 		}
 		else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));

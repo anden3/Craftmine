@@ -46,7 +46,8 @@ GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 std::map<glm::vec3, std::vector<float>, Vec3Comparator> DataQueue;
-std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkQueue;
+std::queue<Chunk*> ChunkQueue;
+std::set<glm::vec3, Vec3Comparator> ChunkSet;
 
 void Init_GL();
 void Init_Textures();

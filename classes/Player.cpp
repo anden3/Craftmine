@@ -362,7 +362,9 @@ void Player::Process_Sunlight() {
     }
     
     for (auto const ch : meshingList) {
-        ChunkMap[ch]->Mesh();
+        if (ChunkMap[ch] != nullptr) {
+            ChunkMap[ch]->Mesh();
+        }
     }
 }
 
@@ -503,7 +505,7 @@ void Player::ClickHandler(int button, int action) {
                 ChunkMap[LookingChunk]->Remove_Block(LookingTile);
                 MouseHandler(LastMousePos.x, LastMousePos.y);
                 
-                // Process_Sunlight();
+                Process_Sunlight();
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
@@ -512,7 +514,7 @@ void Player::ClickHandler(int button, int action) {
 
 				if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {
 					if (LookingAirTile.x == CurrentTile.x && LookingAirTile.z == CurrentTile.z) {
-						int diff = (int)newBlockPos.y - (int)floor(WorldPos.y);
+						int diff = int(newBlockPos.y) - int(floor(WorldPos.y));
 
 						if (diff >= 0 && diff < 2) {
 							return;
@@ -561,7 +563,7 @@ void Player::RenderChunks() {
     std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
     
     while (it != ChunkMap.end()) {
-        double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.y - it->first.y, 2) + pow(CurrentChunk.z - it->first.z, 2);
+        double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.z - it->first.z, 2);
         
         if (dist > pow(RENDER_DISTANCE, 2)) {
             delete it->second;
@@ -577,31 +579,33 @@ void Player::RenderChunks() {
 
     for (int x = (int) CurrentChunk.x - RENDER_DISTANCE; x <= CurrentChunk.x + RENDER_DISTANCE; x++) {
         for (int z = (int) CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
-			for (int y = (int) CurrentChunk.y - RENDER_DISTANCE; y <= CurrentChunk.y + RENDER_DISTANCE; y++) {
+			for (int y = 3; y >= -10; y--) {
                 glm::vec3 pos(x, y, z);
 
 				if (pos == CurrentChunk) {
 					continue;
 				}
+                
+                if (ChunkSet.count(pos)) {
+                    continue;
+                }
 
-				if (ChunkMap.count(pos) != 0) {
+				if (ChunkMap.count(pos)) {
 					continue;
 				}
 
 				if (EmptyChunks.find(pos) != EmptyChunks.end()) {
 					continue;
 				}
-				if (ChunkQueue.find(pos) != ChunkQueue.end()) {
-					continue;
-				}
 
-                bool inRange = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.y - y, 2) + pow(CurrentChunk.z - z, 2) <= pow(RENDER_DISTANCE, 2);
+                bool inRange = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RENDER_DISTANCE, 2);
 
                 if (!inRange) {
 					continue;
                 }
 
-				ChunkQueue[pos] = new Chunk(pos);
+				ChunkQueue.push(new Chunk(pos));
+                ChunkSet.insert(pos);
             }
         }
     }
