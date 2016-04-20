@@ -7,8 +7,6 @@
 
 #include <SOIL/SOIL.h>
 
-#include "Light.h"
-
 int main() {
 	Init_GL();
 	Init_Textures();
@@ -304,9 +302,10 @@ void BackgroundThread() {
                 
                 ChunkQueue.erase(it++);
 			}
+            
+            // player.Process_Sunlight();
 		}
 		else {
-            player.Process_Sunlight();
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}

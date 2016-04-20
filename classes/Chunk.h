@@ -73,20 +73,12 @@ public:
     void Remove_Block(glm::vec3 position);
 	void Add_Block(glm::vec3 position, glm::vec3 diff, int blockType);
     
-    inline int Get_Sunlight(glm::ivec3 pos) {
-        return (LightMap[pos.x][pos.y][pos.z] >> 4) & 0xF;
+    inline int Get_Light(glm::ivec3 pos) {
+        return LightMap[pos.x][pos.y][pos.z];
     }
     
-    inline void Set_Sunlight(glm::ivec3 pos, int value) {
-        LightMap[pos.x][pos.y][pos.z] = (LightMap[pos.x][pos.y][pos.z] & 0xF) | (value << 4);
-    }
-    
-    inline int Get_Torchlight(glm::ivec3 pos) {
-        return LightMap[pos.x][pos.y][pos.z] & 0xF;
-    }
-    
-    inline void Set_Torchlight(glm::ivec3 pos, int value) {
-        LightMap[pos.x][pos.y][pos.z] = (LightMap[pos.x][pos.y][pos.z] & 0xF0) | value;
+    inline void Set_Light(glm::ivec3 pos, int value) {
+        LightMap[pos.x][pos.y][pos.z] = value;
     }
     
     inline bool Is_Top(glm::vec3 pos) {
