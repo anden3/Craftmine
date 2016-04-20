@@ -16,6 +16,7 @@ Debug/Craftmine.bsc
 Debug/Craftmine.ilk
 Debug/Craftmine.log
 Debug/Craftmine.pdb
+Debug/Craftmine.exe
 Debug/Craftmine.tlog/
 Debug/Light.obj
 Debug/Light.sbr
@@ -39,6 +40,8 @@ Debug/main.obj
 Debug/main.sbr
 Debug/vc140.idb
 Debug/vc140.pdb
+
+Dependencies/
 
 build/
 

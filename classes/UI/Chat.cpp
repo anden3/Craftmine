@@ -5,8 +5,12 @@
 #include "Text.h"
 
 #include <unicode/ustream.h>
-#pragma comment(lib, "icuio.lib")
-#pragma comment(lib, "icuuc.lib")
+
+#ifdef __APPLE__
+
+using UnicodeString;
+
+#endif
 
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
@@ -134,7 +138,7 @@ void Chat::Input(unsigned int key) {
             break;
             
         default:
-            UnicodeString::UnicodeString string((UChar32)key);
+			UnicodeString string((UChar32)key);
             std::string str;
             string.toUTF8String(str);
             
