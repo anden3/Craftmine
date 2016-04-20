@@ -228,7 +228,9 @@ void Process_Light_Queue() {
     }
     
     for (auto const ch : lightMeshingList) {
-        ChunkMap[ch]->Mesh();
+        if (ChunkMap[ch] != nullptr) {
+            ChunkMap[ch]->Mesh();
+        }
     }
     
     EditingChunkMap = false;

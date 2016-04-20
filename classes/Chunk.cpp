@@ -283,7 +283,7 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 	if (pos.y == CHUNK_SIZE - 1) {
 		glm::vec3 nextChunk = glm::vec3(Position.x, Position.y + 1, Position.z);
 
-		if (ChunkMap.count(nextChunk)) {
+		if (ChunkMap.count(nextChunk) && ChunkMap[nextChunk] != nullptr) {
 			return !ChunkMap[nextChunk]->Get_Block(glm::vec3(pos.x, 0, pos.z));
 		}
         

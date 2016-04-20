@@ -39,8 +39,8 @@ int main() {
         
 		glfwSwapBuffers(Window);
 	}
-
-	chunkGeneration.detach();
+    
+    chunkGeneration.join();
     UI::Clean();
     
 	delete shader;
@@ -226,7 +226,9 @@ void Render_Scene() {
 
 	EditingChunkMap = true;
 	for (auto const chunk : ChunkMap) {
-        chunk.second->vbo.Draw();
+        if (chunk.second != nullptr) {
+            chunk.second->vbo.Draw();
+        }
 	}
 	EditingChunkMap = false;
 
@@ -276,8 +278,12 @@ void Extend(std::vector<float>& storage, std::vector<float> input) {
 
 void BackgroundThread() {
 	while (true) {
+        if (glfwWindowShouldClose(Window)) return;
+        
 		if (ChunkQueue.size() > 0) {
 			for (auto it = ChunkQueue.cbegin(); it != ChunkQueue.cend();) {
+                if (glfwWindowShouldClose(Window)) return;
+                
                 while (EditingChunkQueue) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
