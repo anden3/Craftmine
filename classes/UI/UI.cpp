@@ -258,7 +258,7 @@ void Draw_Debug() {
     Text::Set_Text("playerChunk", "Chunk:      " + Format_Vector(player.CurrentChunk));
     Text::Set_Text("playerTile", "Tile:            " + Format_Vector(player.CurrentTile));
     Text::Set_Text("playerPos", "Position:  " + Format_Vector(player.WorldPos));
-    Text::Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(ChunkQueue.size()));
+    Text::Set_Text("chunkQueue", "Chunks Loaded: " + std::to_string(ChunkMap.size()));
     
     Text::Unset_Group();
     

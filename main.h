@@ -23,15 +23,16 @@ unsigned int DebugVBO, DebugVAO;
 unsigned int OutlineVBO, OutlineVAO;
 unsigned int UBO;
 
+unsigned int ChunksQueued = 0;
+
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
 
 bool Wireframe = false;
 bool ToggleWireframe = false;
 
-bool EditingChunkQueue = false;
-bool EditingDataQueue = false;
-bool EditingChunkMap = false;
+bool gamePaused = false;
+bool ChunkMapBusy = false;
 
 Player player = Player();
 Chat chat = Chat();
@@ -45,9 +46,6 @@ int diffuseTextureLocation;
 GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
-std::map<glm::vec3, std::vector<float>, Vec3Comparator> DataQueue;
-std::queue<Chunk*> ChunkQueue;
-std::set<glm::vec3, Vec3Comparator> ChunkSet;
 
 void Init_GL();
 void Init_Textures();
@@ -55,7 +53,6 @@ void Init_Shaders();
 void Init_Buffers();
 void Init_Rendering();
 
-void Update_Data_Queue();
 void Render_Scene();
 
 unsigned int Load_Texture(std::string image_path);

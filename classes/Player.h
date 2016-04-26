@@ -14,15 +14,12 @@ enum Directions {
     FRONT
 };
 
-extern std::queue<Chunk*> ChunkQueue;
-extern std::set<glm::vec3, Vec3Comparator> ChunkSet;
-
-extern bool EditingChunkQueue;
-extern bool EditingChunkMap;
 
 extern bool ShowMenu;
 
 extern int RENDER_DISTANCE;
+
+extern bool ChunkMapBusy;
 
 extern Chat chat;
 
@@ -33,11 +30,11 @@ public:
     glm::vec3 CurrentTile = glm::vec3(0);
 
     bool LookingAtBlock = false;
-
+    
     glm::vec3 LookingChunk;
+    glm::vec3 LookingAirChunk;
+    
     glm::vec3 LookingTile;
-
-	glm::vec3 LookingAirChunk;
 	glm::vec3 LookingAirTile;
     
     glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
@@ -79,6 +76,8 @@ private:
     
     void Place_Torch();
     void Remove_Torch();
+    
+    void Check_Top();
 };
 
 void Process_Light_Queue();

@@ -1,8 +1,5 @@
 #include "main.h"
 
-#include <thread>
-#include <chrono>
-
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SOIL/SOIL.h>
@@ -26,13 +23,12 @@ int main() {
 
 		glfwPollEvents();
 
-		player.PollSounds();
+		// player.PollSounds();
         
         if (!ShowMenu && !chat.Focused) {
             player.Move(float(DeltaTime));
         }
 		
-		Update_Data_Queue();
 		Render_Scene();
         
         UI::Draw();
@@ -172,31 +168,6 @@ void Init_Rendering() {
 	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
 }
-
-void Update_Data_Queue() {
-	EditingDataQueue = true;
-
-	if (DataQueue.size() > 0) {
-		EditingChunkMap = true;
-
-		std::map<glm::vec3, std::vector<float>, Vec3Comparator>::iterator it = DataQueue.begin();
-
-		while (it != DataQueue.end()) {
-			if (ChunkMap.count(it->first)) {
-				ChunkMap[it->first]->vbo.Data(it->second);
-				it = DataQueue.erase(it);
-			}
-			else {
-				it++;
-			}
-		}
-
-		EditingChunkMap = false;
-	}
-
-	EditingDataQueue = false;
-}
-
 void Render_Scene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
@@ -223,15 +194,18 @@ void Render_Scene() {
 			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 		}
 	}
-
-	EditingChunkMap = true;
-	for (auto const chunk : ChunkMap) {
-        if (chunk.second != nullptr) {
+    
+    for (auto const &chunk : ChunkMap) {
+        if (chunk.second->Meshed) {
+            if (!chunk.second->DataUploaded) {
+                chunk.second->vbo.Data(chunk.second->VBOData);
+                chunk.second->DataUploaded = true;
+            }
+            
             chunk.second->vbo.Draw();
         }
 	}
-	EditingChunkMap = false;
-
+    
     shader->Unbind();
     
     if (player.LookingAtBlock) {
@@ -280,42 +254,40 @@ void BackgroundThread() {
 	while (true) {
         if (glfwWindowShouldClose(Window)) return;
         
-		if (ChunkQueue.size() > 0) {
-			while (!ChunkQueue.empty()) {
-                if (glfwWindowShouldClose(Window)) return;
-                
-                while (EditingChunkQueue) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
-                
-                Chunk* chunk = ChunkQueue.front();
-                ChunkQueue.pop();
-                ChunkSet.erase(chunk->Position);
-                
-                bool inRange = pow(chunk->Position.x - player.CurrentChunk.x, 2) + pow(chunk->Position.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
+        bool queueEmpty = true;
+        
+        while (ChunkMapBusy) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        ChunkMapBusy = true;
+        
+        for (auto const &chunk : ChunkMap) {
+            if (!chunk.second->Meshed) {
+                bool inRange = pow(chunk.second->Position.x - player.CurrentChunk.x, 2) +
+                               pow(chunk.second->Position.z - player.CurrentChunk.z, 2) <=
+                               pow(RENDER_DISTANCE, 2);
                 
                 if (inRange) {
-                    chunk->Generate();
+                    chunk.second->Generate();
+                    chunk.second->Mesh();
+                    chunk.second->Meshed = true;
                     
-                    while (EditingDataQueue) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    }
-                    
-                    chunk->Mesh();
-                    
-                    while (EditingChunkMap) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    }
-                    
-                    ChunkMap[chunk->Position] = chunk;
+                    queueEmpty = false;
+                    break;
                 }
-			}
-            
-            player.Process_Sunlight();
-		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		}
+            }
+        }
+        
+        ChunkMapBusy = false;
+        
+        if (queueEmpty) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // player.Process_Sunlight();
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
 	}
 }
 
