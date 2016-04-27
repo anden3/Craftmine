@@ -43,9 +43,7 @@ public:
 
 	void PollSounds();
     void Move(float deltaTime);
-    
-    void Process_Sunlight();
-    
+        
     void RenderChunks();
     
     void Clear_Keys();

@@ -37,6 +37,7 @@ int main() {
 	}
     
     chunkGeneration.join();
+    
     UI::Clean();
     
 	delete shader;
@@ -269,9 +270,15 @@ void BackgroundThread() {
                                pow(RENDER_DISTANCE, 2);
                 
                 if (inRange) {
-                    chunk.second->Generate();
+                    if (!chunk.second->Generated) {
+                        chunk.second->Generate();
+                        chunk.second->Generated = true;
+                    }
+                    
+                    chunk.second->Light();
                     chunk.second->Mesh();
                     chunk.second->Meshed = true;
+                    chunk.second->DataUploaded = false;
                     
                     queueEmpty = false;
                     break;
@@ -283,7 +290,6 @@ void BackgroundThread() {
         
         if (queueEmpty) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            // player.Process_Sunlight();
         }
         else {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));

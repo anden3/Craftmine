@@ -30,8 +30,6 @@ std::queue<LightNode> lightQueue;
 std::queue<LightNode> lightRemovalQueue;
 std::set<Chunk*> lightMeshingList;
 
-std::queue<LightNode> sunlightQueue;
-
 glm::vec3 lastChunk(-5);
 
 bool keys[1024] = {0};
@@ -289,62 +287,15 @@ void Player::Remove_Torch() {
     Process_Light_Removal_Queue();
 }
 
-void Player::Process_Sunlight() {
-    if (sunlightQueue.empty()) {
-        return;
-    }
-    
-    std::set<Chunk*> meshingList;
-    
-    while (!sunlightQueue.empty()) {
-        LightNode node = sunlightQueue.front();
-        glm::vec3 chunk = node.Chunk;
-        glm::vec3 tile = node.Tile;
-        sunlightQueue.pop();
-        
-        if (!Exists(chunk)) {
-            continue;
-        }
-        
-        int lightLevel = ChunkMap[chunk]->Get_Light(tile);
-        bool underground = !ChunkMap[chunk]->Get_Air(tile);        
-        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
-        
-        for (auto const &neighbor : neighbors) {
-            if (!Exists(neighbor.first)) {
-                continue;
-            }
-            
-            Chunk* neighborChunk = ChunkMap[neighbor.first];
-            
-            if (!neighborChunk->Get_Block(neighbor.second)) continue;
-            if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-            if (!neighborChunk->Get_Top(neighbor.second)) continue;
-            if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
-            
-            neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
-            
-            sunlightQueue.emplace(neighbor.first, neighbor.second);
-            meshingList.insert(neighborChunk);
-        }
-    }
-    
-    for (auto const &chunk : meshingList) {
-        chunk->Mesh();
-    }
-}
-
 std::vector<glm::vec3> Player::Hitscan() {
-    std::vector<glm::vec3> checkingChunkTile;
     std::vector<glm::vec3> failedScan = {glm::vec3(0)};
 
-    glm::vec3 checkingPos;
 	glm::vec3 lastPos;
 
 	bool started = false;
 
     for (float t = 0; t < PLAYER_RANGE; t += HITSCAN_STEP_SIZE) {
-        checkingPos = Cam.Position + Cam.Front * t;
+        glm::vec3 checkingPos = Cam.Position + Cam.Front * t;
 
 		if (IsBlock(checkingPos)) {
 			if (started) {
@@ -352,7 +303,6 @@ std::vector<glm::vec3> Player::Hitscan() {
 				std::vector<glm::vec3> result2 = Get_Chunk_Pos(lastPos);
 
 				result1.insert(result1.end(), result2.begin(), result2.end());
-
 				return result1;
 			}
 
@@ -451,23 +401,21 @@ void Player::ClickHandler(int button, int action) {
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (LookingAtBlock) {
-                int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
+                Chunk* lookingChunk = ChunkMap[LookingChunk];
+                
+                int blockType = lookingChunk->Get_Block(LookingTile);
                 
                 if (blockType == 11) {
                     Remove_Torch();
                 }
-                else {
-                    Check_Top();
-                }
+                // else {
+                    // Check_Top();
+                // }
                 
-                sunlightQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
-                
-                Chunk* lookingChunk = ChunkMap[LookingChunk];
+                lookingChunk->LightQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
                 lookingChunk->Remove_Block(LookingTile);
                 
                 MouseHandler(LastMousePos.x, LastMousePos.y);
-                
-                // Process_Sunlight();
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
@@ -589,8 +537,7 @@ void Player::Check_Top() {
             if (chunk->Get_Block(check[1])) {
                 chunk->Set_Top(check[1], true);
                 chunk->Set_Light(check[1], SUN_LIGHT_LEVEL);
-                
-                sunlightQueue.emplace(check[0], check[1]);
+                chunk->LightQueue.emplace(check[0], check[1]);
                 return;
             }
             

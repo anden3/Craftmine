@@ -32,7 +32,9 @@ bool Wireframe = false;
 bool ToggleWireframe = false;
 
 bool gamePaused = false;
+
 bool ChunkMapBusy = false;
+bool SunlightQueueBusy = false;
 
 Player player = Player();
 Chat chat = Chat();

@@ -37,12 +37,25 @@ public:
 
 extern std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
 
+struct LightNode {
+    glm::vec3 Chunk;
+    glm::vec3 Tile;
+    short LightLevel;
+    
+    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0) {
+        Chunk = chunk;
+        Tile = tile;
+        LightLevel = lightLevel;
+    }
+};
+
 class Chunk {
 public:
     glm::vec3 Position;
     std::set<glm::vec3, Vec3Comparator> Blocks;
     VBO vbo;
     
+    bool Generated = false;
     bool Meshed = false;
     bool DataUploaded = false;
     
@@ -50,6 +63,8 @@ public:
 
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    
+    std::queue<LightNode> LightQueue;
 
     Chunk(glm::vec3 position);
     
@@ -65,6 +80,7 @@ public:
     }
     
     void Generate();
+    void Light();
 
 	bool Check_Grass(glm::vec3 pos);
 
@@ -100,20 +116,6 @@ private:
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
 };
 
-struct LightNode {
-    glm::vec3 Chunk;
-    glm::vec3 Tile;
-    short LightLevel;
-    
-    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0) {
-        Chunk = chunk;
-        Tile = tile;
-        LightLevel = lightLevel;
-    }
-};
-
-extern std::queue<LightNode> sunlightQueue;
-
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
 std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 
@@ -126,5 +128,5 @@ extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 extern std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 
 inline bool Exists(glm::vec3 chunk) {
-    return ChunkMap.count(chunk) && ChunkMap[chunk]->Meshed;
+    return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded;
 }

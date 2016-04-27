@@ -3,7 +3,6 @@
 #include <random>
 
 #include <noise/noise.h>
-#include <mutex>
 
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
@@ -208,7 +207,7 @@ void Chunk::Generate() {
                             topBlocks[topPos].insert(topBlock);
                             Set_Light(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
                             
-                            sunlightQueue.emplace(Position, glm::vec3(x, y, z), Get_Light(glm::vec3(x, y, z)));
+                            LightQueue.emplace(Position, glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
                         }
                         
                         BlockMap[x][y][z] = 2;
@@ -218,6 +217,49 @@ void Chunk::Generate() {
                 else {
 					UpdateAir(glm::ivec3(x, y, z), inChunk);
                 }
+            }
+        }
+    }
+}
+
+void Chunk::Light() {
+    while (!LightQueue.empty()) {
+        LightNode node = LightQueue.front();
+        LightQueue.pop();
+        glm::vec3 tile = node.Tile;
+        
+        int lightLevel = Get_Light(tile);
+        bool underground = !Get_Air(tile);
+        
+        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, tile);
+        
+        for (auto const &neighbor : neighbors) {
+            if (neighbor.first != Position) {
+                if (!ChunkMap.count(neighbor.first)) {
+                    continue;
+                }
+                
+                Chunk* neighborChunk = ChunkMap[neighbor.first];
+                
+                if (!neighborChunk->Get_Block(neighbor.second)) continue;
+                if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
+                if (!neighborChunk->Get_Top(neighbor.second)) continue;
+                if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
+                
+                neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
+                
+                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
+                neighborChunk->Meshed = false;
+            }
+            else {
+                if (!Get_Block(neighbor.second)) continue;
+                if (!Get_Air(neighbor.second) && underground) continue;
+                if (!Get_Top(neighbor.second)) continue;
+                if (Get_Light(neighbor.second) + 2 >= lightLevel) continue;
+                
+                Set_Light(neighbor.second, lightLevel - 1);
+                
+                LightQueue.emplace(neighbor.first, neighbor.second);
             }
         }
     }
@@ -392,13 +434,13 @@ void Chunk::Remove_Block(glm::vec3 position) {
             }
         }
     }
-
+    
+    Light();
     Mesh();
-    // vbo.Data(VBOData);
     
     for (auto const &chunk : meshingList) {
+        ChunkMap[chunk]->Light();
         ChunkMap[chunk]->Mesh();
-        // ChunkMap[chunk]->vbo.Data(ChunkMap[chunk]->VBOData);
     }
 }
 
@@ -431,10 +473,11 @@ void Chunk::Add_Block(glm::vec3 position, glm::vec3 diff, int blockType) {
 		}
 	}
 	
+    Light();
 	Mesh();
-	
 
     for (auto const &chunk : meshingList) {
+        ChunkMap[chunk]->Light();
         ChunkMap[chunk]->Mesh();
     }
 }
