@@ -220,7 +220,7 @@ void Process_Light_Queue() {
             
             if (!neighborChunk->Get_Block(neighbor.second)) continue;
             if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-            if (!neighborChunk->Get_Top(neighbor.second)) continue;
+            if (neighborChunk->Get_Top(neighbor.second)) continue;
             if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
             
             neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
@@ -243,6 +243,7 @@ void Process_Light_Removal_Queue() {
         lightRemovalQueue.pop();
         
         bool underground = !ChunkMap[chunk]->Get_Air(tile);
+        
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
         
         for (auto const &neighbor : neighbors) {
@@ -281,8 +282,8 @@ void Player::Place_Torch() {
 }
 
 void Player::Remove_Torch() {
-    ChunkMap[LookingChunk]->Set_Light(LookingTile, 0);    
     lightRemovalQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
+    ChunkMap[LookingChunk]->Set_Light(LookingTile, 0);
     
     Process_Light_Removal_Queue();
 }
@@ -405,6 +406,8 @@ void Player::ClickHandler(int button, int action) {
                 
                 int blockType = lookingChunk->Get_Block(LookingTile);
                 
+                chat.Write("Top Block: " + std::to_string(lookingChunk->Get_Top(LookingTile)));
+                
                 if (blockType == 11) {
                     Remove_Torch();
                 }
@@ -522,7 +525,7 @@ void Player::Clear_Keys() {
 
 void Player::Check_Top() {
     if (ChunkMap[LookingChunk]->Get_Top(LookingTile)) {
-        ChunkMap[LookingChunk]->Set_Top(LookingTile, false);        
+        ChunkMap[LookingChunk]->Set_Top(LookingTile, false);
         glm::vec3 checkingPos = Get_World_Pos(LookingChunk, LookingTile) - glm::vec3(0, 1, 0);
         
         while (true) {

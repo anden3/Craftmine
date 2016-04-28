@@ -46,6 +46,7 @@ std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
 std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
 
 float vertices[6][6][3] = {
 		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
@@ -204,6 +205,8 @@ void Chunk::Generate() {
                         glm::vec2 topBlock(x, z);
                         
                         if (!topBlocks[topPos].count(topBlock)) {
+                            TopBlocks.insert(glm::vec3(x, y, z));
+                            
                             topBlocks[topPos].insert(topBlock);
                             Set_Light(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
                             
@@ -220,9 +223,25 @@ void Chunk::Generate() {
             }
         }
     }
+    
+    Generated = true;
 }
 
 void Chunk::Light() {
+    if (UnloadedLightQueue.count(Position)) {
+        for (auto const &node : UnloadedLightQueue[Position]) {
+            if (!Get_Block(node.Tile)) continue;
+            if (!Get_Air(node.Tile) && node.Underground) continue;
+            if (Get_Top(node.Tile)) continue;
+            if (Get_Light(node.Tile) + 2 >= node.LightLevel + 1) continue;
+            
+            Set_Light(node.Tile, node.LightLevel);
+            LightQueue.push(node);
+        }
+        
+        UnloadedLightQueue.erase(Position);
+    }
+    
     while (!LightQueue.empty()) {
         LightNode node = LightQueue.front();
         LightQueue.pop();
@@ -235,7 +254,8 @@ void Chunk::Light() {
         
         for (auto const &neighbor : neighbors) {
             if (neighbor.first != Position) {
-                if (!ChunkMap.count(neighbor.first)) {
+                if (!Exists(neighbor.first)) {
+                    UnloadedLightQueue[neighbor.first].emplace(neighbor.first, neighbor.second, lightLevel - 1, underground);
                     continue;
                 }
                 
@@ -243,7 +263,7 @@ void Chunk::Light() {
                 
                 if (!neighborChunk->Get_Block(neighbor.second)) continue;
                 if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-                if (!neighborChunk->Get_Top(neighbor.second)) continue;
+                if (neighborChunk->Get_Top(neighbor.second)) continue;
                 if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
                 
                 neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
@@ -254,7 +274,7 @@ void Chunk::Light() {
             else {
                 if (!Get_Block(neighbor.second)) continue;
                 if (!Get_Air(neighbor.second) && underground) continue;
-                if (!Get_Top(neighbor.second)) continue;
+                if (Get_Top(neighbor.second)) continue;
                 if (Get_Light(neighbor.second) + 2 >= lightLevel) continue;
                 
                 Set_Light(neighbor.second, lightLevel - 1);
@@ -341,7 +361,7 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 	return !Get_Block(glm::vec3(pos.x, pos.y + 1, pos.z));
 }
 
-void Chunk::Mesh() {
+void Chunk::Mesh() {    
     VBOData.clear();
     
     std::set<glm::vec3>::iterator block = Blocks.begin();
@@ -425,12 +445,20 @@ void Chunk::Remove_Block(glm::vec3 position) {
         glm::vec3 chunk = neighbors[i].first;
         glm::vec3 tile = neighbors[i].second;
         
-		if (Exists(chunk)) {
-            if (ChunkMap[chunk]->Get_Block(tile)) {
-                ChunkMap[chunk]->Blocks.insert(tile);
-				ChunkMap[chunk]->SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
-
-                if (chunk != Position) meshingList.push_back(chunk);
+        if (chunk != Position) {
+            if (Exists(chunk)) {
+                if (ChunkMap[chunk]->Get_Block(tile)) {
+                    ChunkMap[chunk]->Blocks.insert(tile);
+                    ChunkMap[chunk]->SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
+                    
+                    meshingList.push_back(chunk);
+                }
+            }
+        }
+        else {
+            if (Get_Block(tile)) {
+                Blocks.insert(tile);
+                SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
             }
         }
     }

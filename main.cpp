@@ -164,7 +164,7 @@ void Init_Buffers() {
 
 void Init_Rendering() {
 	shader->Bind();
-	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.2f, 0.2f, 0.2f);
+	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.1f, 0.1f, 0.1f);
     glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
 	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
@@ -272,7 +272,6 @@ void BackgroundThread() {
                 if (inRange) {
                     if (!chunk.second->Generated) {
                         chunk.second->Generate();
-                        chunk.second->Generated = true;
                     }
                     
                     chunk.second->Light();

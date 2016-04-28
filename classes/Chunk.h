@@ -41,11 +41,28 @@ struct LightNode {
     glm::vec3 Chunk;
     glm::vec3 Tile;
     short LightLevel;
+    bool Underground;
     
-    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0) {
+    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0, bool underground = false) {
         Chunk = chunk;
         Tile = tile;
         LightLevel = lightLevel;
+        Underground = underground;
+    }
+};
+
+class LightNodeComparator {
+public:
+    bool operator () (const LightNode &a, const LightNode &b) const {
+        if (a.Chunk.x != b.Chunk.x) return a.Chunk.x < b.Chunk.x;
+        else if (a.Chunk.y != b.Chunk.y) return a.Chunk.y < b.Chunk.y;
+        else if (a.Chunk.z != b.Chunk.z) return a.Chunk.z < b.Chunk.z;
+        
+        else if (a.Tile.x != b.Tile.x) return a.Tile.x < b.Tile.x;
+        else if (a.Tile.y != b.Tile.y) return a.Tile.y < b.Tile.y;
+        else if (a.Tile.z != b.Tile.z) return a.Tile.z < b.Tile.z;
+        
+        else return false;
     }
 };
 
@@ -55,16 +72,15 @@ public:
     std::set<glm::vec3, Vec3Comparator> Blocks;
     VBO vbo;
     
+    std::vector<float> VBOData;
+    std::queue<LightNode> LightQueue;
+    
     bool Generated = false;
     bool Meshed = false;
     bool DataUploaded = false;
-    
-    std::vector<float> VBOData;
 
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
-    
-    std::queue<LightNode> LightQueue;
 
     Chunk(glm::vec3 position);
     
@@ -97,13 +113,15 @@ public:
     }
     
     inline bool Get_Top(glm::vec3 pos) {
-        return topBlocks[glm::vec2(Position.x, Position.z)].count(glm::vec2(pos.x, pos.z));
+        return TopBlocks.count(pos);
     }
     inline void Set_Top(glm::vec3 pos, bool set) {
         if (set) {
+            TopBlocks.insert(pos);
             topBlocks[glm::vec2(Position.x, Position.z)].insert(glm::vec2(pos.x, pos.z));
         }
         else if (Get_Top(pos)) {
+            TopBlocks.erase(pos);
             topBlocks[glm::vec2(Position.x, Position.z)].erase(glm::vec2(pos.x, pos.z));
         }
     }
@@ -114,6 +132,7 @@ private:
     int GetAO(glm::vec3 block, int face, int offset);
     
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    std::set<glm::vec3, Vec3Comparator> TopBlocks;
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
