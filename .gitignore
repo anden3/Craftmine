@@ -1,8 +1,9 @@
 .vs/
 
 Log.txt
-CodeMap1.dgml
+Craftmine.VC.db
 Craftmine.VC.opendb
+Craftmine.VC.VC.opendb
 Craftmine.sdf
 Craftmine.sln
 Craftmine.vcxproj
@@ -42,7 +43,6 @@ Debug/vc140.idb
 Debug/vc140.pdb
 
 Dependencies/
-
 build/
 
 Base.lproj
