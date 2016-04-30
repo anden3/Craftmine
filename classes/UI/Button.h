@@ -8,6 +8,7 @@ typedef void (Func)(void);
 
 extern int colorLocation;
 extern int alphaLocation;
+extern int borderColorLocation;
 
 extern Shader* UIShader;
 extern Shader* UIBorderShader;

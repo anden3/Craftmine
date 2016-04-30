@@ -14,17 +14,15 @@ enum Directions {
     FRONT
 };
 
-extern std::queue<Chunk*> ChunkQueue;
-extern std::set<glm::vec3, Vec3Comparator> ChunkSet;
+extern bool MouseEnabled;
+// extern bool ShowMenu;
+extern bool ChunkMapBusy;
 
-extern bool EditingChunkQueue;
-extern bool EditingChunkMap;
-
-extern bool ShowMenu;
-
-extern int RENDER_DISTANCE;
+extern int RenderDistance;
 
 extern Chat chat;
+
+std::vector<std::string> Split(const std::string &s, char delim);
 
 class Player {
 public:
@@ -33,11 +31,13 @@ public:
     glm::vec3 CurrentTile = glm::vec3(0);
 
     bool LookingAtBlock = false;
-
+    
+    int CurrentBlock = 11;
+    
     glm::vec3 LookingChunk;
+    glm::vec3 LookingAirChunk;
+    
     glm::vec3 LookingTile;
-
-	glm::vec3 LookingAirChunk;
 	glm::vec3 LookingAirTile;
     
     glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
@@ -45,10 +45,9 @@ public:
     Camera Cam = Camera();
 
 	void PollSounds();
-    void Move(float deltaTime);
-    
-    void Process_Sunlight();
-    
+    void Move(float deltaTime, bool update = false);
+    void Teleport(glm::vec3 pos);
+        
     void RenderChunks();
     
     void Clear_Keys();
@@ -63,10 +62,9 @@ private:
 	bool Jumping = false;
 	bool OnGround = false;
 	bool MovedMouse = false;
+    bool FirstTime = true;
 
 	float SpeedModifier = 1.0f;
-    
-    int CurrentBlock = 11;
 
 	glm::vec3 Velocity;
 
@@ -79,9 +77,11 @@ private:
     
     void Place_Torch();
     void Remove_Torch();
+    
+    bool Check_Top();
 };
+
+extern Player player;
 
 void Process_Light_Queue();
 void Process_Light_Removal_Queue();
-
-bool IsBlock(glm::vec3 pos);

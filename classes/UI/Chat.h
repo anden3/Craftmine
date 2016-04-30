@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 #include "Shader.h"
 
@@ -19,6 +20,8 @@ struct Message {
 
 extern double DeltaTime;
 
+std::string Process_Commands(std::string message);
+
 class Chat {
 public:
     bool Focused = false;
@@ -27,14 +30,23 @@ public:
     Chat();
     
     void Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned int alphaLoc);
+    
     void Write(std::string text);
     void Input(unsigned int key);
-    void Draw_Background();
+    void Key_Handler(int key);
+    
     void Update();
     
 private:
     std::map<unsigned int, Message> Messages;
-    unsigned int MessageCount;
+    unsigned int MessageCount = 0;
+    
+    std::vector<std::string> History;
+    unsigned int HistoryIndex = 0;
+    
+    double LastCursorToggle = 0.0;
+    unsigned int CursorPos = 0;
+    bool CursorVisible = true;
     
     std::string NewMessage = "";
     
@@ -49,6 +61,13 @@ private:
     unsigned int ColorLocation;
     unsigned int AlphaLocation;
     
+    void Get_Prev();
+    void Get_Next();
+    
+    void Toggle_Cursor(int opacity = -1);
     void Update_Message();
     void Move_Up();
+    void Submit();
+    
+    void Draw_Background();
 };

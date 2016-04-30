@@ -7,8 +7,6 @@
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
 
-const int SUN_LIGHT_LEVEL = 13;
-
 bool Seeded = false;
 
 noise::module::Perlin noiseModule;
@@ -48,6 +46,7 @@ std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
 std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
 
 float vertices[6][6][3] = {
 		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
@@ -200,6 +199,8 @@ void Chunk::Generate() {
 				);
 
                 double noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
+                
+                glm::ivec3 block(x, y, z);
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
@@ -207,21 +208,79 @@ void Chunk::Generate() {
                         
                         if (!topBlocks[topPos].count(topBlock)) {
                             topBlocks[topPos].insert(topBlock);
-                            Set_Light(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
+                            TopBlocks.insert(block);
                             
-                            LightNode node;
-                            node.Chunk = Position;
-                            node.Tile = glm::vec3(x, y, z);
-                            sunlightQueue.push(node);
+                            Set_Light(block, SUN_LIGHT_LEVEL);
+                            LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
                         }
                         
                         BlockMap[x][y][z] = 2;
-                        Blocks.insert(glm::vec3(x, y, z));
+                        Blocks.insert(block);
                     }
                 }
                 else {
-					UpdateAir(glm::ivec3(x, y, z), inChunk);
+					UpdateAir(block, inChunk);
                 }
+            }
+        }
+    }
+    
+    Generated = true;
+}
+
+void Chunk::Light() {
+    if (UnloadedLightQueue.count(Position)) {
+        for (auto const &node : UnloadedLightQueue[Position]) {
+            if (!Get_Block(node.Tile)) continue;
+            if (!Get_Air(node.Tile) && node.Underground) continue;
+            if (Get_Top(node.Tile)) continue;
+            if (Get_Light(node.Tile) + 2 >= node.LightLevel + 1) continue;
+            
+            Set_Light(node.Tile, node.LightLevel);
+            LightQueue.push(node);
+        }
+        
+        UnloadedLightQueue.erase(Position);
+    }
+    
+    while (!LightQueue.empty()) {
+        LightNode node = LightQueue.front();
+        LightQueue.pop();
+        glm::vec3 tile = node.Tile;
+        
+        int lightLevel = Get_Light(tile);
+        bool underground = !Get_Air(tile);
+        
+        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, tile);
+        
+        for (auto const &neighbor : neighbors) {
+            if (neighbor.first != Position) {
+                if (!Exists(neighbor.first)) {
+                    UnloadedLightQueue[neighbor.first].emplace(neighbor.first, neighbor.second, lightLevel - 1, underground);
+                    continue;
+                }
+                
+                Chunk* neighborChunk = ChunkMap[neighbor.first];
+                
+                if (!neighborChunk->Get_Block(neighbor.second)) continue;
+                if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
+                if (neighborChunk->Get_Top(neighbor.second)) continue;
+                if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
+                
+                neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
+                
+                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
+                neighborChunk->Meshed = false;
+            }
+            else {
+                if (!Get_Block(neighbor.second)) continue;
+                if (!Get_Air(neighbor.second) && underground) continue;
+                if (Get_Top(neighbor.second)) continue;
+                if (Get_Light(neighbor.second) + 2 >= lightLevel) continue;
+                
+                Set_Light(neighbor.second, lightLevel - 1);
+                
+                LightQueue.emplace(neighbor.first, neighbor.second);
             }
         }
     }
@@ -276,7 +335,7 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 	};
 
 	for (int i = 0; i < 3; i++) {
-		if (Blocks.find(block + offsets[face][vertexIndex[face][0]][vertexIndex[face][1]][i]) != Blocks.end()) {
+		if (Blocks.count(block + offsets[face][vertexIndex[face][0]][vertexIndex[face][1]][i])) {
 			if (ao == 1 && i == 1) return 0;
 			ao++;
 		}
@@ -289,7 +348,7 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 	if (pos.y == CHUNK_SIZE - 1) {
 		glm::vec3 nextChunk = glm::vec3(Position.x, Position.y + 1, Position.z);
 
-		if (ChunkMap.count(nextChunk) && ChunkMap[nextChunk] != nullptr) {
+		if (Exists(nextChunk)) {
 			return !ChunkMap[nextChunk]->Get_Block(glm::vec3(pos.x, 0, pos.z));
 		}
         
@@ -303,8 +362,9 @@ bool Chunk::Check_Grass(glm::vec3 pos) {
 	return !Get_Block(glm::vec3(pos.x, pos.y + 1, pos.z));
 }
 
-void Chunk::Mesh() {
-    std::vector<float> data;
+void Chunk::Mesh() {    
+    VBOData.clear();
+    
     std::set<glm::vec3>::iterator block = Blocks.begin();
 
 	float textureStep = (1.0f / 16.0f);
@@ -336,26 +396,26 @@ void Chunk::Mesh() {
             while (bit < 6) {
                 if (seesAir & 1) {
                     for (int j = 0; j < 6; j++) {
-                        data.push_back(vertices[bit][j][0] + Position.x * CHUNK_SIZE + block->x);
-                        data.push_back(vertices[bit][j][1] + Position.y * CHUNK_SIZE + block->y);
-                        data.push_back(vertices[bit][j][2] + Position.z * CHUNK_SIZE + block->z);
+                        VBOData.push_back(vertices[bit][j][0] + Position.x * CHUNK_SIZE + block->x);
+                        VBOData.push_back(vertices[bit][j][1] + Position.y * CHUNK_SIZE + block->y);
+                        VBOData.push_back(vertices[bit][j][2] + Position.z * CHUNK_SIZE + block->z);
 
-						data.push_back(normals[bit][0]);
-						data.push_back(normals[bit][1]);
-						data.push_back(normals[bit][2]);
+						VBOData.push_back(normals[bit][0]);
+						VBOData.push_back(normals[bit][1]);
+						VBOData.push_back(normals[bit][2]);
 
 						if (blockType == 2) {
-							data.push_back(textureStep * (grassTextures[bit].x - 1.0f) + tex_coords[bit][j][0] * textureStep);
-							data.push_back(textureStep * (grassTextures[bit].y - 1.0f) + tex_coords[bit][j][1] * textureStep);
+							VBOData.push_back(textureStep * (grassTextures[bit].x - 1.0f) + tex_coords[bit][j][0] * textureStep);
+							VBOData.push_back(textureStep * (grassTextures[bit].y - 1.0f) + tex_coords[bit][j][1] * textureStep);
 						}
 
 						else {
-							data.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
-							data.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
+							VBOData.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
+							VBOData.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
 						}
                         
-                        data.push_back(lightValue);
-						data.push_back(float(GetAO(*block, bit, j)));
+                        VBOData.push_back(lightValue);
+						VBOData.push_back(float(GetAO(*block, bit, j)));
                     }
                 }
                 bit++;
@@ -365,8 +425,13 @@ void Chunk::Mesh() {
         }
     }
 
-    if (data.size() > 0) {
-		DataQueue[Position] = data;
+    if (VBOData.size() > 0) {
+        if (!Meshed) {
+            Meshed = true;
+        }
+        else {
+            vbo.Data(VBOData);
+        }
     }
 }
 
@@ -380,21 +445,31 @@ void Chunk::Remove_Block(glm::vec3 position) {
     for (int i = 0; i < 6; i++) {
         glm::vec3 chunk = neighbors[i].first;
         glm::vec3 tile = neighbors[i].second;
-
-		if (ChunkMap.count(chunk)) {
-            if (ChunkMap[chunk]->Get_Block(tile)) {
-                ChunkMap[chunk]->Blocks.insert(tile);
-				ChunkMap[chunk]->SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
-
-                if (chunk != Position) meshingList.push_back(chunk);
+        
+        if (chunk != Position) {
+            if (Exists(chunk)) {
+                if (ChunkMap[chunk]->Get_Block(tile)) {
+                    ChunkMap[chunk]->Blocks.insert(tile);
+                    ChunkMap[chunk]->SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
+                    
+                    meshingList.push_back(chunk);
+                }
+            }
+        }
+        else {
+            if (Get_Block(tile)) {
+                Blocks.insert(tile);
+                SeesAir[(int)tile.x][(int)tile.y][(int)tile.z] |= 1 << i;
             }
         }
     }
-
+    
+    Light();
     Mesh();
-
-    for (unsigned int i = 0; i < meshingList.size(); i++) {
-        ChunkMap[meshingList[i]]->Mesh();
+    
+    for (auto const &chunk : meshingList) {
+        ChunkMap[chunk]->Light();
+        ChunkMap[chunk]->Mesh();
     }
 }
 
@@ -427,12 +502,13 @@ void Chunk::Add_Block(glm::vec3 position, glm::vec3 diff, int blockType) {
 		}
 	}
 	
+    Light();
 	Mesh();
-	
 
-	for (unsigned int i = 0; i < meshingList.size(); i++) {
-		ChunkMap[meshingList[i]]->Mesh();
-	}
+    for (auto const &chunk : meshingList) {
+        ChunkMap[chunk]->Light();
+        ChunkMap[chunk]->Mesh();
+    }
 }
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile) {
@@ -458,4 +534,15 @@ std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
     glm::vec3 tile(floor(worldPos.x - (chunk.x * CHUNK_SIZE)), floor(worldPos.y - (chunk.y * CHUNK_SIZE)), floor(worldPos.z - (chunk.z * CHUNK_SIZE)));
 
     return std::vector<glm::vec3>{chunk, tile};
+}
+
+bool Is_Block(glm::vec3 pos) {
+    std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(pos);
+    bool isBlock = false;
+    
+    if (Exists(chunkPos[0])) {
+        isBlock = ChunkMap[chunkPos[0]]->Get_Block(chunkPos[1]) > 0;
+    }
+    
+    return isBlock;
 }

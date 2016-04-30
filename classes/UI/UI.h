@@ -8,14 +8,16 @@
 #include "Text.h"
 #include "Button.h"
 #include "Slider.h"
+#include "Inventory.h"
 
 extern const bool Windows;
 
 extern bool VSync;
 extern bool Wireframe;
 extern bool ToggleWireframe;
+extern bool MouseEnabled;
 
-extern int RENDER_DISTANCE;
+extern int RenderDistance;
 
 extern double DeltaTime;
 extern double LastFrame;
@@ -23,16 +25,18 @@ extern double LastFrame;
 extern GLFWwindow* Window;
 extern Player player;
 extern Chat chat;
+extern Inventory inventory;
 
 namespace UI {
     void Init();
     void Draw();
     void Clean();
     
-    void Click(double mouseX, double mouseY, int action);
+    void Click(double mouseX, double mouseY, int action, int button);
     
     void Toggle_Menu();
     void Toggle_Debug();
+    void Toggle_Inventory();
 };
 
 std::string Format_Vector(glm::vec3 vector);

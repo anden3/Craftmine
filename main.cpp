@@ -1,8 +1,5 @@
 #include "main.h"
 
-#include <thread>
-#include <chrono>
-
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SOIL/SOIL.h>
@@ -26,21 +23,21 @@ int main() {
 
 		glfwPollEvents();
 
-		player.PollSounds();
+		// player.PollSounds();
         
-        if (!ShowMenu && !chat.Focused) {
+        if (!MouseEnabled && !chat.Focused) {
             player.Move(float(DeltaTime));
         }
 		
-		Update_Data_Queue();
 		Render_Scene();
         
         UI::Draw();
         
 		glfwSwapBuffers(Window);
 	}
-
+    
     chunkGeneration.join();
+    
     UI::Clean();
     
 	delete shader;
@@ -167,36 +164,11 @@ void Init_Buffers() {
 
 void Init_Rendering() {
 	shader->Bind();
-	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.2f, 0.2f, 0.2f);
+	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.1f, 0.1f, 0.1f);
     glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
 	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
 }
-
-void Update_Data_Queue() {
-	EditingDataQueue = true;
-
-	if (DataQueue.size() > 0) {
-		EditingChunkMap = true;
-
-		std::map<glm::vec3, std::vector<float>, Vec3Comparator>::iterator it = DataQueue.begin();
-
-		while (it != DataQueue.end()) {
-			if (ChunkMap.count(it->first)) {
-				ChunkMap[it->first]->vbo.Data(it->second);
-				it = DataQueue.erase(it);
-			}
-			else {
-				it++;
-			}
-		}
-
-		EditingChunkMap = false;
-	}
-
-	EditingDataQueue = false;
-}
-
 void Render_Scene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
@@ -223,15 +195,18 @@ void Render_Scene() {
 			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 		}
 	}
-
-	EditingChunkMap = true;
-	for (auto const chunk : ChunkMap) {
-        if (chunk.second != nullptr) {
-        chunk.second->vbo.Draw();
+    
+    for (auto const &chunk : ChunkMap) {
+        if (chunk.second->Meshed) {
+            if (!chunk.second->DataUploaded) {
+                chunk.second->vbo.Data(chunk.second->VBOData);
+                chunk.second->DataUploaded = true;
+            }
+            
+            chunk.second->vbo.Draw();
+        }
 	}
-	}
-	EditingChunkMap = false;
-
+    
     shader->Unbind();
     
     if (player.LookingAtBlock) {
@@ -280,70 +255,50 @@ void BackgroundThread() {
 	while (true) {
         if (glfwWindowShouldClose(Window)) return;
         
-		if (ChunkQueue.size() > 0) {
-			while (!ChunkQueue.empty()) {
-                if (glfwWindowShouldClose(Window)) return;
-                
-                while (EditingChunkQueue) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
-                
-                Chunk* chunk = ChunkQueue.front();
-                ChunkQueue.pop();
-                ChunkSet.erase(chunk->Position);
-                
-                bool inRange = pow(chunk->Position.x - player.CurrentChunk.x, 2) + pow(chunk->Position.z - player.CurrentChunk.z, 2) <= pow(RENDER_DISTANCE, 2);
+        bool queueEmpty = true;
+        
+        while (ChunkMapBusy) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        ChunkMapBusy = true;
+        
+        for (auto const &chunk : ChunkMap) {
+            if (!chunk.second->Meshed) {
+                bool inRange = pow(chunk.second->Position.x - player.CurrentChunk.x, 2) +
+                               pow(chunk.second->Position.z - player.CurrentChunk.z, 2) <=
+                               pow(RenderDistance, 2);
                 
                 if (inRange) {
-                    chunk->Generate();
-                    
-                    while (EditingDataQueue) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    if (!chunk.second->Generated) {
+                        chunk.second->Generate();
                     }
                     
-                    chunk->Mesh();
+                    chunk.second->Light();
+                    chunk.second->Mesh();
+                    chunk.second->Meshed = true;
+                    chunk.second->DataUploaded = false;
                     
-                    while (EditingChunkMap) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    }
-                    
-                    ChunkMap[chunk->Position] = chunk;
+                    queueEmpty = false;
+                    break;
                 }
-                }
-                
-            player.Process_Sunlight();
-		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		}
+            }
+        }
+        
+        ChunkMapBusy = false;
+        
+        if (queueEmpty) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
 	}
 }
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (chat.Focused) {
         player.Clear_Keys();
-        
-        if (action == GLFW_PRESS) {
-            switch (key) {
-                case GLFW_KEY_ESCAPE:
-                    chat.Focused = false;
-                    chat.FocusToggled = true;
-                    
-                    chat.Input(0x001B);
-                    break;
-                    
-                case GLFW_KEY_BACKSPACE:
-                    chat.Input(0x0008);
-                    break;
-                    
-                case GLFW_KEY_ENTER:
-                    chat.Input(0x000D);
-                    
-                    chat.Focused = false;
-                    chat.FocusToggled = true;
-                    break;
-            }
-        }
     }
     else {
         if (action == GLFW_PRESS) {
@@ -355,15 +310,18 @@ void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
                 case GLFW_KEY_U:
                     UI::Toggle_Debug();
                     break;
-                    
-                case GLFW_KEY_T:
-                    chat.Focused = true;
-                    chat.FocusToggled = true;
+                
+                case GLFW_KEY_TAB:
+                    UI::Toggle_Inventory();
                     break;
             }
         }
         
         player.KeyHandler(key, action);
+    }
+    
+    if (action == GLFW_PRESS) {
+        chat.Key_Handler(key);
     }
 }
 void text_proxy(GLFWwindow* window, unsigned int codepoint) {
@@ -372,15 +330,14 @@ void text_proxy(GLFWwindow* window, unsigned int codepoint) {
     }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {
-    player.MouseHandler(posX, posY);
+    if (!chat.Focused) {
+        player.MouseHandler(posX, posY);
+    }
 }
 void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
     player.ScrollHandler(offsetY);
 }
-void click_proxy(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        UI::Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
-    }
-    
+void click_proxy(GLFWwindow* window, int button, int action, int mods) {    
+    UI::Click(player.LastMousePos.x, player.LastMousePos.y, action, button);
     player.ClickHandler(button, action);
 }

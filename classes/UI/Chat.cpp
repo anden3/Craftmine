@@ -6,14 +6,9 @@
 
 #include <unicode/ustream.h>
 
-#ifdef __APPLE__
-
-using UnicodeString;
-
-#endif
-
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
+const double CURSOR_BLINK_SPEED = 1.0;
 
 const float START_X = 50.0f;
 const float END_X = 300.0f;
@@ -47,6 +42,8 @@ void Chat::Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned in
     
     Text::Set_Group(TEXT_GROUP);
     Text::Add("newMessage", "", MESSAGE_Y);
+    Text::Add("cursor", "|", MESSAGE_Y);
+    Text::Set_Opacity("cursor", 0);
     Text::Unset_Group();
     
     Init_Chat_Background();
@@ -122,38 +119,116 @@ void Chat::Write(std::string text) {
     Text::Unset_Group();
 }
 
-void Chat::Input(unsigned int key) {
-    switch (key) {
-        case 0x001B:
-            NewMessage.clear();
-            break;
+void Chat::Key_Handler(int key) {
+    if (Focused) {
+        switch (key) {
+            case GLFW_KEY_ESCAPE:
+                Focused = false;
+                FocusToggled = true;
+                
+                NewMessage.clear();
+                CursorPos = 0;
+                
+                Toggle_Cursor(0);
+                Update_Message();
+                break;
+                
+            case GLFW_KEY_BACKSPACE:
+                NewMessage.pop_back();
+                CursorPos--;
+                
+                Update_Message();
+                break;
+                
+            case GLFW_KEY_ENTER:
+                Submit();
+                
+                Focused = false;
+                FocusToggled = true;
+                break;
+                
+            case GLFW_KEY_UP:
+                Get_Prev();
+                break;
+                
+            case GLFW_KEY_DOWN:
+                Get_Next();
+                break;
             
-        case 0x0008:
-            NewMessage.pop_back();
-            break;
-            
-        case 0x000D:
-            if (NewMessage.length() > 0) {
-            Write(NewMessage);
-            NewMessage.clear();
-            }
-            
-            break;
-            
-        default:
-			UnicodeString string((UChar32)key);
-            std::string str;
-            string.toUTF8String(str);
-            
-            NewMessage += str;
+            case GLFW_KEY_LEFT:
+                if (CursorPos > 0) {
+                    CursorPos--;
+                    Update_Message();
+                }
+                break;
+                
+            case GLFW_KEY_RIGHT:
+                if (CursorPos < int(NewMessage.size())) {
+                    CursorPos++;
+                    Update_Message();
+                }
+                break;
+        }
     }
+    else {
+        switch (key) {
+            case GLFW_KEY_T:
+                Focused = true;
+                FocusToggled = true;
+                break;
+        }
+    }
+}
+
+void Chat::Input(unsigned int key) {
+    UnicodeString::UnicodeString string((UChar32)key);
+    std::string str;
+    string.toUTF8String(str);
+    
+    NewMessage += str;
+    CursorPos++;
     
     Update_Message();
+}
+
+void Chat::Submit() {
+    if (NewMessage.length() > 0) {
+        if (NewMessage.front() == '/') {
+            Write(Process_Commands(NewMessage.substr(1)));
+        }
+        else {
+            Write(NewMessage);
+        }
+        
+        History.push_back(NewMessage);
+        HistoryIndex = int(History.size());
+        
+        NewMessage.clear();
+        
+        Toggle_Cursor(0);
+        Update_Message();
+    }
+}
+
+void Chat::Toggle_Cursor(int opacity) {
+    CursorVisible = !CursorVisible;
+    
+    if (opacity == -1) {
+        opacity = CursorVisible;
+    }
+    else {
+        CursorVisible = opacity;
+    }
+    
+    Text::Set_Group(TEXT_GROUP);
+    Text::Set_Opacity("cursor", opacity);
+    Text::Unset_Group();
 }
 
 void Chat::Update_Message() {
     Text::Set_Group(TEXT_GROUP);
     Text::Set_Text("newMessage", NewMessage);
+    Text::Set_X("cursor", START_X + Text::Get_String_Width(NewMessage.substr(0, CursorPos)));
     Text::Unset_Group();
 }
 
@@ -176,6 +251,25 @@ void Chat::Move_Up() {
     }
     
     Text::Unset_Group();
+}
+
+void Chat::Get_Prev() {
+    if (HistoryIndex > 0) {
+        NewMessage = History[--HistoryIndex];
+        Update_Message();
+    }
+}
+
+void Chat::Get_Next() {
+    if (HistoryIndex < History.size() - 1) {
+        NewMessage = History[++HistoryIndex];
+        Update_Message();
+    }
+    else {
+        HistoryIndex = int(History.size());
+        NewMessage = "";
+        Update_Message();
+    }
 }
 
 void Chat::Draw_Background() {
@@ -242,6 +336,11 @@ void Chat::Update() {
     }
     
     if (Focused) {
+        if (glfwGetTime() - LastCursorToggle >= CURSOR_BLINK_SPEED) {
+            Toggle_Cursor();
+            LastCursorToggle = glfwGetTime();
+        }
+        
         Draw_Background();
     }
     
