@@ -16,22 +16,23 @@ double last_fps[AVG_UPDATE_RANGE];
 double last_cpu[AVG_UPDATE_RANGE];
 double lastUIUpdate;
 
+bool ShowInventory = false;
 bool ShowMenu = false;
 bool ShowDebug = false;
 bool ShowOptions = false;
 
 int colorLocation;
 int alphaLocation;
+int borderColorLocation;
 
 unsigned int BackgroundVAO, BackgroundVBO;
 
 glm::vec3 BackgroundColor = glm::vec3(0);
 float BackgroundOpacity = 0.5f;
 
-Shader* UIShader;
-Shader* UIBorderShader;
-
 std::string BoolStrings[2] = {"False", "True"};
+
+void Toggle_Mouse(bool enable);
 
 void Init_UI_Shaders();
 void Init_UI();
@@ -63,7 +64,9 @@ void UI::Init() {
 }
 
 void UI::Draw() {
-    if (Wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (Wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
     
     if (ShowMenu) {
         Draw_Background();
@@ -72,12 +75,17 @@ void UI::Draw() {
     else {
         Draw_UI();
         
-        if (ShowDebug) {
+        if (ShowInventory) {
+            inventory.Draw();
+        }
+        else if (ShowDebug) {
             Draw_Debug();
         }
     }
     
-    if (Wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    if (Wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
 }
 
 void UI::Clean() {
@@ -88,21 +96,42 @@ void UI::Clean() {
     UIBorderShader = nullptr;
 }
 
-void UI::Click(double mouseX, double mouseY, int action) {
-    Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
-    Slider::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+void UI::Click(double mouseX, double mouseY, int action, int button) {
+    if (ShowMenu && button == GLFW_MOUSE_BUTTON_LEFT) {
+        Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+        Slider::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+    }
+    
+    if (ShowInventory && action == GLFW_PRESS) {
+        inventory.Click_Handler(mouseX, mouseY, button);
+    }
 }
 
 void UI::Toggle_Menu() {
     ShowMenu = !ShowMenu;
     ShowOptions = false;
     
-    if (ShowMenu) glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    else glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    Toggle_Mouse(ShowMenu);
 }
 
 void UI::Toggle_Debug() {
     ShowDebug = !ShowDebug;
+}
+
+void UI::Toggle_Inventory() {
+    ShowInventory = !ShowInventory;
+    Toggle_Mouse(ShowInventory);
+}
+
+void Toggle_Mouse(bool enable) {
+    MouseEnabled = enable;
+    
+    if (enable) {
+        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+    else {
+        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
 }
 
 void Init_UI_Shaders() {
@@ -111,6 +140,7 @@ void Init_UI_Shaders() {
     
     colorLocation = glGetUniformLocation(UIShader->Program, "color");
     alphaLocation = glGetUniformLocation(UIShader->Program, "alpha");
+    borderColorLocation = glGetUniformLocation(UIBorderShader->Program, "color");
     
     glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
     
@@ -120,11 +150,13 @@ void Init_UI_Shaders() {
     
     UIBorderShader->Bind();
     glUniformMatrix4fv(glGetUniformLocation(UIBorderShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform3f(borderColorLocation, 0.0f, 0.0f, 0.0f);
     UIBorderShader->Unbind();
 }
 
 void Init_UI() {
     chat.Init(*UIShader, *UIBorderShader, colorLocation, alphaLocation);
+    inventory.Init();
 }
 
 void Init_Background() {
@@ -155,7 +187,7 @@ void Init_Menu() {
     Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, 420, 500, 200, "optionMenu");
     Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, 780, 500, 200, "optionMenu");
     
-    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), Change_Render_Distance, 620, 700, 200, 0, 10, float(RENDER_DISTANCE), "optionMenu");
+    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), Change_Render_Distance, 620, 700, 200, 0, 10, float(RenderDistance), "optionMenu");
     
     Button::Add("option_back", "Back", Toggle_Options_Menu, 620, 200, 200, "optionMenu");
 }
@@ -284,8 +316,8 @@ void Toggle_Wireframe() {
 void Change_Render_Distance() {
     int value = int(ceil(Slider::Get_Value("option_renderDistance")));
     
-    if (value != RENDER_DISTANCE) {
-        RENDER_DISTANCE = value;
+    if (value != RenderDistance) {
+        RenderDistance = value;
         Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(value));
         
         player.RenderChunks();

@@ -132,6 +132,8 @@ void Button::Draw(std::string name) {
     
     UIBorderShader->Bind();
     
+    glUniform3f(borderColorLocation, 0, 0, 0);
+    
     glBindVertexArray(button.BorderVAO);
     glDrawArrays(GL_LINE_LOOP, 0, 4);
     glBindVertexArray(0);

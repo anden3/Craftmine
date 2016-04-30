@@ -199,26 +199,27 @@ void Chunk::Generate() {
 				);
 
                 double noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
+                
+                glm::ivec3 block(x, y, z);
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
                         glm::vec2 topBlock(x, z);
                         
                         if (!topBlocks[topPos].count(topBlock)) {
-                            TopBlocks.insert(glm::vec3(x, y, z));
-                            
                             topBlocks[topPos].insert(topBlock);
-                            Set_Light(glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
+                            TopBlocks.insert(block);
                             
-                            LightQueue.emplace(Position, glm::vec3(x, y, z), SUN_LIGHT_LEVEL);
+                            Set_Light(block, SUN_LIGHT_LEVEL);
+                            LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
                         }
                         
                         BlockMap[x][y][z] = 2;
-                        Blocks.insert(glm::vec3(x, y, z));
+                        Blocks.insert(block);
                     }
                 }
                 else {
-					UpdateAir(glm::ivec3(x, y, z), inChunk);
+					UpdateAir(block, inChunk);
                 }
             }
         }
@@ -533,4 +534,15 @@ std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
     glm::vec3 tile(floor(worldPos.x - (chunk.x * CHUNK_SIZE)), floor(worldPos.y - (chunk.y * CHUNK_SIZE)), floor(worldPos.z - (chunk.z * CHUNK_SIZE)));
 
     return std::vector<glm::vec3>{chunk, tile};
+}
+
+bool Is_Block(glm::vec3 pos) {
+    std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(pos);
+    bool isBlock = false;
+    
+    if (Exists(chunkPos[0])) {
+        isBlock = ChunkMap[chunkPos[0]]->Get_Block(chunkPos[1]) > 0;
+    }
+    
+    return isBlock;
 }

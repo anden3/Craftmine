@@ -15,7 +15,8 @@ const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 
 int SCREEN_WIDTH = 1920;
 int SCREEN_HEIGHT = 1080;
-int RENDER_DISTANCE = 5;
+
+int RenderDistance = 5;
 
 bool VSync = true;
 
@@ -32,12 +33,14 @@ bool Wireframe = false;
 bool ToggleWireframe = false;
 
 bool gamePaused = false;
+bool MouseEnabled = false;
 
 bool ChunkMapBusy = false;
 bool SunlightQueueBusy = false;
 
 Player player = Player();
 Chat chat = Chat();
+Inventory inventory = Inventory();
 
 Shader* shader;
 Shader* outlineShader;

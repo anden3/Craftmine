@@ -118,11 +118,9 @@ public:
     inline void Set_Top(glm::vec3 pos, bool set) {
         if (set) {
             TopBlocks.insert(pos);
-            topBlocks[glm::vec2(Position.x, Position.z)].insert(glm::vec2(pos.x, pos.z));
         }
         else if (Get_Top(pos)) {
             TopBlocks.erase(pos);
-            topBlocks[glm::vec2(Position.x, Position.z)].erase(glm::vec2(pos.x, pos.z));
         }
     }
     
@@ -137,6 +135,7 @@ private:
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
 std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
+bool Is_Block(glm::vec3 pos);
 
 inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
     chunk *= CHUNK_SIZE;
