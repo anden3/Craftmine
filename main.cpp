@@ -241,6 +241,8 @@ unsigned int Load_Texture(std::string file) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
+    
+    IMAGE_SIZE = width / 16;
 
     return texture;
 }
@@ -337,7 +339,7 @@ void mouse_proxy(GLFWwindow* window, double posX, double posY) {
 void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
     player.ScrollHandler(offsetY);
 }
-void click_proxy(GLFWwindow* window, int button, int action, int mods) {    
+void click_proxy(GLFWwindow* window, int button, int action, int mods) {
     UI::Click(player.LastMousePos.x, player.LastMousePos.y, action, button);
     player.ClickHandler(button, action);
 }

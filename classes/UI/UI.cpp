@@ -98,8 +98,8 @@ void UI::Clean() {
 
 void UI::Click(double mouseX, double mouseY, int action, int button) {
     if (ShowMenu && button == GLFW_MOUSE_BUTTON_LEFT) {
-        Button::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
-        Slider::Check_Click(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y, action);
+        Button::Check_Click(mouseX, SCREEN_HEIGHT - mouseY, action);
+        Slider::Check_Click(mouseX, SCREEN_HEIGHT - mouseY, action);
     }
     
     if (ShowInventory && action == GLFW_PRESS) {

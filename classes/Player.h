@@ -15,7 +15,6 @@ enum Directions {
 };
 
 extern bool MouseEnabled;
-// extern bool ShowMenu;
 extern bool ChunkMapBusy;
 
 extern int RenderDistance;

@@ -25,6 +25,7 @@ unsigned int OutlineVBO, OutlineVAO;
 unsigned int UBO;
 
 unsigned int ChunksQueued = 0;
+unsigned int IMAGE_SIZE = 0;
 
 double DeltaTime = 0.0;
 double LastFrame = 0.0;

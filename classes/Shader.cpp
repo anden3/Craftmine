@@ -37,7 +37,6 @@ void Shader::Add_Shader(unsigned int shader, std::string type, std::string path)
     }
 
 	glShaderSource(shader, 1, &shaderCode, NULL);
-
 	glCompileShader(shader);
 
 	int success;

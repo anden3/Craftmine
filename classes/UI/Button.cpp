@@ -144,7 +144,9 @@ void Button::Draw(std::string name) {
 }
 
 void Button::Set_Text(std::string name, std::string text) {
+    Text::Set_Group(Buttons[name].Group);
     Text::Set_Text(Buttons[name].Name, text);
+    Text::Unset_Group();
 }
 
 void Button::Check_Hover(double mouseX, double mouseY) {

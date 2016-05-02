@@ -9,20 +9,14 @@ VBO::VBO() {
     glBindVertexArray(VertexArrayObject);
     glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
     
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
+    int sizes[5] = {3, 3, 2, 1, 1};
+    int size = 0;
     
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
-    
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(6 * sizeof(float)));
-    
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(8 * sizeof(float)));
-    
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(9 * sizeof(float)));
+    for (int i = 0; i < 5; i++) {
+        glEnableVertexAttribArray(i);
+        glVertexAttribPointer(i, sizes[i], GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(size * sizeof(float)));
+        size += sizes[i];
+    }
     
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

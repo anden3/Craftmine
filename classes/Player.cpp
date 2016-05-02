@@ -34,16 +34,7 @@ glm::vec3 lastChunk(-5);
 
 bool keys[1024] = {0};
 
-std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 std::vector<SoundPlayer> soundPlayers;
-
-struct InventorySlot {
-    unsigned char Slot;
-    unsigned char Type;
-    unsigned int Size;
-};
-
-std::vector<InventorySlot> Inventory;
 
 std::vector<std::string> Split(const std::string &s, char delim) {
     std::vector<std::string> elements;
@@ -59,16 +50,14 @@ std::vector<std::string> Split(const std::string &s, char delim) {
 
 void Player::PollSounds() {
 	if (soundPlayers.size() > 0) {
-		std::vector<SoundPlayer>::iterator player = soundPlayers.begin();
-
-		while (player != soundPlayers.end()) {
-			if (!player->Playing()) {
-				player = soundPlayers.erase(player);
-			}
-			else {
-				player++;
-			}
-		}
+        for (auto player = soundPlayers.begin(); player != soundPlayers.end();) {
+            if (!player->Playing()) {
+                soundPlayers.erase(player++);
+            }
+            else {
+                ++player;
+            }
+        }
 	}
 }
 
@@ -88,41 +77,27 @@ void Player::Move(float deltaTime, bool update) {
     if (keys[GLFW_KEY_LEFT_SHIFT]) {
 		speed *= PLAYER_SPRINT_MODIFIER * (Flying + 1);
     }
+    
+    static int moveKeys[4] = {GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_A};
+    static float signs[2] = {1.0f, -1.0f};
+    
+    glm::vec3 flyDirs[2] = {Cam.Front, Cam.Right};
+    glm::vec3 walkDirs[2] = {Cam.FrontDirection, Cam.RightDirection};
 
     if (Flying) {
         Velocity = glm::vec3(0);
 
-        if (keys[GLFW_KEY_W]) {
-            WorldPos += Cam.Front * speed;
-        }
-
-        if (keys[GLFW_KEY_S]) {
-            WorldPos -= Cam.Front * speed;
-        }
-
-        if (keys[GLFW_KEY_A]) {
-            WorldPos -= Cam.Right * speed;
-        }
-
-        if (keys[GLFW_KEY_D]) {
-            WorldPos += Cam.Right * speed;
+        for (int i = 0; i < 4; i++) {
+            if (keys[moveKeys[i]]) {
+                WorldPos += flyDirs[i / 2] * speed * signs[i % 2];
+            }
         }
     }
     else {
-        if (keys[GLFW_KEY_W]) {
-            Velocity += Cam.FrontDirection * speed;
-        }
-
-        if (keys[GLFW_KEY_S]) {
-            Velocity -= Cam.FrontDirection * speed;
-        }
-
-        if (keys[GLFW_KEY_A]) {
-            Velocity -= Cam.RightDirection * speed;
-        }
-
-        if (keys[GLFW_KEY_D]) {
-            Velocity += Cam.RightDirection * speed;
+        for (int i = 0; i < 4; i++) {
+            if (keys[moveKeys[i]]) {
+                Velocity += walkDirs[i / 2] * speed * signs[i % 2];
+            }
         }
 
         if (Jumping) {
@@ -179,11 +154,12 @@ void Player::ColDetection() {
         Velocity.y = 0;
     }
 	
-	if (Velocity.y < 0) {
+	else if (Velocity.y < 0) {
 		if (!Is_Block(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z))) {
 			WorldPos.y += Velocity.y;
 		}
 	}
+    
 	else if (Velocity.y > 0) {
 		if (!Is_Block(glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT + Velocity.y, WorldPos.z))) {
 			WorldPos.y += Velocity.y;
@@ -192,30 +168,22 @@ void Player::ColDetection() {
 			Velocity.y = 0;
 		}
 	}
-
-	if (Velocity.x != 0) {
-		glm::vec3 checkingPos = glm::vec3(WorldPos.x + Velocity.x + (PLAYER_WIDTH * std::copysign(1, Velocity.x)), WorldPos.y, WorldPos.z);
-
-		if (!Is_Block(checkingPos)) {
-			checkingPos.y += CAMERA_HEIGHT;
-
-			if (!Is_Block(checkingPos)) {
-				WorldPos.x += Velocity.x;
-			}
-		}
-	}
-
-	if (Velocity.z != 0) {
-		glm::vec3 checkingPos = glm::vec3(WorldPos.x, WorldPos.y, WorldPos.z + Velocity.z + (PLAYER_WIDTH * std::copysign(1, Velocity.z)));
-
-		if (!Is_Block(checkingPos)) {
-			checkingPos.y += CAMERA_HEIGHT;
-
-			if (!Is_Block(checkingPos)) {
-				WorldPos.z += Velocity.z;
-			}
-		}
-	}
+    
+    glm::vec3 offsets[2] = {glm::vec3(Velocity.x + PLAYER_WIDTH * std::copysign(1, Velocity.x), 0, 0), glm::vec3(0, 0, Velocity.z + PLAYER_WIDTH * std::copysign(1, Velocity.z))};
+    
+    for (int i = 0; i < 3; i += 2) {
+        if (Velocity[i]) {
+            glm::vec3 checkingPos = WorldPos + offsets[i / 2];
+            
+            if (!Is_Block(checkingPos)) {
+                checkingPos.y += CAMERA_HEIGHT;
+                
+                if (!Is_Block(checkingPos)) {
+                    WorldPos[i] += Velocity[i];
+                }
+            }
+        }
+    }
 }
 
 void Process_Light_Queue() {
@@ -252,13 +220,9 @@ void Process_Light_Queue() {
         }
     }
     
-    for (auto const ch : lightMeshingList) {
-        if (ChunkMap[ch] != nullptr) {
-            ChunkMap[ch]->Mesh();
-        }
+    for (auto const &ch : lightMeshingList) {
+        ch->Mesh();
     }
-    
-    EditingChunkMap = false;
 }
 
 void Process_Light_Removal_Queue() {
@@ -373,7 +337,6 @@ void Player::MouseHandler(double posX, double posY) {
     
     if (MouseEnabled) {
         LastMousePos = glm::dvec2(posX, posY);
-        MovedMouse = false;
         return;
     }
 
@@ -426,7 +389,7 @@ void Player::ScrollHandler(double offsetY) {
 }
 
 void Player::ClickHandler(int button, int action) {
-    if (action == GLFW_PRESS) {
+    if (!MouseEnabled && action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (LookingAtBlock) {
                 Chunk* lookingChunk = ChunkMap[LookingChunk];
@@ -437,14 +400,10 @@ void Player::ClickHandler(int button, int action) {
                     Remove_Torch();
                 }
                 else {
-                    if (!Check_Top()) {
-                        lookingChunk->LightQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
-                    }
+                    lookingChunk->LightQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
                 }
                 
                 lookingChunk->Remove_Block(LookingTile);
-                
-                MouseHandler(LastMousePos.x, LastMousePos.y);
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
@@ -463,8 +422,6 @@ void Player::ClickHandler(int button, int action) {
 
                 glm::vec3 diff = newBlockPos - Get_World_Pos(LookingChunk, LookingTile);
                 
-                EditingChunkMap = true;
-                
                 if (ChunkMap.count(LookingAirChunk)) {
                     ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
                     
@@ -472,13 +429,11 @@ void Player::ClickHandler(int button, int action) {
                         Place_Torch();
                     }
                 }
-                
-                ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
-                
-				MouseHandler(LastMousePos.x, LastMousePos.y);
 			}
 		}
     }
+    
+    MouseHandler(LastMousePos.x, LastMousePos.y);
 }
 
 void Player::PlaySound(glm::vec3 chunk, glm::vec3 tile) {
@@ -497,54 +452,42 @@ void Player::PlaySound(glm::vec3 chunk, glm::vec3 tile) {
 }
 
 void Player::RenderChunks() {
+    int startY = 3;
+    int endY = -10;
+    
+    if (player.CurrentChunk.y <= -6) {
+        startY = int(player.CurrentChunk.y) + 3;
+        endY = int(player.CurrentChunk.y) - 3;
+    }
+    
     while (ChunkMapBusy) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
     ChunkMapBusy = true;
     
-    std::map<glm::vec3, Chunk*>::iterator it = ChunkMap.begin();
-    
-    while (it != ChunkMap.end()) {
-        double dist = pow(CurrentChunk.x - it->first.x, 2) + pow(CurrentChunk.z - it->first.z, 2);
+    for (auto chunk = ChunkMap.begin(); chunk != ChunkMap.end();) {
+        double dist = pow(CurrentChunk.x - chunk->first.x, 2) + pow(CurrentChunk.z - chunk->first.z, 2);
         
-        if (dist > pow(RENDER_DISTANCE, 2)) {
-            delete it->second;
-            it = ChunkMap.erase(it);
+        if (dist > pow(RenderDistance, 2) || chunk->first.y > startY || chunk->first.y < endY) {
+            delete chunk->second;
+            ChunkMap.erase(chunk++);
         }
         else {
-            it++;
+            ++chunk;
         }
     }
 
     for (int x = (int) CurrentChunk.x - RenderDistance; x <= CurrentChunk.x + RenderDistance; x++) {
         for (int z = (int) CurrentChunk.z - RenderDistance; z <= CurrentChunk.z + RenderDistance; z++) {
-			for (int y = 3; y >= -10; y--) {
+			for (int y = startY; y >= endY; y--) {
                 glm::vec3 pos(x, y, z);
 
-				if (pos == CurrentChunk) {
-					continue;
+				if (pos != CurrentChunk && !ChunkMap.count(pos)) {
+                    if (pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RenderDistance, 2)) {
+                        ChunkMap[pos] = new Chunk(pos);
+                    }
 				}
-                
-                if (ChunkSet.count(pos)) {
-                    continue;
-                }
-
-				if (ChunkMap.count(pos)) {
-					continue;
-				}
-
-				if (EmptyChunks.find(pos) != EmptyChunks.end()) {
-					continue;
-				}
-
-                bool inRange = pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RenderDistance, 2);
-
-                if (!inRange) {
-					continue;
-                }
-                
-				ChunkMap[pos] = new Chunk(pos);
             }
         }
     }

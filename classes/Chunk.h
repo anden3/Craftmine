@@ -6,15 +6,16 @@
 #include <thread>
 #include <chrono>
 
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 
 #include "VBO.h"
 
 const int CHUNK_SIZE = 16;
-const int SUN_LIGHT_LEVEL = 13;
+const unsigned int SUN_LIGHT_LEVEL = 13;
 
-extern unsigned int ChunksQueued;
+extern unsigned int IMAGE_SIZE;
 
 class Vec3Comparator {
 public:
@@ -41,12 +42,14 @@ struct LightNode {
     glm::vec3 Chunk;
     glm::vec3 Tile;
     short LightLevel;
+    bool Down;
     bool Underground;
     
-    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0, bool underground = false) {
+    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0, bool down = false, bool underground = false) {
         Chunk = chunk;
         Tile = tile;
         LightLevel = lightLevel;
+        Down = down;
         Underground = underground;
     }
 };
@@ -96,14 +99,11 @@ public:
     }
     
     void Generate();
-    void Light();
-
-	bool Check_Grass(glm::vec3 pos);
-
+    void Light(bool flag = true);
     void Mesh();
 
-    void Remove_Block(glm::vec3 position);
-	void Add_Block(glm::vec3 position, glm::vec3 diff, int blockType);
+    void Remove_Block(glm::ivec3 position);
+	void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType);
     
     inline int Get_Light(glm::vec3 pos) {
         return LightMap[int(pos.x)][int(pos.y)][int(pos.z)];
@@ -129,12 +129,15 @@ private:
     void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
     int GetAO(glm::vec3 block, int face, int offset);
     
+    void Generate_Empty();
+    
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     std::set<glm::vec3, Vec3Comparator> TopBlocks;
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
 std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
+
 bool Is_Block(glm::vec3 pos);
 
 inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
@@ -143,7 +146,6 @@ inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
 }
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
-extern std::set<glm::vec3, Vec3Comparator> EmptyChunks;
 
 inline bool Exists(glm::vec3 chunk) {
     return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded;
