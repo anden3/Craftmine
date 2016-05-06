@@ -37,6 +37,7 @@ public:
 };
 
 extern std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+extern std::map<unsigned char, glm::vec2> textureCoords;
 
 struct LightNode {
     glm::vec3 Chunk;

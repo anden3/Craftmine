@@ -76,7 +76,7 @@ void UI::Draw() {
         Draw_UI();
         
         if (ShowInventory) {
-            inventory.Draw();
+            player.inventory.Draw();
         }
         else if (ShowDebug) {
             Draw_Debug();
@@ -91,9 +91,11 @@ void UI::Draw() {
 void UI::Clean() {
     delete UIShader;
     delete UIBorderShader;
+    delete UITextureShader;
     
     UIShader = nullptr;
     UIBorderShader = nullptr;
+    UITextureShader = nullptr;
 }
 
 void UI::Click(double mouseX, double mouseY, int action, int button) {
@@ -103,7 +105,7 @@ void UI::Click(double mouseX, double mouseY, int action, int button) {
     }
     
     if (ShowInventory && action == GLFW_PRESS) {
-        inventory.Click_Handler(mouseX, mouseY, button);
+        player.inventory.Click_Handler(mouseX, mouseY, button);
     }
 }
 
@@ -120,6 +122,12 @@ void UI::Toggle_Debug() {
 
 void UI::Toggle_Inventory() {
     ShowInventory = !ShowInventory;
+    player.inventory.Is_Open = ShowInventory;
+    
+    if (ShowInventory) {
+        player.inventory.Open();
+    }
+    
     Toggle_Mouse(ShowInventory);
 }
 
@@ -137,6 +145,7 @@ void Toggle_Mouse(bool enable) {
 void Init_UI_Shaders() {
     UIShader = new Shader("ui");
     UIBorderShader = new Shader("uiBorder");
+    UITextureShader = new Shader("uiTex");
     
     colorLocation = glGetUniformLocation(UIShader->Program, "color");
     alphaLocation = glGetUniformLocation(UIShader->Program, "alpha");
@@ -152,11 +161,16 @@ void Init_UI_Shaders() {
     glUniformMatrix4fv(glGetUniformLocation(UIBorderShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     glUniform3f(borderColorLocation, 0.0f, 0.0f, 0.0f);
     UIBorderShader->Unbind();
+    
+    UITextureShader->Bind();
+    glUniformMatrix4fv(glGetUniformLocation(UITextureShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform1i(glGetUniformLocation(UITextureShader->Program, "tex"), 0);
+    UITextureShader->Unbind();
 }
 
 void Init_UI() {
     chat.Init(*UIShader, *UIBorderShader, colorLocation, alphaLocation);
-    inventory.Init();
+    player.inventory.Init();
 }
 
 void Init_Background() {
@@ -198,23 +212,18 @@ void Init_Debug() {
     Text::Set_Group("debug");
     Text::Set_X("debug", 30);
     
-    float height = float(SCREEN_HEIGHT);
-    
-    Text::Add("fps", "FPS: 0", height - 50);
-    Text::Add("cpu", "CPU: 0%", height - 80);
+    Text::Add("fps", "FPS: 0", 850);
+    Text::Add("cpu", "CPU: 0%", 820);
+    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 750);
+    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 720);
+    Text::Add("playerChunk", "Chunk:    ", 680);
+    Text::Add("playerTile", "Tile:     ", 650);
+    Text::Add("playerPos", "Position: ", 620);
+    Text::Add("chunkQueue", "Chunks Queued: ", 580);
     
     if (Windows) {
-        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), height - 120);
+        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), 780);
     }
-    
-    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), height - 150);
-    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), height - 180);
-    
-    Text::Add("playerChunk", "Chunk:    ", height - 220);
-    Text::Add("playerTile", "Tile:     ", height - 250);
-    Text::Add("playerPos", "Position: ", height - 280);
-    
-    Text::Add("chunkQueue", "Chunks Queued: ", height - 320);
     
     Text::Unset_Group();
 }
@@ -334,4 +343,36 @@ std::string Format_Vector(glm::vec3 vector) {
     std::string z = std::to_string(int(vector.z));
     
     return std::string("X: " + x + "\t\tY: " + y + "\t\tZ: " + z);
+}
+
+std::string Process_Commands(std::string message) {
+    std::vector<std::string> parameters = Split(message, ' ');
+    
+    if (parameters.size() == 0) {
+        return "/";
+    }
+    
+    std::string command = parameters[0];
+    
+    if (command == "tp") {
+        int x = std::stoi(parameters[1]);
+        int y = std::stoi(parameters[2]);
+        int z = std::stoi(parameters[3]);
+        
+        player.Teleport(glm::vec3(x, y, z));
+        
+        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")";
+    }
+    
+    else if (command == "give") {
+        int block = std::stoi(parameters[1]);
+        int size = std::stoi(parameters[2]);
+        
+        player.inventory.Add_Stack(block, size);
+        return "Given block " + parameters[1] + " to player";
+    }
+    
+    else {
+        return "Error! Command not recognized.";
+    }
 }

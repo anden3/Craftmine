@@ -20,28 +20,6 @@ enum Directions {
     FRONT
 };
 
-std::map<unsigned char, glm::vec2> textureCoords = {
-	{1,  glm::vec2(  2,   1)}, // Stone
-
-	{3,  glm::vec2(  3,   1)}, // Dirt
-	{4,  glm::vec2(  1,   2)}, // Cobblestone
-	{5,  glm::vec2(  1,   5)}, // Wooden Planks
-
-	{7,  glm::vec2(  2,   2)}, // Bedrock
-	
-	{9,  glm::vec2( 13,  14)}, // Water
-	{11, glm::vec2( 15,  14)}, // Lava
-
-	{12, glm::vec2(  2,   3)}, // Sand
-	{13, glm::vec2(  2,   4)}, // Gravel
-
-	{14, glm::vec2(  3,   1)}, // Gold Ore
-	{15, glm::vec2(  3,   2)}, // Iron Ore
-	{16, glm::vec2(  3,   3)}, // Coal Ore
-
-	{17, glm::vec2(  5,   4)}, // Transparent Leaves
-};
-
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
@@ -389,10 +367,9 @@ void Chunk::Mesh() {
         if (!Meshed) {
             Meshed = true;
         }
-        else {
-            vbo.Data(VBOData);
-        }
     }
+    
+    DataUploaded = false;
 }
 
 void Chunk::Remove_Block(glm::ivec3 position) {

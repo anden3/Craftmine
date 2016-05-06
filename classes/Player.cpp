@@ -336,6 +336,10 @@ void Player::MouseHandler(double posX, double posY) {
     }
     
     if (MouseEnabled) {
+        if (inventory.Is_Open) {
+            inventory.Mouse_Handler(posX, posY);
+        }
+        
         LastMousePos = glm::dvec2(posX, posY);
         return;
     }
@@ -395,6 +399,8 @@ void Player::ClickHandler(int button, int action) {
                 Chunk* lookingChunk = ChunkMap[LookingChunk];
                 
                 int blockType = lookingChunk->Get_Block(LookingTile);
+                
+                inventory.Add_Stack(blockType, 1);
                 
                 if (blockType == 11) {
                     Remove_Torch();
@@ -525,33 +531,4 @@ bool Player::Check_Top() {
     }
     
     return false;
-}
-
-std::string Process_Commands(std::string message) {
-    std::vector<std::string> parameters = Split(message, ' ');
-    
-    if (parameters.size() == 0) {
-        return "/";
-    }
-    
-    std::string command = parameters[0];
-    
-    if (command == "tp") {
-        int x = std::stoi(parameters[1]);
-        int y = std::stoi(parameters[2]);
-        int z = std::stoi(parameters[3]);
-        
-        player.Teleport(glm::vec3(x, y, z));
-        
-        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")";
-    }
-    
-    else if (command == "give") {
-        player.CurrentBlock = std::stoi(parameters[1]);
-        return "Given block " + parameters[1] + " to player";
-    }
-    
-    else {
-        return "Error! Command not recognized.";
-    }
 }

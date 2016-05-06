@@ -92,8 +92,9 @@ void Init_GL() {
 
 void Init_Textures() {
 	unsigned int atlas = Load_Texture("atlas.png");
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, atlas);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, atlas);
 }
 
 void Init_Shaders() {

@@ -4,6 +4,7 @@
 #include "Chunk.h"
 #include "Sound.h"
 #include "Chat.h"
+#include "Inventory.h"
 
 enum Directions {
     LEFT,
@@ -28,6 +29,8 @@ public:
     glm::vec3 WorldPos = glm::vec3(0.0f);
     glm::vec3 CurrentChunk = glm::vec3(0);
     glm::vec3 CurrentTile = glm::vec3(0);
+    
+    Inventory inventory;
 
     bool LookingAtBlock = false;
     

@@ -8,7 +8,6 @@
 #include "Text.h"
 #include "Button.h"
 #include "Slider.h"
-#include "Inventory.h"
 
 extern const bool Windows;
 
@@ -25,7 +24,6 @@ extern double LastFrame;
 extern GLFWwindow* Window;
 extern Player player;
 extern Chat chat;
-extern Inventory inventory;
 
 namespace UI {
     void Init();
