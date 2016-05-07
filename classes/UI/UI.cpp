@@ -61,6 +61,8 @@ void UI::Init() {
     Init_Background();
     Init_Menu();
     Init_Debug();
+    
+    player.inventory.Mesh();
 }
 
 void UI::Draw() {
@@ -75,11 +77,11 @@ void UI::Draw() {
     else {
         Draw_UI();
         
-        if (ShowInventory) {
-            player.inventory.Draw();
-        }
-        else if (ShowDebug) {
+        if (ShowDebug) {
             Draw_Debug();
+        }
+        else {
+            player.inventory.Draw();
         }
     }
     
@@ -113,7 +115,9 @@ void UI::Toggle_Menu() {
     ShowMenu = !ShowMenu;
     ShowOptions = false;
     
-    Toggle_Mouse(ShowMenu);
+    if (!ShowInventory) {
+        Toggle_Mouse(ShowMenu);
+    }
 }
 
 void UI::Toggle_Debug() {
@@ -122,12 +126,6 @@ void UI::Toggle_Debug() {
 
 void UI::Toggle_Inventory() {
     ShowInventory = !ShowInventory;
-    player.inventory.Is_Open = ShowInventory;
-    
-    if (ShowInventory) {
-        player.inventory.Open();
-    }
-    
     Toggle_Mouse(ShowInventory);
 }
 
@@ -343,36 +341,4 @@ std::string Format_Vector(glm::vec3 vector) {
     std::string z = std::to_string(int(vector.z));
     
     return std::string("X: " + x + "\t\tY: " + y + "\t\tZ: " + z);
-}
-
-std::string Process_Commands(std::string message) {
-    std::vector<std::string> parameters = Split(message, ' ');
-    
-    if (parameters.size() == 0) {
-        return "/";
-    }
-    
-    std::string command = parameters[0];
-    
-    if (command == "tp") {
-        int x = std::stoi(parameters[1]);
-        int y = std::stoi(parameters[2]);
-        int z = std::stoi(parameters[3]);
-        
-        player.Teleport(glm::vec3(x, y, z));
-        
-        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")";
-    }
-    
-    else if (command == "give") {
-        int block = std::stoi(parameters[1]);
-        int size = std::stoi(parameters[2]);
-        
-        player.inventory.Add_Stack(block, size);
-        return "Given block " + parameters[1] + " to player";
-    }
-    
-    else {
-        return "Error! Command not recognized.";
-    }
 }

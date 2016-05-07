@@ -23,7 +23,7 @@ enum Directions {
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
-std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
 
 float vertices[6][6][3] = {
@@ -160,16 +160,23 @@ void Chunk::Generate() {
                         glm::vec2 topBlock(x, z);
                         
                         if (!topBlocks[topPos].count(topBlock)) {
-                            topBlocks[topPos].insert(topBlock);
+                            topBlocks[topPos][topBlock] = Position.y * CHUNK_SIZE + y;
                             TopBlocks.insert(block);
                             
                             Set_Light(block, SUN_LIGHT_LEVEL);
                             LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
                             
-                            BlockMap[x][y][z] = 2;
+                            Set_Block(block, 2);
                         }
                         else {
-                            BlockMap[x][y][z] = 3;
+                            int depth = std::abs(topBlocks[topPos][topBlock] - int(Position.y * CHUNK_SIZE + y));
+                            
+                            if (depth > 3) {
+                                Set_Block(block, 1);
+                            }
+                            else {
+                                Set_Block(block, 3);
+                            }
                         }
                         
                         Blocks.insert(block);
@@ -238,7 +245,7 @@ void Chunk::Light(bool flag) {
         
         for (auto const &neighbor : neighbors) {
             if (!Exists(neighbor.first)) {
-                UnloadedLightQueue[neighbor.first].emplace(neighbor.first, neighbor.second, lightLevel - 1, index == UP, underground);
+                UnloadedLightQueue[neighbor.first].emplace(neighbor.first, neighbor.second, lightLevel, index == UP, underground);
                 continue;
             }
             else if (Check_If_Node(neighbor.first, neighbor.second, lightLevel, underground, index == UP)) {
@@ -375,6 +382,13 @@ void Chunk::Mesh() {
 void Chunk::Remove_Block(glm::ivec3 position) {
     Set_Block(position, 0);
     Blocks.erase(position);
+    
+    bool lightBlocks = false;
+    
+    if (topBlocks[Position.xz()][position.xz()] == Position.y * CHUNK_SIZE + position.y) {
+        lightBlocks = true;
+        topBlocks[Position.xz()][position.xz()]--;
+    }
 
 	std::vector<Chunk*> meshingList;
     std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
@@ -389,6 +403,11 @@ void Chunk::Remove_Block(glm::ivec3 position) {
                     ChunkMap[chunk]->Blocks.insert(tile);
                     ChunkMap[chunk]->SeesAir[tile.x][tile.y][tile.z] |= 1 << i;
                     
+                    if (lightBlocks) {
+                        ChunkMap[chunk]->Set_Light(position, SUN_LIGHT_LEVEL);
+                    }
+                    
+                    ChunkMap[chunk]->LightQueue.emplace(chunk, position);
                     meshingList.push_back(ChunkMap[chunk]);
                 }
             }
@@ -396,6 +415,12 @@ void Chunk::Remove_Block(glm::ivec3 position) {
         else if (Get_Block(tile)) {
             Blocks.insert(tile);
             SeesAir[tile.x][tile.y][tile.z] |= 1 << i;
+            
+            if (lightBlocks) {
+                Set_Light(position, SUN_LIGHT_LEVEL);
+            }
+            
+            LightQueue.emplace(Position, position);
         }
     }
     
@@ -411,6 +436,11 @@ void Chunk::Remove_Block(glm::ivec3 position) {
 void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
 	Set_Block(position, blockType);
 	Blocks.insert(position);
+    
+    if (Position.y * CHUNK_SIZE + position.y > topBlocks[Position.xz()][position.xz()]) {
+        topBlocks[Position.xz()][position.xz()] = Position.y * CHUNK_SIZE + position.y;
+        Set_Light(position, SUN_LIGHT_LEVEL);
+    }
 
 	std::vector<Chunk*> meshingList;
 	std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);

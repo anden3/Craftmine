@@ -1,7 +1,5 @@
 #include "main.h"
 
-#include <glm/gtc/type_ptr.hpp>
-
 #include <SOIL/SOIL.h>
 
 int main() {
@@ -13,6 +11,8 @@ int main() {
 	Init_Shaders();
     Init_Buffers();
 	Init_Rendering();
+    
+    player.Init_Holding();
     
 	std::thread chunkGeneration(BackgroundThread);
     
@@ -31,6 +31,9 @@ int main() {
 		
 		Render_Scene();
         
+        glClear(GL_DEPTH_BUFFER_BIT);
+        
+        player.Draw_Holding();
         UI::Draw();
         
 		glfwSwapBuffers(Window);
@@ -100,12 +103,14 @@ void Init_Textures() {
 void Init_Shaders() {
     shader = new Shader("shader");
     outlineShader = new Shader("outline");
+    modelShader = new Shader("model");
     
     glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
     
 	glGenBuffers(1, &UBO);
 	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
     glUniformBlockBinding(outlineShader->Program, glGetUniformLocation(outlineShader->Program, "Matrices"), 0);
+    glUniformBlockBinding(modelShader->Program, glGetUniformLocation(modelShader->Program, "Matrices"), 0);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
 	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
@@ -169,6 +174,10 @@ void Init_Rendering() {
     glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
 	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
 	shader->Unbind();
+    
+    modelShader->Bind();
+    glUniform1i(glGetUniformLocation(modelShader->Program, "tex"), 0);
+    modelShader->Unbind();
 }
 void Render_Scene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -246,12 +255,6 @@ unsigned int Load_Texture(std::string file) {
     IMAGE_SIZE = width / 16;
 
     return texture;
-}
-
-void Extend(std::vector<float>& storage, std::vector<float> input) {
-    for (auto const value : input) {
-        storage.push_back(value);
-    }
 }
 
 void BackgroundThread() {

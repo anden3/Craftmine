@@ -16,6 +16,7 @@ const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 std::map<unsigned char, glm::vec2> textureCoords = {
     {1,  glm::vec2(  2,   1)}, // Stone
     
+    {2,  glm::vec2(  1,   1)}, // Grass Top
     {3,  glm::vec2(  3,   1)}, // Dirt
     {4,  glm::vec2(  1,   2)}, // Cobblestone
     {5,  glm::vec2(  1,   5)}, // Wooden Planks
@@ -38,7 +39,7 @@ std::map<unsigned char, glm::vec2> textureCoords = {
 int SCREEN_WIDTH = 1920;
 int SCREEN_HEIGHT = 1080;
 
-int RenderDistance = 5;
+int RenderDistance = 2;
 
 bool VSync = true;
 
@@ -67,6 +68,7 @@ Inventory inventory = Inventory();
 
 Shader* shader;
 Shader* outlineShader;
+Shader* modelShader;
 
 int modelMatrixLocation;
 int diffuseTextureLocation;

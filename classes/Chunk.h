@@ -36,8 +36,13 @@ public:
     }
 };
 
-extern std::map<glm::vec2, std::set<glm::vec2, Vec2Comparator>, Vec2Comparator> topBlocks;
+extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 extern std::map<unsigned char, glm::vec2> textureCoords;
+
+extern std::vector<glm::vec2> grassTextures;
+
+extern float vertices[6][6][3];
+extern float tex_coords[6][6][2];
 
 struct LightNode {
     glm::vec3 Chunk;

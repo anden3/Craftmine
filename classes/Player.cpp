@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+#include <glm/gtx/string_cast.hpp>
+
 const float PLAYER_BASE_SPEED  = 3.0f;
 const float PLAYER_SPRINT_MODIFIER = 1.5f;
 
@@ -15,9 +17,6 @@ const float CAMERA_HEIGHT = 1.7f;
 const float VOLUME = 0.1f;
 
 const float HITSCAN_STEP_SIZE = 0.1f;
-
-const double MAX_FOV = 120.0;
-const double MIN_FOV = 1.0;
 
 const float GRAVITY = 0.004f;
 const float JUMP_HEIGHT = 0.1f;
@@ -34,6 +33,8 @@ glm::vec3 lastChunk(-5);
 
 bool keys[1024] = {0};
 
+int NumKeys[10] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_3, GLFW_KEY_4, GLFW_KEY_5, GLFW_KEY_6, GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9, GLFW_KEY_0};
+
 std::vector<SoundPlayer> soundPlayers;
 
 std::vector<std::string> Split(const std::string &s, char delim) {
@@ -46,6 +47,110 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     }
     
     return elements;
+}
+
+void Player::Init_Model() {
+    glGenVertexArrays(1, &ModelVAO);
+    glGenBuffers(1, &ModelVBO);
+    
+    glBindVertexArray(ModelVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, ModelVBO);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void Player::Mesh_Model() {
+    
+}
+
+void Player::Init_Holding() {
+    glGenVertexArrays(1, &HoldingVAO);
+    glGenBuffers(1, &HoldingVBO);
+    
+    glBindVertexArray(HoldingVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, HoldingVBO);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)0);
+    
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void Player::Mesh_Holding() {
+    if (CurrentBlock == 0) {
+        return;
+    }
+    
+    Data data;
+    
+    glm::vec2 texPosition = textureCoords[CurrentBlock];
+    static float textureStep = (1.0f / 16.0f);
+    
+    float texStartX = textureStep * (texPosition.x - 1.0f);
+    float texStartY = textureStep * (texPosition.y - 1.0f);
+    
+    for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+            Extend(data, Data {vertices[i][j][0] - 0.5f, vertices[i][j][1] - 0.5f, vertices[i][j][2] - 0.5f});
+            
+            if (CurrentBlock == 2) {
+                data.push_back(textureStep * (grassTextures[i].x - 1.0f) + tex_coords[i][j][0] * textureStep);
+                data.push_back(textureStep * (grassTextures[i].y - 1.0f) + tex_coords[i][j][1] * textureStep);
+            }
+            else {
+                data.push_back(texStartX + tex_coords[i][j][0] * textureStep);
+                data.push_back(texStartY + tex_coords[i][j][1] * textureStep);
+            }
+        }
+    }
+    
+    Upload_Data(HoldingVBO, data);
+    
+    HoldingVertices = int(data.size() / 5);
+}
+
+void Player::Draw_Holding() {
+    if (CurrentBlock == 0) {
+        return;
+    }
+    
+    modelShader->Bind();
+    
+    glm::mat4 model;
+    
+    glm::vec3 offsetFront = Cam.Front;
+    glm::vec3 offsetRight = Cam.Right;
+    
+    offsetFront *= 0.5;
+    offsetRight *= 0.5;
+    
+    model = glm::translate(model, WorldPos + offsetFront + offsetRight + glm::vec3(0, 0.5, 0));
+    model = glm::rotate(model, float(glm::radians(360.0f - Cam.Yaw - 90.0f)), glm::vec3(0, 1, 0));
+    model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
+    
+    if (Cam.Yaw > 360) {
+        Cam.Yaw -= 360;
+    }
+    
+    if (Cam.Yaw < 0) {
+        Cam.Yaw += 360;
+    }
+    
+    glUniformMatrix4fv(glGetUniformLocation(modelShader->Program, "model"), 1, false, glm::value_ptr(model));
+    
+    glBindVertexArray(HoldingVAO);
+    glDrawArrays(GL_TRIANGLES, 0, HoldingVertices);
+    glBindVertexArray(0);
+    
+    modelShader->Unbind();
 }
 
 void Player::PollSounds() {
@@ -169,7 +274,10 @@ void Player::ColDetection() {
 		}
 	}
     
-    glm::vec3 offsets[2] = {glm::vec3(Velocity.x + PLAYER_WIDTH * std::copysign(1, Velocity.x), 0, 0), glm::vec3(0, 0, Velocity.z + PLAYER_WIDTH * std::copysign(1, Velocity.z))};
+    glm::vec3 offsets[2] = {
+        glm::vec3(Velocity.x + PLAYER_WIDTH * std::copysign(1, Velocity.x), 0, 0),
+        glm::vec3(0, 0, Velocity.z + PLAYER_WIDTH * std::copysign(1, Velocity.z))
+    };
     
     for (int i = 0; i < 3; i += 2) {
         if (Velocity[i]) {
@@ -317,6 +425,27 @@ void Player::KeyHandler(int key, int action) {
         if (key == GLFW_KEY_SPACE && OnGround) {
             Jumping = true;
         }
+        
+        if (key == GLFW_KEY_TAB) {
+            inventory.Is_Open = !inventory.Is_Open;
+            inventory.Mesh();
+            
+            if (inventory.Is_Open) {
+                inventory.Mouse_Handler();
+            }
+        }
+        
+        if (!inventory.Is_Open) {
+            for (int i = 0; i < 10; i++) {
+                if (key == NumKeys[i]) {
+                    inventory.ActiveToolbarSlot = i;
+                    inventory.Switch_Slot();
+                    CurrentBlock = inventory.Get_Info(i).first;
+                    Mesh_Holding();
+                    break;
+                }
+            }
+        }
     }
 
     if (key >= 0 && key < 1024) {
@@ -379,16 +508,20 @@ void Player::MouseHandler(double posX, double posY) {
 }
 
 void Player::ScrollHandler(double offsetY) {
-    if (Cam.Zoom >= MIN_FOV && Cam.Zoom <= MAX_FOV) {
-        Cam.Zoom -= offsetY;
-    }
-
-    if (Cam.Zoom < MIN_FOV) {
-        Cam.Zoom = MIN_FOV;
-    }
-
-    if (Cam.Zoom > MAX_FOV) {
-        Cam.Zoom = MAX_FOV;
+    if (fabs(offsetY) > 0.2) {
+        inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
+        
+        if (inventory.ActiveToolbarSlot > 9) {
+            inventory.ActiveToolbarSlot = 0;
+        }
+        
+        if (inventory.ActiveToolbarSlot < 0) {
+            inventory.ActiveToolbarSlot = 9;
+        }
+        
+        inventory.Switch_Slot();
+        CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
+        Mesh_Holding();
     }
 }
 
@@ -400,20 +533,27 @@ void Player::ClickHandler(int button, int action) {
                 
                 int blockType = lookingChunk->Get_Block(LookingTile);
                 
-                inventory.Add_Stack(blockType, 1);
+                if (blockType == 2) {
+                    inventory.Add_Stack(3, 1);
+                }
+                else {
+                    inventory.Add_Stack(blockType, 1);
+                }
+                
+                if (CurrentBlock == 0 && inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
+                    CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
+                    Mesh_Holding();
+                }
                 
                 if (blockType == 11) {
                     Remove_Torch();
-                }
-                else {
-                    lookingChunk->LightQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
                 }
                 
                 lookingChunk->Remove_Block(LookingTile);
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-			if (LookingAtBlock) {
+			if (LookingAtBlock && CurrentBlock) {
 				glm::vec3 newBlockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
 
 				if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {
@@ -430,6 +570,12 @@ void Player::ClickHandler(int button, int action) {
                 
                 if (ChunkMap.count(LookingAirChunk)) {
                     ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
+                    
+                    inventory.Decrease_Size(inventory.ActiveToolbarSlot);
+                    
+                    if (!inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
+                        CurrentBlock = 0;
+                    }
                     
                     if (CurrentBlock == 11) {
                         Place_Torch();
@@ -531,4 +677,41 @@ bool Player::Check_Top() {
     }
     
     return false;
+}
+
+std::string Process_Commands(std::string message) {
+    std::vector<std::string> parameters = Split(message, ' ');
+    
+    if (parameters.size() == 0) {
+        return "/";
+    }
+    
+    std::string command = parameters[0];
+    
+    if (command == "tp") {
+        int x = std::stoi(parameters[1]);
+        int y = std::stoi(parameters[2]);
+        int z = std::stoi(parameters[3]);
+        
+        player.Teleport(glm::vec3(x, y, z));
+        
+        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")";
+    }
+    
+    else if (command == "give") {
+        int block = std::stoi(parameters[1]);
+        int size = std::stoi(parameters[2]);
+        
+        player.inventory.Add_Stack(block, size);
+        return "Given block " + parameters[1] + " to player";
+    }
+    
+    else if (command == "clear") {
+        player.inventory.Clear();
+        return "Inventory cleared!";
+    }
+    
+    else {
+        return "Error! Command not recognized.";
+    }
 }

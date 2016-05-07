@@ -22,6 +22,8 @@ extern int RenderDistance;
 
 extern Chat chat;
 
+extern Shader* modelShader;
+
 std::vector<std::string> Split(const std::string &s, char delim);
 
 class Player {
@@ -34,7 +36,7 @@ public:
 
     bool LookingAtBlock = false;
     
-    int CurrentBlock = 11;
+    int CurrentBlock = 0;
     
     glm::vec3 LookingChunk;
     glm::vec3 LookingAirChunk;
@@ -45,6 +47,9 @@ public:
     glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
 
     Camera Cam = Camera();
+    
+    void Init_Holding();
+    void Draw_Holding();
 
 	void PollSounds();
     void Move(float deltaTime, bool update = false);
@@ -65,13 +70,23 @@ private:
 	bool OnGround = false;
 	bool MovedMouse = false;
     bool FirstTime = true;
-
+    
+    unsigned int HoldingVAO, HoldingVBO;
+    unsigned int ModelVAO, ModelVBO;
+    
+    int HoldingVertices = 0;
+    
 	float SpeedModifier = 1.0f;
 
 	glm::vec3 Velocity;
 
 	Listener listener;
-
+    
+    void Init_Model();
+    
+    void Mesh_Model();
+    void Mesh_Holding();
+    
 	void ColDetection();
 	std::vector<glm::vec3> Hitscan();
 
