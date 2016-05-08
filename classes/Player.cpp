@@ -2,8 +2,6 @@
 
 #include <sstream>
 
-#include <glm/gtx/string_cast.hpp>
-
 const float PLAYER_BASE_SPEED  = 3.0f;
 const float PLAYER_SPRINT_MODIFIER = 1.5f;
 
@@ -433,6 +431,12 @@ void Player::KeyHandler(int key, int action) {
             if (inventory.Is_Open) {
                 inventory.Mouse_Handler();
             }
+            
+            if (inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
+                CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
+            }
+            
+            Mesh_Holding();
         }
         
         if (!inventory.Is_Open) {

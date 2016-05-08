@@ -34,6 +34,8 @@ std::map<unsigned char, glm::vec2> textureCoords = {
     {16, glm::vec2(  3,   3)}, // Coal Ore
     
     {17, glm::vec2(  5,   4)}, // Transparent Leaves
+    
+    {50, glm::vec2(  1,   6)}, // Torch
 };
 
 int SCREEN_WIDTH = 1920;

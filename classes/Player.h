@@ -5,6 +5,7 @@
 #include "Sound.h"
 #include "Chat.h"
 #include "Inventory.h"
+#include "Entity.h"
 
 enum Directions {
     LEFT,

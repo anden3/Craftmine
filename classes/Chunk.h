@@ -13,7 +13,7 @@
 #include "VBO.h"
 
 const int CHUNK_SIZE = 16;
-const unsigned int SUN_LIGHT_LEVEL = 13;
+const unsigned int SUN_LIGHT_LEVEL = 15;
 
 extern unsigned int IMAGE_SIZE;
 

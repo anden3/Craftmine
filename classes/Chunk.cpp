@@ -11,20 +11,15 @@ bool Seeded = false;
 
 noise::module::Perlin noiseModule;
 
-enum Directions {
-    LEFT,
-    RIGHT,
-    DOWN,
-    UP,
-    BACK,
-    FRONT
-};
+enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
 std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
 std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
 
 std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
+
+std::map<glm::vec3, std::map<glm::vec3, int, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
 
 float vertices[6][6][3] = {
 		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
@@ -196,7 +191,7 @@ void Chunk::Generate_Empty() {
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int y = 0; y < CHUNK_SIZE; y++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
-                BlockMap[x][y][z] = 2;
+                BlockMap[x][y][z] = 1;
                 Blocks.insert(glm::ivec3(x, y, z));
             }
         }
@@ -216,7 +211,6 @@ bool Check_If_Node(glm::vec3 chunk, glm::vec3 tile, char lightLevel, bool underg
             }
         }
     }
-    
     return false;
 }
 
@@ -244,18 +238,18 @@ void Chunk::Light(bool flag) {
         int index = 0;
         
         for (auto const &neighbor : neighbors) {
-            if (!Exists(neighbor.first)) {
+            if (!ChunkMap.count(neighbor.first)) {
                 UnloadedLightQueue[neighbor.first].emplace(neighbor.first, neighbor.second, lightLevel, index == UP, underground);
                 continue;
             }
             else if (Check_If_Node(neighbor.first, neighbor.second, lightLevel, underground, index == UP)) {
-                ChunkMap[neighbor.first]->LightQueue.emplace(neighbor.first, neighbor.second);
-                
-                if (flag) {
-                    ChunkMap[neighbor.first]->Meshed = false;
+                if (neighbor.first != Position) {
+                    continue;
                 }
+                
+                LightQueue.emplace(Position, neighbor.second);
             }
-        }        
+        }
         index++;
     }
 }
@@ -316,7 +310,7 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 	return ao;
 }
 
-void Chunk::Mesh() {    
+void Chunk::Mesh() {
     VBOData.clear();
     
     std::set<glm::vec3>::iterator block = Blocks.begin();
@@ -344,7 +338,7 @@ void Chunk::Mesh() {
                         VBOData.push_back(vertices[bit][j][0] + Position.x * CHUNK_SIZE + block->x);
                         VBOData.push_back(vertices[bit][j][1] + Position.y * CHUNK_SIZE + block->y);
                         VBOData.push_back(vertices[bit][j][2] + Position.z * CHUNK_SIZE + block->z);
-
+                        
 						VBOData.push_back(normals[bit][0]);
 						VBOData.push_back(normals[bit][1]);
 						VBOData.push_back(normals[bit][2]);
@@ -382,6 +376,13 @@ void Chunk::Mesh() {
 void Chunk::Remove_Block(glm::ivec3 position) {
     Set_Block(position, 0);
     Blocks.erase(position);
+    
+    if (ChangedBlocks[Position].count(position)) {
+        ChangedBlocks[Position].erase(position);
+    }
+    else {
+        ChangedBlocks[Position][position] = 0;
+    }
     
     bool lightBlocks = false;
     
@@ -436,6 +437,13 @@ void Chunk::Remove_Block(glm::ivec3 position) {
 void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
 	Set_Block(position, blockType);
 	Blocks.insert(position);
+    
+    if (ChangedBlocks[Position].count(position) && ChangedBlocks[Position][position] == 0) {
+        ChangedBlocks[Position].erase(position);
+    }
+    else {
+        ChangedBlocks[Position][position] = blockType;
+    }
     
     if (Position.y * CHUNK_SIZE + position.y > topBlocks[Position.xz()][position.xz()]) {
         topBlocks[Position.xz()][position.xz()] = Position.y * CHUNK_SIZE + position.y;
