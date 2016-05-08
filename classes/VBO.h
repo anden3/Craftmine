@@ -2,7 +2,8 @@
 
 #include <vector>
 
-#include <OpenGL/gl3.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 class VBO {
 public:
@@ -16,5 +17,5 @@ public:
     void Draw();
 
 private:
-    int vertexCount;
+    int vertexCount = 0;
 };

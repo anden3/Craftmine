@@ -1,64 +1,102 @@
 #pragma once
 
-#include <iostream>
+#include "Shader.h"
+#include "UI.h"
 
-#include "classes/Shader.h"
-#include "classes/Player.h"
+#ifdef _WIN32
+const bool Windows = true;
 
-struct Character {
-    unsigned int TextureID;
-    glm::ivec2 Size;
-    glm::ivec2 Bearing;
-    unsigned int Advance;
+#elif __APPLE__
+const bool Windows = false;
+
+#endif
+
+const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
+
+std::map<unsigned char, glm::vec2> textureCoords = {
+    {1,  glm::vec2(  2,   1)}, // Stone
+    
+    {2,  glm::vec2(  1,   1)}, // Grass Top
+    {3,  glm::vec2(  3,   1)}, // Dirt
+    {4,  glm::vec2(  1,   2)}, // Cobblestone
+    {5,  glm::vec2(  1,   5)}, // Wooden Planks
+    
+    {7,  glm::vec2(  2,   2)}, // Bedrock
+    
+    {9,  glm::vec2( 13,  14)}, // Water
+    {11, glm::vec2( 15,  14)}, // Lava
+    
+    {12, glm::vec2(  2,   3)}, // Sand
+    {13, glm::vec2(  2,   4)}, // Gravel
+    
+    {14, glm::vec2(  3,   1)}, // Gold Ore
+    {15, glm::vec2(  3,   2)}, // Iron Ore
+    {16, glm::vec2(  3,   3)}, // Coal Ore
+    
+    {17, glm::vec2(  5,   4)}, // Transparent Leaves
+    
+    {50, glm::vec2(  1,   6)}, // Torch
 };
 
-const int SCREEN_WIDTH  = 1440;
-const int SCREEN_HEIGHT = 900;
+int SCREEN_WIDTH = 1920;
+int SCREEN_HEIGHT = 1080;
 
-const int AVG_FPS_RANGE = 10;
-const int TEXT_UPDATE_FRAME_FREQ = 10;
+int RenderDistance = 2;
 
-const int TEXT_TEXTURE_UNIT = 10;
+bool VSync = true;
 
-const int CHUNKS_RENDER_PER_FRAME = 3;
-
-const glm::vec3 TEXT_COLOR = glm::vec3(0.2f, 0.8f, 0.2f);
-
-double last_fps[AVG_FPS_RANGE] = {0.0};
-
-std::string current_RAM;
-std::string current_FPS;
-
-int text_counter = TEXT_UPDATE_FRAME_FREQ;
-
+unsigned int DebugVBO, DebugVAO;
+unsigned int OutlineVBO, OutlineVAO;
 unsigned int UBO;
-unsigned int textVAO, textVBO;
 
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+unsigned int ChunksQueued = 0;
+unsigned int IMAGE_SIZE = 0;
 
-bool wireframe = false;
-bool toggleWireframe = false;
+double DeltaTime = 0.0;
+double LastFrame = 0.0;
+
+bool Wireframe = false;
+bool ToggleWireframe = false;
+
+bool gamePaused = false;
+bool MouseEnabled = false;
+
+bool ChunkMapBusy = false;
+bool SunlightQueueBusy = false;
 
 Player player = Player();
+Chat chat = Chat();
+Inventory inventory = Inventory();
 
-std::map<char, Character> Characters;
+Shader* shader;
+Shader* outlineShader;
+Shader* modelShader;
+
+int modelMatrixLocation;
+int diffuseTextureLocation;
+
+GLFWwindow* Window;
+
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
-std::vector<Chunk*> ChunkQueue;
 
-void Generate_Chunk();
+void Init_GL();
+void Init_Textures();
+void Init_Shaders();
+void Init_Buffers();
+void Init_Rendering();
 
-void Draw_UI(Shader shader, float deltaTime);
-void Render_Scene(Shader shader, Shader outline);
+void Render_Scene();
 
-void Init_Text(Shader shader);
-void Render_Text(Shader shader, std::string text, float x, float y, float scale, glm::vec3 color);
+unsigned int Load_Texture(std::string image_path);
 
-unsigned int loadTexture(std::string image);
-std::string getMemoryUsage();
-std::string formatVector(glm::vec3 vector, bool tuple = true, std::string separator = ", ");
+void Extend(std::vector<float>& storage, std::vector<float> input);
+
+void BackgroundThread();
+
+void Exit();
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void text_proxy(GLFWwindow* window, unsigned int codepoint);
 void mouse_proxy(GLFWwindow* window, double posX, double posY);
 void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
 void click_proxy(GLFWwindow* window, int button, int action, int mods);

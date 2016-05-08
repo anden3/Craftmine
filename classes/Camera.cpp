@@ -1,14 +1,6 @@
 #include "Camera.h"
 
-static const float DEFAULT_FOV = 90.0f;
-
 Camera::Camera() {
-    Position = glm::vec3(0.0f);
-
-    Yaw = 270.0f;
-    Pitch = 0.0f;
-    Zoom = DEFAULT_FOV;
-
     UpdateCameraVectors();
 }
 
@@ -19,9 +11,9 @@ glm::mat4 Camera::GetViewMatrix() {
 void Camera::UpdateCameraVectors() {
     glm::vec3 front;
 
-    front.x = (float) (cos(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
-    front.y = (float) sin(glm::radians(Pitch));
-    front.z = (float) (sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
+    front.x = float(cos(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
+    front.y = float(sin(glm::radians(Pitch)));
+    front.z = float(sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
 
     FrontDirection = glm::normalize(glm::vec3(front.x, 0, front.z));
     RightDirection = glm::vec3(-FrontDirection.z, 0, FrontDirection.x);
