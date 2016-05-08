@@ -12,6 +12,7 @@ int main() {
     Init_Buffers();
 	Init_Rendering();
     
+    player.Init_Model();
     player.Init_Holding();
     
 	std::thread chunkGeneration(BackgroundThread);
@@ -27,12 +28,15 @@ int main() {
         
         if (!MouseEnabled && !chat.Focused) {
             player.Move(float(DeltaTime));
+            Entity::Update(DeltaTime);
         }
 		
 		Render_Scene();
+        Entity::Draw();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         
+        player.Draw_Model();
         player.Draw_Holding();
         UI::Draw();
         

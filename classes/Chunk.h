@@ -83,6 +83,7 @@ public:
     
     std::vector<float> VBOData;
     std::queue<LightNode> LightQueue;
+    std::queue<LightNode> LightRemovalQueue;
     
     bool Generated = false;
     bool Meshed = false;

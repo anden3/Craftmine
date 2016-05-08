@@ -16,15 +16,14 @@ const float VOLUME = 0.1f;
 
 const float HITSCAN_STEP_SIZE = 0.1f;
 
-const float GRAVITY = 0.004f;
 const float JUMP_HEIGHT = 0.1f;
 
 const int TORCH_LIGHT_LEVEL = 12;
 
-const bool CONSTRAIN_PITCH = true;
+const float ATTRACT_RANGE = 4.0f;
+const float PICKUP_RANGE = 1.5f;
+const float ATTRACT_SPEED = 1.0f;
 
-std::queue<LightNode> lightQueue;
-std::queue<LightNode> lightRemovalQueue;
 std::set<Chunk*> lightMeshingList;
 
 glm::vec3 lastChunk(-5);
@@ -47,22 +46,79 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     return elements;
 }
 
+void Upload_Data(const unsigned int vbo, const Data &data) {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Extend(Data &storage, const Data input) {
+    for (auto const &object : input) {
+        storage.push_back(object);
+    }
+}
+
 void Player::Init_Model() {
+    Data data;
+    
+    glm::vec2 texPosition = textureCoords[5];
+    static float textureStep = (1.0f / 16.0f);
+    
+    float texStartX = textureStep * (texPosition.x - 1.0f);
+    float texStartY = textureStep * (texPosition.y - 1.0f);
+    
+    for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+            Extend(data, Data {vertices[i][j][0] - 0.5f, vertices[i][j][1] - 0.5f + CAMERA_HEIGHT, vertices[i][j][2] - 0.5f});
+            
+            if (CurrentBlock == 2) {
+                data.push_back(textureStep * (grassTextures[i].x - 1.0f) + tex_coords[i][j][0] * textureStep);
+                data.push_back(textureStep * (grassTextures[i].y - 1.0f) + tex_coords[i][j][1] * textureStep);
+            }
+            else {
+                data.push_back(texStartX + tex_coords[i][j][0] * textureStep);
+                data.push_back(texStartY + tex_coords[i][j][1] * textureStep);
+            }
+        }
+    }
+    
+    ModelVertices = int(data.size() / 5);
+    
     glGenVertexArrays(1, &ModelVAO);
     glGenBuffers(1, &ModelVBO);
     
     glBindVertexArray(ModelVAO);
+    
     glBindBuffer(GL_ARRAY_BUFFER, ModelVBO);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)0);
+    
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-void Player::Mesh_Model() {
+void Player::Draw_Model() {
+    modelShader->Bind();
     
+    glm::mat4 model;
+    
+    model = glm::translate(model, WorldPos);
+    model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
+    
+    glUniform1i(glGetUniformLocation(modelShader->Program, "lightLevel"), LightLevel);
+    
+    glUniformMatrix4fv(glGetUniformLocation(modelShader->Program, "model"), 1, false, glm::value_ptr(model));
+    
+    glBindVertexArray(ModelVAO);
+    glDrawArrays(GL_TRIANGLES, 0, ModelVertices);
+    glBindVertexArray(0);
+    
+    modelShader->Unbind();
 }
 
 void Player::Init_Holding() {
@@ -111,7 +167,6 @@ void Player::Mesh_Holding() {
     }
     
     Upload_Data(HoldingVBO, data);
-    
     HoldingVertices = int(data.size() / 5);
 }
 
@@ -131,17 +186,11 @@ void Player::Draw_Holding() {
     offsetRight *= 0.5;
     
     model = glm::translate(model, WorldPos + offsetFront + offsetRight + glm::vec3(0, 0.5, 0));
-    model = glm::rotate(model, float(glm::radians(360.0f - Cam.Yaw - 90.0f)), glm::vec3(0, 1, 0));
+    model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
     model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
     
-    if (Cam.Yaw > 360) {
-        Cam.Yaw -= 360;
-    }
-    
-    if (Cam.Yaw < 0) {
-        Cam.Yaw += 360;
-    }
-    
+    glUniform1i(glGetUniformLocation(modelShader->Program, "lightLevel"), LightLevel);
+
     glUniformMatrix4fv(glGetUniformLocation(modelShader->Program, "model"), 1, false, glm::value_ptr(model));
     
     glBindVertexArray(HoldingVAO);
@@ -211,12 +260,32 @@ void Player::Move(float deltaTime, bool update) {
         ColDetection();
 	}
     
+    Check_Pickup();
+    
     if (update || WorldPos != prevPos) {
         std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(WorldPos);
         CurrentChunk = chunkPos[0];
         CurrentTile = chunkPos[1];
         
+        if (Exists(CurrentChunk)) {
+            LightLevel = ChunkMap[CurrentChunk]->Get_Light(CurrentTile);
+            
+            if (LightLevel == 0) {
+                if (WorldPos.y >= topBlocks[glm::vec2(CurrentChunk.x, CurrentChunk.z)][glm::vec2(CurrentTile.x, CurrentTile.z)]) {
+                    LightLevel = SUN_LIGHT_LEVEL;
+                }
+            }
+        }
+        
         Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
+        
+        if (ThirdPerson) {
+            glm::vec3 frontDir = Cam.FrontDirection;
+            frontDir *= -2;
+            
+            Cam.Position += glm::vec3(0, 2, 0) + frontDir;
+        }
+        
         listener.Set_Position(Cam.Position);
         
         std::vector<glm::vec3> hit = Hitscan();
@@ -238,10 +307,72 @@ void Player::Move(float deltaTime, bool update) {
     }
 }
 
+void Player::Check_Pickup() {
+    glm::vec3 playerCenter = WorldPos + glm::vec3(0, 1, 0);
+    
+    std::vector<EntityInstance*>::iterator it = Entities.begin();
+    
+    while (it != Entities.end()) {
+        if (!(*it)->Can_Move) {
+            ++it;
+            continue;
+        }
+        
+        float dist = glm::distance((*it)->Position, playerCenter);
+        
+        if (dist < PICKUP_RANGE) {
+            int blockType = (*it)->Type;
+            
+            if (blockType == 2) {
+                blockType = 3;
+            }
+            
+            inventory.Add_Stack(blockType, (*it)->Size);
+            CurrentBlock = inventory.Get_Info().first;
+            Mesh_Holding();
+            
+            delete *it;
+            it = Entities.erase(it);
+        }
+        else if (dist < ATTRACT_RANGE && (*it)->Size > 0) {
+            glm::vec3 vector = glm::normalize(playerCenter - (*it)->Position);
+            vector *= (ATTRACT_SPEED * (ATTRACT_RANGE - dist));
+            
+            (*it)->Velocity.x += vector.x;
+            (*it)->Velocity.z += vector.z;
+            
+            ++it;
+        }
+        else {
+            ++it;
+        }
+    }
+    
+    if (CurrentBlock == 0 && inventory.Get_Info().first) {
+        CurrentBlock = inventory.Get_Info().first;
+        Mesh_Holding();
+    }
+}
+
 void Player::Teleport(glm::vec3 pos) {
     Velocity = glm::vec3(0);
     WorldPos = pos;
     Move(0.0f, true);
+}
+
+void Player::Drop_Item() {
+    if (CurrentBlock != 0) {
+        inventory.Decrease_Size();
+        
+        glm::vec3 position = Cam.Front;
+        
+        glm::vec3 velocityVector = glm::vec3(Cam.Front.x, 0, Cam.Front.z);
+        velocityVector *= 2;
+        
+        Entity::Spawn(WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0) + position, CurrentBlock, velocityVector);
+        CurrentBlock = inventory.Get_Info().first;
+        Mesh_Holding();
+    }
 }
 
 void Player::ColDetection() {
@@ -292,46 +423,24 @@ void Player::ColDetection() {
     }
 }
 
-void Process_Light_Queue() {
-    if (lightQueue.empty()) {
-        return;
-    }
+void Player::Place_Light(int lightLevel) {
+    ChunkMap[LookingAirChunk]->Set_Light(LookingAirTile, lightLevel);
+    ChunkMap[LookingAirChunk]->LightQueue.emplace(LookingAirChunk, LookingAirTile);
     
-    while (!lightQueue.empty()) {
-        LightNode node = lightQueue.front();
-        glm::vec3 chunk = node.Chunk;
-        glm::vec3 tile = node.Tile;
-        lightQueue.pop();
-        
-        int lightLevel = ChunkMap[chunk]->Get_Light(tile);
-        bool underground = !ChunkMap[chunk]->Get_Air(tile);
-        
-        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
-        
-        for (auto const &neighbor : neighbors) {
-            if (!Exists(neighbor.first)) {
-                continue;
-            }
-            
-            Chunk* neighborChunk = ChunkMap[neighbor.first];
-            
-            if (!neighborChunk->Get_Block(neighbor.second)) continue;
-            if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-            if (neighborChunk->Get_Top(neighbor.second)) continue;
-            if (neighborChunk->Get_Light(neighbor.second) + 2 >= lightLevel) continue;
-            
-            neighborChunk->Set_Light(neighbor.second, lightLevel - 1);
-            lightQueue.emplace(neighbor.first, neighbor.second);
-            lightMeshingList.insert(neighborChunk);
-        }
-    }
-    
-    for (auto const &ch : lightMeshingList) {
-        ch->Mesh();
-    }
+    ChunkMap[LookingAirChunk]->Light();
+    ChunkMap[LookingAirChunk]->Mesh();
 }
 
-void Process_Light_Removal_Queue() {
+void Player::Remove_Light() {
+    std::queue<LightNode> lightRemovalQueue;
+    
+    ChunkMap[LookingChunk]->LightRemovalQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
+    ChunkMap[LookingChunk]->Set_Light(LookingTile, 0);
+    
+    ChunkMap[LookingChunk]->Light();
+    ChunkMap[LookingChunk]->Mesh();
+    
+    /*
     while (!lightRemovalQueue.empty()) {
         LightNode node = lightRemovalQueue.front();
         glm::vec3 chunk = node.Chunk;
@@ -349,7 +458,7 @@ void Process_Light_Removal_Queue() {
             }
             
             Chunk* neighborChunk = ChunkMap[neighbor.first];
-                
+            
             if (!neighborChunk->Get_Block(neighbor.second)) continue;
             if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
             
@@ -362,27 +471,19 @@ void Process_Light_Removal_Queue() {
                 lightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
             }
             else if (neighborLight >= lightLevel) {
+                neighborChunk->Set_Light(neighbor.second, neighborLight);
+                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
+                
                 lightMeshingList.insert(neighborChunk);
-                lightQueue.emplace(neighbor.first, neighbor.second, neighborLight);
             }
         }
     }
     
-    Process_Light_Queue();
-}
-
-void Player::Place_Torch() {
-    ChunkMap[LookingAirChunk]->Set_Light(LookingAirTile, TORCH_LIGHT_LEVEL);
-    lightQueue.emplace(LookingAirChunk, LookingAirTile, TORCH_LIGHT_LEVEL);
-    
-    Process_Light_Queue();
-}
-
-void Player::Remove_Torch() {
-    lightRemovalQueue.emplace(LookingChunk, LookingTile, ChunkMap[LookingChunk]->Get_Light(LookingTile));
-    ChunkMap[LookingChunk]->Set_Light(LookingTile, 0);
-    
-    Process_Light_Removal_Queue();
+    for (auto const &chunk : lightMeshingList) {
+        chunk->Light();
+        chunk->Mesh();
+    }
+    */
 }
 
 std::vector<glm::vec3> Player::Hitscan() {
@@ -432,19 +533,26 @@ void Player::KeyHandler(int key, int action) {
                 inventory.Mouse_Handler();
             }
             
-            if (inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
-                CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
-            }
-            
+            CurrentBlock = inventory.Get_Info().first;
             Mesh_Holding();
         }
         
+        if (key == GLFW_KEY_Q) {
+            Drop_Item();
+        }
+        
+        if (key == GLFW_KEY_V) {
+            ThirdPerson = !ThirdPerson;
+            Move(0.0f, true);
+        }
+        
+        // Pressing a number key
         if (!inventory.Is_Open) {
             for (int i = 0; i < 10; i++) {
                 if (key == NumKeys[i]) {
                     inventory.ActiveToolbarSlot = i;
                     inventory.Switch_Slot();
-                    CurrentBlock = inventory.Get_Info(i).first;
+                    CurrentBlock = inventory.Get_Info().first;
                     Mesh_Holding();
                     break;
                 }
@@ -480,14 +588,20 @@ void Player::MouseHandler(double posX, double posY) {
     Cam.Yaw += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
     Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
 
-    if (CONSTRAIN_PITCH) {
-        if (Cam.Pitch > 89.9) {
-            Cam.Pitch = 89.9;
-        }
-
-        if (Cam.Pitch < -89.9) {
-            Cam.Pitch = -89.9;
-        }
+    if (Cam.Pitch > 89.9) {
+        Cam.Pitch = 89.9;
+    }
+    
+    if (Cam.Pitch < -89.9) {
+        Cam.Pitch = -89.9;
+    }
+    
+    if (Cam.Yaw > 360) {
+        Cam.Yaw -= 360;
+    }
+    
+    if (Cam.Yaw < 0) {
+        Cam.Yaw += 360;
     }
     
     LastMousePos = glm::dvec2(posX, posY);
@@ -509,6 +623,13 @@ void Player::MouseHandler(double posX, double posY) {
     else {
         LookingAtBlock = false;
     }
+    
+    if (ThirdPerson) {
+        glm::vec3 frontDir = Cam.FrontDirection;
+        frontDir *= -2;
+        
+        Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT + 2, WorldPos.z) + frontDir;
+    }
 }
 
 void Player::ScrollHandler(double offsetY) {
@@ -524,7 +645,7 @@ void Player::ScrollHandler(double offsetY) {
         }
         
         inventory.Switch_Slot();
-        CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
+        CurrentBlock = inventory.Get_Info().first;
         Mesh_Holding();
     }
 }
@@ -537,23 +658,12 @@ void Player::ClickHandler(int button, int action) {
                 
                 int blockType = lookingChunk->Get_Block(LookingTile);
                 
-                if (blockType == 2) {
-                    inventory.Add_Stack(3, 1);
-                }
-                else {
-                    inventory.Add_Stack(blockType, 1);
-                }
-                
-                if (CurrentBlock == 0 && inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
-                    CurrentBlock = inventory.Get_Info(inventory.ActiveToolbarSlot).first;
-                    Mesh_Holding();
-                }
-                
                 if (blockType == 11) {
-                    Remove_Torch();
+                    Remove_Light();
                 }
                 
                 lookingChunk->Remove_Block(LookingTile);
+                Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType);
             }
         }
 		else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
@@ -575,14 +685,11 @@ void Player::ClickHandler(int button, int action) {
                 if (ChunkMap.count(LookingAirChunk)) {
                     ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
                     
-                    inventory.Decrease_Size(inventory.ActiveToolbarSlot);
-                    
-                    if (!inventory.Get_Info(inventory.ActiveToolbarSlot).first) {
-                        CurrentBlock = 0;
-                    }
+                    inventory.Decrease_Size();
+                    CurrentBlock = inventory.Get_Info().first;
                     
                     if (CurrentBlock == 11) {
-                        Place_Torch();
+                        Place_Light(TORCH_LIGHT_LEVEL);
                     }
                 }
 			}

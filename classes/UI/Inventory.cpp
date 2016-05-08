@@ -37,18 +37,6 @@ Shader* UIShader;
 Shader* UIBorderShader;
 Shader* UITextureShader;
 
-void Upload_Data(const unsigned int vbo, const Data &data) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void Extend(Data &storage, const Data input) {
-    for (auto const &object : input) {
-        storage.push_back(object);
-    }
-}
-
 Data Get_Rect(float x1, float x2, float y1, float y2) {
     return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2};
 }
@@ -203,7 +191,11 @@ void Inventory::Add_Stack(unsigned char type, unsigned int size) {
     }
 }
 
-void Inventory::Decrease_Size(unsigned int slot) {
+void Inventory::Decrease_Size(int slot) {
+    if (slot == -1) {
+        slot = ActiveToolbarSlot;
+    }
+    
     Inv[slot].second--;
     
     if (Inv[slot].second == 0) {
@@ -211,6 +203,14 @@ void Inventory::Decrease_Size(unsigned int slot) {
     }
     
     Mesh();
+}
+
+Stack Inventory::Get_Info(int slot) {
+    if (slot == -1) {
+        slot = ActiveToolbarSlot;
+    }
+    
+    return Inv[slot];
 }
 
 void Inventory::Click_Slot(unsigned int slot, int button) {
