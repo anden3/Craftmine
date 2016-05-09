@@ -267,11 +267,11 @@ void Player::Move(float deltaTime, bool update) {
         CurrentChunk = chunkPos[0];
         CurrentTile = chunkPos[1];
         
-        if (Exists(CurrentChunk)) {
-            LightLevel = ChunkMap[CurrentChunk]->Get_Light(CurrentTile);
+        if (Exists(CurrentChunk) && ChunkMap[CurrentChunk]->Get_Block(CurrentTile - glm::vec3(0, 1, 0)) != 0) {
+            LightLevel = ChunkMap[CurrentChunk]->Get_Light(CurrentTile - glm::vec3(0, 1, 0));
             
             if (LightLevel == 0) {
-                if (WorldPos.y >= topBlocks[glm::vec2(CurrentChunk.x, CurrentChunk.z)][glm::vec2(CurrentTile.x, CurrentTile.z)]) {
+                if (WorldPos.y >= topBlocks[glm::vec2(CurrentChunk.x, CurrentChunk.z)][glm::vec2(CurrentTile.x, CurrentTile.z)] - 1) {
                     LightLevel = SUN_LIGHT_LEVEL;
                 }
             }
@@ -439,51 +439,6 @@ void Player::Remove_Light() {
     
     ChunkMap[LookingChunk]->Light();
     ChunkMap[LookingChunk]->Mesh();
-    
-    /*
-    while (!lightRemovalQueue.empty()) {
-        LightNode node = lightRemovalQueue.front();
-        glm::vec3 chunk = node.Chunk;
-        glm::vec3 tile = node.Tile;
-        short lightLevel = node.LightLevel;
-        lightRemovalQueue.pop();
-        
-        bool underground = !ChunkMap[chunk]->Get_Air(tile);
-        
-        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
-        
-        for (auto const &neighbor : neighbors) {
-            if (!Exists(neighbor.first)) {
-                continue;
-            }
-            
-            Chunk* neighborChunk = ChunkMap[neighbor.first];
-            
-            if (!neighborChunk->Get_Block(neighbor.second)) continue;
-            if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-            
-            int neighborLight = neighborChunk->Get_Light(neighbor.second);
-            
-            if (neighborLight != 0 && neighborLight < lightLevel) {
-                neighborChunk->Set_Light(neighbor.second, 0);
-                
-                lightMeshingList.insert(neighborChunk);
-                lightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
-            }
-            else if (neighborLight >= lightLevel) {
-                neighborChunk->Set_Light(neighbor.second, neighborLight);
-                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
-                
-                lightMeshingList.insert(neighborChunk);
-            }
-        }
-    }
-    
-    for (auto const &chunk : lightMeshingList) {
-        chunk->Light();
-        chunk->Mesh();
-    }
-    */
 }
 
 std::vector<glm::vec3> Player::Hitscan() {

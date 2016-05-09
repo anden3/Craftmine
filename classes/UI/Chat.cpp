@@ -6,9 +6,9 @@
 
 #include <unicode/ustream.h>
 
-#ifdef __APPLE__
-using UnicodeString;
-#endif
+// #ifdef __APPLE__
+// using UnicodeString;
+// #endif
 
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;

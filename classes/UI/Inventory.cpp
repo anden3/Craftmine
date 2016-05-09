@@ -82,7 +82,7 @@ void Inventory::Init_UI() {
     
     // Grey vertical lines
     for (float x = START_X; x <= END_X; x += SLOT_WIDTH) {
-        Extend(gridData, Data {x, START_Y + SLOT_WIDTH + 1.5, x, END_Y});
+        Extend(gridData, Data {x, START_Y + SLOT_WIDTH + 1.5f, x, END_Y});
     }
     
     // Grey horizontal lines
@@ -91,7 +91,7 @@ void Inventory::Init_UI() {
     }
     
     // White horizontal lines
-    Extend(gridData, Data {START_X - 0.5, START_Y + SLOT_WIDTH, END_X, START_Y + SLOT_WIDTH, START_X, START_Y, END_X, START_Y});
+    Extend(gridData, Data {START_X - 0.5f, START_Y + SLOT_WIDTH, END_X, START_Y + SLOT_WIDTH, START_X, START_Y, END_X, START_Y});
     
     // White vertical lines
     for (float x = START_X; x <= END_X; x += SLOT_WIDTH) {
@@ -100,7 +100,7 @@ void Inventory::Init_UI() {
     
     
     Extend(toolbarGridData, Data {
-        TOOLBAR_START_X - 0.5, TOOLBAR_END_Y, TOOLBAR_END_X, TOOLBAR_END_Y, TOOLBAR_START_X, TOOLBAR_START_Y, TOOLBAR_END_X, TOOLBAR_START_Y
+        TOOLBAR_START_X - 0.5f, TOOLBAR_END_Y, TOOLBAR_END_X, TOOLBAR_END_Y, TOOLBAR_START_X, TOOLBAR_START_Y, TOOLBAR_END_X, TOOLBAR_START_Y
     });
     
     for (float x = TOOLBAR_START_X; x <= TOOLBAR_END_X; x += SLOT_WIDTH / 2) {

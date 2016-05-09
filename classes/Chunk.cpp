@@ -6,10 +6,12 @@
 
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
+const float NOISE_DENSITY_CAVE = -0.85f;
 
 bool Seeded = false;
 
 noise::module::Perlin noiseModule;
+noise::module::RidgedMulti ridgedNoise;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
@@ -49,9 +51,12 @@ void Seed() {
     std::uniform_int_distribution<int> uni(0, 10000);
     
     noiseModule.SetSeed(uni(rng));
-    
     noiseModule.SetPersistence(0.5);
     noiseModule.SetOctaveCount(3);
+    
+    ridgedNoise.SetSeed(uni(rng));
+    ridgedNoise.SetOctaveCount(2);
+    ridgedNoise.SetFrequency(5.0);
 }
 
 Chunk::Chunk(glm::vec3 position) {
@@ -120,10 +125,12 @@ void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
 }
 
 void Chunk::Generate() {
-	if (Is_Empty()) {
-        Generate_Empty();
+    /*
+	 if (Is_Empty()) {
+         Generate_Empty();
 		return;
-	}
+	 }
+    */
 
     glm::vec2 topPos = Position.xz();
     
@@ -169,17 +176,27 @@ void Chunk::Generate() {
                     
                     continue;
                 }
+                
+                double noiseValue;
+                float densityThreshold;
+                
+                if (Position.y >= -3) {
+                    noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
+                    densityThreshold = NOISE_DENSITY_BLOCK;
+                }
+                else {
+                    noiseValue = ridgedNoise.GetValue(nx, ny, nz);
+                    densityThreshold = NOISE_DENSITY_CAVE;
+                }
 
-                double noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
-
-                if (noiseValue >= NOISE_DENSITY_BLOCK) {
+                if (noiseValue >= densityThreshold) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
                         if (!topBlocks[topPos].count(block.xz())) {
                             topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
                             TopBlocks.insert(block);
                             
                             Set_Light(block, SUN_LIGHT_LEVEL);
-                            LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
+                            LightQueue.emplace(Position, block);
                             
                             Set_Block(block, 2);
                         }
