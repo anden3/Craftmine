@@ -139,23 +139,43 @@ void Chunk::Generate() {
 
             for (int y = CHUNK_SIZE; y >= -1; y--) {
                 float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
+                
+                glm::ivec3 block(x, y, z);
 
 				glm::bvec3 inChunk = glm::bvec3(
 					x >= 0 && x < CHUNK_SIZE,
 					y >= 0 && y < CHUNK_SIZE,
 					z >= 0 && z < CHUNK_SIZE
 				);
+                
+                if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
+                    int type = ChangedBlocks[Position][block];
+                    
+                    if (type > 0) {
+                        if (!topBlocks[topPos].count(block.xz())) {
+                            topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
+                            TopBlocks.insert(block);
+                            
+                            Set_Light(block, SUN_LIGHT_LEVEL);
+                            LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
+                        }
+                        
+                        Set_Block(block, type);
+                        Blocks.insert(block);
+                    }
+                    else {
+                        UpdateAir(block, inChunk);
+                    }
+                    
+                    continue;
+                }
 
                 double noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
-                
-                glm::ivec3 block(x, y, z);
 
                 if (noiseValue >= NOISE_DENSITY_BLOCK) {
                     if (inChunk.x && inChunk.y && inChunk.z) {
-                        glm::vec2 topBlock(x, z);
-                        
-                        if (!topBlocks[topPos].count(topBlock)) {
-                            topBlocks[topPos][topBlock] = int(Position.y * CHUNK_SIZE + y);
+                        if (!topBlocks[topPos].count(block.xz())) {
+                            topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
                             TopBlocks.insert(block);
                             
                             Set_Light(block, SUN_LIGHT_LEVEL);
@@ -164,7 +184,7 @@ void Chunk::Generate() {
                             Set_Block(block, 2);
                         }
                         else {
-                            int depth = std::abs(topBlocks[topPos][topBlock] - int(Position.y * CHUNK_SIZE + y));
+                            int depth = std::abs(topBlocks[topPos][block.xz()] - int(Position.y * CHUNK_SIZE + y));
                             
                             if (depth > 3) {
                                 Set_Block(block, 1);
@@ -225,6 +245,43 @@ void Chunk::Light(bool flag) {
         UnloadedLightQueue.erase(Position);
     }
     
+    while (!LightRemovalQueue.empty()) {
+        LightNode node = LightRemovalQueue.front();
+        LightRemovalQueue.pop();
+        
+        glm::vec3 chunk = node.Chunk;
+        glm::vec3 tile = node.Tile;
+        short lightLevel = node.LightLevel;
+        
+        bool underground = !ChunkMap[chunk]->Get_Air(tile);
+        
+        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
+        
+        for (auto const &neighbor : neighbors) {
+            if (!Exists(neighbor.first)) {
+                continue;
+            }
+            
+            Chunk* neighborChunk = ChunkMap[neighbor.first];
+            
+            if (!neighborChunk->Get_Block(neighbor.second)) continue;
+            if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
+            
+            int neighborLight = neighborChunk->Get_Light(neighbor.second);
+            
+            if (neighborLight != 0 && neighborLight < lightLevel) {
+                neighborChunk->Set_Light(neighbor.second, 0);
+                neighborChunk->LightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
+                neighborChunk->Meshed = false;
+            }
+            else if (neighborLight >= lightLevel) {
+                neighborChunk->Set_Light(neighbor.second, neighborLight);
+                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
+                neighborChunk->Meshed = false;
+            }
+        }
+    }
+    
     while (!LightQueue.empty()) {
         LightNode node = LightQueue.front();
         LightQueue.pop();
@@ -243,11 +300,11 @@ void Chunk::Light(bool flag) {
                 continue;
             }
             else if (Check_If_Node(neighbor.first, neighbor.second, lightLevel, underground, index == UP)) {
-                if (neighbor.first != Position) {
-                    continue;
-                }
+                ChunkMap[neighbor.first]->LightQueue.emplace(neighbor.first, neighbor.second);
                 
-                LightQueue.emplace(Position, neighbor.second);
+                if (neighbor.first != Position && flag) {
+                    ChunkMap[neighbor.first]->Meshed = false;
+                }
             }
         }
         index++;

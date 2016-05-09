@@ -265,7 +265,7 @@ void Chat::Get_Prev() {
 }
 
 void Chat::Get_Next() {
-    if (HistoryIndex < History.size() - 1) {
+    if (HistoryIndex < History.size() - 1 && History.size() > 0) {
         NewMessage = History[++HistoryIndex];
         Update_Message();
     }

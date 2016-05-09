@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Camera.h"
-#include "Chunk.h"
 #include "Sound.h"
 #include "Chat.h"
 #include "Inventory.h"
@@ -22,8 +21,6 @@ extern bool ChunkMapBusy;
 extern int RenderDistance;
 
 extern Chat chat;
-
-extern Shader* modelShader;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 
@@ -49,6 +46,9 @@ public:
 
     Camera Cam = Camera();
     
+    void Init_Model();
+    void Draw_Model();
+    
     void Init_Holding();
     void Draw_Holding();
 
@@ -71,11 +71,15 @@ private:
 	bool OnGround = false;
 	bool MovedMouse = false;
     bool FirstTime = true;
+    bool ThirdPerson = false;
     
     unsigned int HoldingVAO, HoldingVBO;
     unsigned int ModelVAO, ModelVBO;
     
     int HoldingVertices = 0;
+    int ModelVertices = 0;
+    
+    int LightLevel = SUN_LIGHT_LEVEL;
     
 	float SpeedModifier = 1.0f;
 
@@ -83,18 +87,19 @@ private:
 
 	Listener listener;
     
-    void Init_Model();
-    
-    void Mesh_Model();
     void Mesh_Holding();
     
 	void ColDetection();
 	std::vector<glm::vec3> Hitscan();
+    
+    void Check_Pickup();
+    
+    void Drop_Item();
 
 	void PlaySound(glm::vec3 chunk, glm::vec3 tile);
     
-    void Place_Torch();
-    void Remove_Torch();
+    void Place_Light(int lightLevel);
+    void Remove_Light();
     
     bool Check_Top();
 };

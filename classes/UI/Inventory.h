@@ -22,8 +22,8 @@ extern Shader* UIShader;
 extern Shader* UIBorderShader;
 extern Shader* UITextureShader;
 
-void Upload_Data(const unsigned int vbo, const Data &data);
-void Extend(Data &storage, const Data input);
+extern void Upload_Data(const unsigned int vbo, const Data &data);
+extern void Extend(Data &storage, const Data input);
 
 Data Get_Rect(float startX, float endX, float startY, float endY);
 Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float multiplierY = -1);
@@ -36,13 +36,10 @@ public:
     void Init();
     void Clear();
     
-    void Add_Stack(unsigned char type, unsigned int size);
+    void Add_Stack(unsigned char type, unsigned int size = 1);
+    void Decrease_Size(int slot = -1);
     
-    void Decrease_Size(unsigned int slot);
-    
-    inline Stack Get_Info(unsigned int slot) {
-        return Inv[slot];
-    }
+    Stack Get_Info(int slot = -1);
     
     void Switch_Slot();
     
