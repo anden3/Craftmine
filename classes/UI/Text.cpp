@@ -167,7 +167,7 @@ float Text::Get_String_Width(std::string string) {
 
 std::string Text::Get_String_To_Width(std::string string, float width) {
     float currentWidth = 0;
-    float index = 1;
+    int index = 1;
     
     std::string::const_iterator c;
     

@@ -155,7 +155,7 @@ void Chunk::Generate() {
                         glm::vec2 topBlock(x, z);
                         
                         if (!topBlocks[topPos].count(topBlock)) {
-                            topBlocks[topPos][topBlock] = Position.y * CHUNK_SIZE + y;
+                            topBlocks[topPos][topBlock] = int(Position.y * CHUNK_SIZE + y);
                             TopBlocks.insert(block);
                             
                             Set_Light(block, SUN_LIGHT_LEVEL);
@@ -446,7 +446,7 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
     }
     
     if (Position.y * CHUNK_SIZE + position.y > topBlocks[Position.xz()][position.xz()]) {
-        topBlocks[Position.xz()][position.xz()] = Position.y * CHUNK_SIZE + position.y;
+        topBlocks[Position.xz()][position.xz()] = int(Position.y * CHUNK_SIZE + position.y);
         Set_Light(position, SUN_LIGHT_LEVEL);
     }
 

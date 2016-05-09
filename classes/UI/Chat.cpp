@@ -6,6 +6,10 @@
 
 #include <unicode/ustream.h>
 
+#ifdef __APPLE__
+using UnicodeString;
+#endif
+
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
 const double CURSOR_BLINK_SPEED = 1.0;
@@ -181,7 +185,7 @@ void Chat::Key_Handler(int key) {
 }
 
 void Chat::Input(unsigned int key) {
-    UnicodeString::UnicodeString string((UChar32)key);
+    UnicodeString string((UChar32)key);
     std::string str;
     string.toUTF8String(str);
     
@@ -214,14 +218,14 @@ void Chat::Toggle_Cursor(int opacity) {
     CursorVisible = !CursorVisible;
     
     if (opacity == -1) {
-        opacity = CursorVisible;
+        opacity = int(CursorVisible);
     }
     else {
-        CursorVisible = opacity;
+        CursorVisible = opacity == 1;
     }
     
     Text::Set_Group(TEXT_GROUP);
-    Text::Set_Opacity("cursor", opacity);
+    Text::Set_Opacity("cursor", float(opacity));
     Text::Unset_Group();
 }
 

@@ -14,7 +14,7 @@ extern Shader* UIShader;
 extern Shader* UIBorderShader;
 
 namespace Button {
-    void Add(std::string name, std::string text, Func &function, int x, int y, int w, std::string group = "default");
+    void Add(std::string name, std::string text, Func &function, float x, float y, float w, std::string group = "default");
     void Delete(std::string name);
     void Draw(std::string name);
     

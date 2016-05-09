@@ -49,3 +49,4 @@ Base.lproj
 Info.plist
 *.obj
 *.sbr
+/Release

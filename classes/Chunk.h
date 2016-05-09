@@ -119,7 +119,7 @@ public:
     }
     
     inline bool Get_Top(glm::vec3 pos) {
-        return TopBlocks.count(pos);
+        return TopBlocks.count(pos) > 0;
     }
     inline void Set_Top(glm::vec3 pos, bool set) {
         if (set) {

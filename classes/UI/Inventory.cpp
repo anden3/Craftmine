@@ -7,21 +7,21 @@ const int SLOTS_Y = 6;
 
 const int MAX_STACK_SIZE = 64;
 
-const int START_X = 320;
-const int END_X = 1120;
+const float START_X = 320.0f;
+const float END_X = 1120.0f;
 
-const int START_Y = 220;
-const int END_Y = 700;
+const float START_Y = 220.0f;
+const float END_Y = 700.0f;
 
-const int INV_PAD = 10;
-const int SLOT_PAD = 10;
-const int SLOT_WIDTH = 80;
+const float INV_PAD = 10.0f;
+const float SLOT_PAD = 10.0f;
+const float SLOT_WIDTH = 80.0f;
 
-const int TOOLBAR_START_X = START_X + 200;
-const int TOOLBAR_END_X = END_X - 200;
+const float TOOLBAR_START_X = START_X + 200.0f;
+const float TOOLBAR_END_X = END_X - 200.0f;
 
-const int TOOLBAR_START_Y = 40;
-const int TOOLBAR_END_Y = TOOLBAR_START_Y + SLOT_WIDTH / 2;
+const float TOOLBAR_START_Y = 40.0f;
+const float TOOLBAR_END_Y = TOOLBAR_START_Y + SLOT_WIDTH / 2.0f;
 
 const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
 
@@ -90,7 +90,7 @@ void Inventory::Init_UI() {
     Data toolbarGridData;
     
     // Fix for missing pixel in upper left corner
-    Extend(gridData, Data {START_X - 0.5f, END_Y + 0.5f, START_X + 0.5f, END_Y});
+    Extend(gridData, Data {START_X - 0.5f, END_Y + 0.5f, START_X + 0.5f, float(END_Y)});
     
     // Grey vertical lines
     for (float x = START_X; x <= END_X; x += SLOT_WIDTH) {
@@ -156,7 +156,7 @@ void Inventory::Init_UI() {
 }
 
 void Inventory::Clear() {
-    for (int i = 0; i < Inv.size(); i++) {
+    for (int i = 0; i < int(Inv.size()); i++) {
         Inv[i] = Stack(0, 0);
     }
     
@@ -250,7 +250,7 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
         }
         else if (Inv[slot].first) {
             HoldingStack.first = Inv[slot].first;
-            int amount = ceil(Inv[slot].second / 2.0);
+            int amount = int(ceil(Inv[slot].second / 2.0));
             
             Inv[slot].second -= amount;
             HoldingStack.second = amount;
@@ -288,8 +288,8 @@ void Inventory::Mouse_Handler(double x, double y) {
     
     MousePos = glm::vec2(x, y);
     
-    float mouseX(x);
-    float mouseY(900 - y);
+    float mouseX = float(x);
+    float mouseY = float(900.0f - y);
     
     HoveringSlot = -1;
     
@@ -298,7 +298,7 @@ void Inventory::Mouse_Handler(double x, double y) {
             float startX = float(floor((x - START_X) / SLOT_WIDTH) * SLOT_WIDTH + START_X);
             float startY = float(floor((900 - y - START_Y) / SLOT_WIDTH) * SLOT_WIDTH + START_Y);
             
-            HoveringSlot = (startY - START_Y) / SLOT_WIDTH * SLOTS_X + (startX - START_X) / SLOT_WIDTH;
+            HoveringSlot = int((startY - START_Y) / SLOT_WIDTH) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH);
             
             Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH, startY, startY + SLOT_WIDTH));
         }
@@ -331,13 +331,13 @@ void Inventory::Mesh() {
     
     for (auto const &stack : Inv) {
         if (stack.first) {
-            int startX = START_X + (index % SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
-            int startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
+            float startX = START_X + (index % SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
+			float startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
             
-            int toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH / 2 + SLOT_PAD / 2;
+			float toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH / 2.0f + SLOT_PAD / 2.0f;
             
             if (Is_Open) {
-                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH - SLOT_PAD * 2));
+                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH - SLOT_PAD * 2.0f));
             }
             else {
                 Extend(toolbarData, Get_Vertices(stack.first, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD / 2, SLOT_WIDTH / 2 - SLOT_PAD));
