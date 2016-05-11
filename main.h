@@ -12,6 +12,7 @@ const bool Windows = false;
 #endif
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
+const std::string CONFIG_FILE = "config.conf";
 
 std::map<unsigned char, glm::vec2> textureCoords = {
     {1,  glm::vec2(  2,   1)}, // Stone
@@ -36,20 +37,44 @@ std::map<unsigned char, glm::vec2> textureCoords = {
     {17, glm::vec2(  5,   4)}, // Transparent Leaves
     
     {50, glm::vec2(  1,   6)}, // Torch
+    
+    // Damage Textures
+    {246, glm::vec2( 1,  16)},
+    {247, glm::vec2( 2,  16)},
+    {248, glm::vec2( 3,  16)},
+    {249, glm::vec2( 4,  16)},
+    {250, glm::vec2( 5,  16)},
+    {251, glm::vec2( 6,  16)},
+    {252, glm::vec2( 7,  16)},
+    {253, glm::vec2( 8,  16)},
+    {254, glm::vec2( 9,  16)},
+    {255, glm::vec2(10,  16)}
 };
 
-int SCREEN_WIDTH = 1920;
-int SCREEN_HEIGHT = 1080;
+std::map<unsigned char, float> blockHardness = {
+    {1, 1.5f},
+    {2, 0.5f},
+    {3, 0.5f}
+};
 
-int RenderDistance = 2;
+int Fullscreen;
+int SCREEN_WIDTH, SCREEN_HEIGHT;
+int VSync;
 
-bool VSync = true;
+int RenderDistance;
+
+std::map<std::string, int*> Options = {
+    {"RenderDistance", &RenderDistance},
+    {"FullScreen", &Fullscreen},
+    {"WindowResX", &SCREEN_WIDTH},
+    {"WindowResY", &SCREEN_HEIGHT},
+    {"VSync", &VSync}
+};
 
 unsigned int DebugVBO, DebugVAO;
 unsigned int OutlineVBO, OutlineVAO;
 unsigned int UBO;
 
-unsigned int ChunksQueued = 0;
 unsigned int IMAGE_SIZE = 0;
 
 double DeltaTime = 0.0;
@@ -78,6 +103,8 @@ int diffuseTextureLocation;
 GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
+
+void Parse_Config();
 
 void Init_GL();
 void Init_Textures();

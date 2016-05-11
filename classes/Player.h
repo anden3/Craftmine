@@ -24,6 +24,14 @@ extern Chat chat;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 
+void Extend(Data &storage, const Data input);
+
+void Init_3D_Textured(unsigned int &vao, unsigned int &vbo);
+Data Create_Textured_Cube(const int type, glm::vec3 offset = glm::vec3(-0.5));
+
+void Upload_Data(const unsigned int vbo, const Data &data);
+void Draw_Cube(unsigned const int vao, const glm::mat4 model, int vertices = 36);
+
 class Player {
 public:
     glm::vec3 WorldPos = glm::vec3(0.0f);
@@ -46,11 +54,14 @@ public:
 
     Camera Cam = Camera();
     
-    void Init_Model();
-    void Draw_Model();
+    void Init();
     
-    void Init_Holding();
+    void Mesh_Holding();
+    void Mesh_Damage(int index);
+    
+    void Draw_Model();
     void Draw_Holding();
+    void Draw_Damage();
 
 	void PollSounds();
     void Move(float deltaTime, bool update = false);
@@ -75,19 +86,23 @@ private:
     
     unsigned int HoldingVAO, HoldingVBO;
     unsigned int ModelVAO, ModelVBO;
-    
-    int HoldingVertices = 0;
-    int ModelVertices = 0;
+    unsigned int DamageVAO, DamageVBO;
     
     int LightLevel = SUN_LIGHT_LEVEL;
     
 	float SpeedModifier = 1.0f;
+    
+    double MouseTimer = 0.0;
 
 	glm::vec3 Velocity;
 
 	Listener listener;
     
-    void Mesh_Holding();
+    void Init_Model();
+    void Init_Holding();
+    void Init_Damage();
+    
+    void Init_Sounds();
     
 	void ColDetection();
 	std::vector<glm::vec3> Hitscan();
@@ -95,8 +110,9 @@ private:
     void Check_Pickup();
     
     void Drop_Item();
+    void Break_Block();
 
-	void PlaySound(glm::vec3 chunk, glm::vec3 tile);
+    void Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile);
     
     void Place_Light(int lightLevel);
     void Remove_Light();

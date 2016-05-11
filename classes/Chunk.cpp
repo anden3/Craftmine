@@ -11,6 +11,7 @@ const float NOISE_DENSITY_CAVE = -0.85f;
 bool Seeded = false;
 
 noise::module::Perlin noiseModule;
+noise::module::RidgedMulti oreNoise;
 noise::module::RidgedMulti ridgedNoise;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
@@ -50,11 +51,16 @@ void Seed() {
     std::mt19937 rng(rd());
     std::uniform_int_distribution<int> uni(0, 10000);
     
-    noiseModule.SetSeed(uni(rng));
+    int seed = uni(rng);
+    
+    noiseModule.SetSeed(seed);
     noiseModule.SetPersistence(0.5);
     noiseModule.SetOctaveCount(3);
     
-    ridgedNoise.SetSeed(uni(rng));
+    oreNoise.SetSeed(seed);
+    oreNoise.SetFrequency(5.0);
+    
+    ridgedNoise.SetSeed(seed);
     ridgedNoise.SetOctaveCount(2);
     ridgedNoise.SetFrequency(5.0);
 }
@@ -65,44 +71,6 @@ Chunk::Chunk(glm::vec3 position) {
     }
     
     Position = position;
-}
-
-bool Chunk::Is_Empty() {
-    int values[3] = {int(Position.x) * CHUNK_SIZE, int(Position.y) * CHUNK_SIZE, int(Position.z) * CHUNK_SIZE};
-    int parameters[3][3][2] = {0};
-    int keys[3][3] = { {0, 1, 2}, {1, 0, 2}, {1, 2, 0} };
-    
-    int v[6] = {0};
-    
-    for (int a = 0; a < 3; a++) {
-        parameters[a][0][0] = values[keys[a][0]] / CHUNK_ZOOM;;
-        parameters[a][0][1] = (values[keys[a][0]] + (CHUNK_SIZE - 1)) / CHUNK_ZOOM;
-        
-        for (int b = 0; b < CHUNK_SIZE; b++) {
-            parameters[a][1][0] = (values[keys[a][1]] + b) / CHUNK_ZOOM;
-            parameters[a][1][1] = (values[keys[a][1]] + b) / CHUNK_ZOOM;
-            
-            for (int c = 0; c < CHUNK_SIZE; c++) {
-                parameters[a][2][0] = (values[keys[a][2]] + c) / CHUNK_ZOOM;
-                parameters[a][2][1] = (values[keys[a][2]] + c) / CHUNK_ZOOM;
-                
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 2; j++) {
-                        v[i * 2 + j] = parameters[a][keys[a][i]][j];
-                    }
-                }
-                
-                bool isAir1 = noiseModule.GetValue(v[0], v[2], v[4]) - v[2] * 2 < NOISE_DENSITY_BLOCK;
-                bool isAir2 = noiseModule.GetValue(v[1], v[3], v[5]) - v[3] * 2 < NOISE_DENSITY_BLOCK;
-                
-                if (isAir1 || isAir2) {
-                    return false;
-                }
-            }
-        }
-    }
-    
-	return true;
 }
 
 void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
@@ -125,13 +93,6 @@ void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
 }
 
 void Chunk::Generate() {
-    /*
-	 if (Is_Empty()) {
-         Generate_Empty();
-		return;
-	 }
-    */
-
     glm::vec2 topPos = Position.xz();
     
     if (Position.y == 3) {

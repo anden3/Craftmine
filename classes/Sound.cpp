@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-const int MAX_SOUND_BUFFER_SIZE = 1024000;
+const int MAX_SOUND_BUFFER_SIZE = 1048576; // 1 MiB
 
 Listener::Listener() {
 	Device = alcOpenDevice(NULL);
@@ -12,13 +12,16 @@ Listener::Listener() {
 }
 
 void Listener::Set_Position(glm::vec3 pos) {
-	Position = pos;
 	alListener3f(AL_POSITION, pos.x, pos.y, pos.z);
 }
 
-void Listener::Set_Orientation(glm::vec3 orientation) {
-	Orientation = orientation;
-	alListener3f(AL_ORIENTATION, orientation.x, orientation.y, orientation.z);
+void Listener::Set_Orientation(glm::vec3 frontVector, glm::vec3 upVector) {
+    float vec[6] = {
+        frontVector.x, frontVector.y, frontVector.z,
+        upVector.x, upVector.y, upVector.z
+    };
+    
+	alListenerfv(AL_ORIENTATION, vec);
 }
 
 void Listener::Delete() {
@@ -32,6 +35,8 @@ Sound::Sound(std::string sound) {
 	Name = sound;
 
 	std::string path = "sounds/" + sound + ".ogg";
+    
+    printf("%s\n", path.c_str());
 
 	std::vector<char> data = Load_OGG(path);
 
@@ -50,13 +55,14 @@ std::vector<char> Sound::Load_OGG(std::string path) {
 	ov_open(file, &oggFile, NULL, 0);
 
 	vorbis_info* pInfo = ov_info(&oggFile, -1);
-
-	if (pInfo->channels == 1) {
-		Format = AL_FORMAT_MONO16;
-	}
-	else {
-		Format = AL_FORMAT_STEREO16;
-	}
+    
+    if (pInfo == NULL) {
+        return std::vector<char> {'0'};
+    }
+    
+    printf("Path: %s\n", path.c_str());
+    
+    Format = (pInfo->channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 
 	int bitStream;
 	long bytes;
@@ -71,9 +77,10 @@ std::vector<char> Sound::Load_OGG(std::string path) {
 
 	Frequency = int(pInfo->rate);
 	Length = ALsizei(buffer.size());
-	Duration = (float)Length / Frequency / 2;
+	Duration = float(Length) / Frequency / 2;
 
 	ov_clear(&oggFile);
+    fclose(file);
 
 	return buffer;
 }
@@ -111,7 +118,6 @@ void SoundPlayer::Set_Loop(bool loop) {
 }
 
 void SoundPlayer::Set_Position(glm::vec3 pos) {
-	Position = pos;
 	alSource3f(Source, AL_POSITION, pos.x, pos.y, pos.z);
 }
 

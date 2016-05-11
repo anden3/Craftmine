@@ -11,7 +11,7 @@
 
 extern const bool Windows;
 
-extern bool VSync;
+extern int VSync;
 extern bool Wireframe;
 extern bool ToggleWireframe;
 extern bool MouseEnabled;

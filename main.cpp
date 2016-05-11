@@ -1,8 +1,15 @@
 #include "main.h"
 
+#include <sstream>
+#include <fstream>
+
 #include <SOIL/SOIL.h>
 
 int main() {
+    glfwInit();
+    
+    Parse_Config();
+    
 	Init_GL();
 	Init_Textures();
 	
@@ -12,8 +19,7 @@ int main() {
     Init_Buffers();
 	Init_Rendering();
     
-    player.Init_Model();
-    player.Init_Holding();
+    player.Init();
     
 	std::thread chunkGeneration(BackgroundThread);
     
@@ -24,7 +30,7 @@ int main() {
 
 		glfwPollEvents();
 
-		// player.PollSounds();
+		player.PollSounds();
         
         if (!MouseEnabled && !chat.Focused) {
             player.Move(float(DeltaTime));
@@ -32,6 +38,8 @@ int main() {
         }
 		
 		Render_Scene();
+        player.Draw_Damage();
+        
         Entity::Draw();
         
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -53,24 +61,53 @@ int main() {
     return 0;
 }
 
+void Parse_Config() {
+    std::stringstream file_content;
+    
+    std::ifstream file(CONFIG_FILE);
+    file_content << file.rdbuf();
+    file.close();
+    
+    std::string line;
+    
+    while (std::getline(file_content, line)) {
+        std::istringstream is_line(line);
+        std::string key, value;
+        
+        std::getline(is_line, key, '=');
+        std::getline(is_line, value);
+        
+        if (key == "") {
+            continue;
+        }
+        
+        *Options[key] = std::stoi(value);
+    }
+}
+
 void Init_GL() {
-	glfwInit();
-
-	glfwWindowHint(GLFW_DECORATED, false);
-	glfwWindowHint(GLFW_RESIZABLE, false);
-
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
+    glfwWindowHint(GLFW_RESIZABLE, false);
     
-    SCREEN_WIDTH = videoMode->width;
-    SCREEN_HEIGHT = videoMode->height;
-
-	Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", monitor, nullptr);
+    if (Fullscreen) {
+        glfwWindowHint(GLFW_DECORATED, false);
+        
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
+        
+        SCREEN_WIDTH = videoMode->width;
+        SCREEN_HEIGHT = videoMode->height;
+        
+        Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", monitor, nullptr);
+    }
+    else {
+        glfwWindowHint(GLFW_DECORATED, true);
+        Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", nullptr, nullptr);
+    }
 
 	glfwSetWindowPos(Window, 0, 0);
 
@@ -183,6 +220,7 @@ void Init_Rendering() {
     glUniform1i(glGetUniformLocation(modelShader->Program, "tex"), 0);
     modelShader->Unbind();
 }
+
 void Render_Scene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
@@ -229,9 +267,13 @@ void Render_Scene() {
         model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile));
         glUniformMatrix4fv(glGetUniformLocation(outlineShader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         
+        glDisable(GL_DEPTH_TEST);
+        
         glBindVertexArray(OutlineVAO);
         glDrawArrays(GL_LINES, 0, 24);
         glBindVertexArray(0);
+        
+        glEnable(GL_DEPTH_TEST);
         
         outlineShader->Unbind();
     }

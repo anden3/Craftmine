@@ -38,6 +38,7 @@ public:
 
 extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 extern std::map<unsigned char, glm::vec2> textureCoords;
+extern std::map<unsigned char, float> blockHardness;
 
 extern std::vector<glm::vec2> grassTextures;
 
@@ -132,7 +133,6 @@ public:
     }
     
 private:
-    bool Is_Empty();
     void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
     int GetAO(glm::vec3 block, int face, int offset);
     

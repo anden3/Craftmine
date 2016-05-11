@@ -21,16 +21,13 @@ public:
 	Listener();
 
 	void Set_Position(glm::vec3 pos);
-	void Set_Orientation(glm::vec3 orientation);
+    void Set_Orientation(glm::vec3 frontVector, glm::vec3 upVector);
 
 	void Delete();
 
 private:
 	ALCdevice* Device;
 	ALCcontext* Context;
-
-	glm::vec3 Position = glm::vec3(0);
-	glm::vec3 Orientation = glm::vec3(0);
 };
 
 class Sound {
@@ -38,7 +35,7 @@ public:
 	std::string Name;
 
 	ALsizei Length;
-	unsigned int Buffer = 0;
+	unsigned int Buffer;
 
 	Sound(std::string sound);
 
@@ -89,7 +86,5 @@ private:
 
 	bool Loop = false;
 	
-	glm::vec3 Position = glm::vec3(0);
-
 	std::vector<Sound> Queue;
 };

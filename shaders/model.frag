@@ -5,7 +5,7 @@ in vec2 TexCoords;
 out vec4 FragColor;
 
 uniform sampler2D tex;
-uniform int lightLevel = 15;
+uniform int lightLevel;
 
 void main() {
     vec4 text = texture(tex, TexCoords);
