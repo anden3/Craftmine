@@ -20,7 +20,7 @@ std::map<unsigned char, glm::vec2> textureCoords = {
     {2,  glm::vec2(  1,   1)}, // Grass Top
     {3,  glm::vec2(  3,   1)}, // Dirt
     {4,  glm::vec2(  1,   2)}, // Cobblestone
-    {5,  glm::vec2(  1,   5)}, // Wooden Planks
+    {5,  glm::vec2(  5,   1)}, // Wooden Planks
     
     {7,  glm::vec2(  2,   2)}, // Bedrock
     
@@ -34,7 +34,9 @@ std::map<unsigned char, glm::vec2> textureCoords = {
     {15, glm::vec2(  3,   2)}, // Iron Ore
     {16, glm::vec2(  3,   3)}, // Coal Ore
     
-    {17, glm::vec2(  5,   4)}, // Transparent Leaves
+    {17, glm::vec2(  5,   2)}, // Oak Log
+    
+    {18, glm::vec2(  5,   4)}, // Transparent Leaves
     
     {50, glm::vec2(  1,   6)}, // Torch
     
@@ -55,6 +57,16 @@ std::map<unsigned char, float> blockHardness = {
     {1, 1.5f},
     {2, 0.5f},
     {3, 0.5f}
+};
+
+std::map<std::string, std::vector<unsigned char>> BlockSounds = {
+    {"cloth", std::vector<unsigned char> {}},
+    {"dirt", std::vector<unsigned char> {2, 3}},
+    {"gravel", std::vector<unsigned char> {13}},
+    {"sand", std::vector<unsigned char> {12}},
+    {"snow", std::vector<unsigned char> {}},
+    {"stone", std::vector<unsigned char> {1, 4, 7, 14, 15, 16}},
+    {"wood", std::vector<unsigned char> {5}}
 };
 
 int Fullscreen;

@@ -35,9 +35,6 @@ Sound::Sound(std::string sound) {
 	Name = sound;
 
 	std::string path = "sounds/" + sound + ".ogg";
-    
-    printf("%s\n", path.c_str());
-
 	std::vector<char> data = Load_OGG(path);
 
 	alGenBuffers(1, &Buffer);
@@ -59,8 +56,6 @@ std::vector<char> Sound::Load_OGG(std::string path) {
     if (pInfo == NULL) {
         return std::vector<char> {'0'};
     }
-    
-    printf("Path: %s\n", path.c_str());
     
     Format = (pInfo->channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 

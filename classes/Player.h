@@ -6,14 +6,7 @@
 #include "Inventory.h"
 #include "Entity.h"
 
-enum Directions {
-    LEFT,
-    RIGHT,
-    DOWN,
-    UP,
-    BACK,
-    FRONT
-};
+enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
 extern bool MouseEnabled;
 extern bool ChunkMapBusy;
@@ -21,6 +14,8 @@ extern bool ChunkMapBusy;
 extern int RenderDistance;
 
 extern Chat chat;
+
+extern std::map<std::string, std::vector<unsigned char>> BlockSounds;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 

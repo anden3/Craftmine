@@ -41,6 +41,7 @@ extern std::map<unsigned char, glm::vec2> textureCoords;
 extern std::map<unsigned char, float> blockHardness;
 
 extern std::vector<glm::vec2> grassTextures;
+extern std::vector<glm::vec2> logTextures;
 
 extern float vertices[6][6][3];
 extern float tex_coords[6][6][2];

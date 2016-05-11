@@ -136,6 +136,10 @@ void Init_GL() {
 
 void Init_Textures() {
 	unsigned int atlas = Load_Texture("atlas.png");
+    unsigned int itemAtlas = Load_Texture("itemAtlas.png");
+    
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, itemAtlas);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlas);

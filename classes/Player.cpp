@@ -36,7 +36,6 @@ bool Creative = false;
 int NumKeys[10] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_3, GLFW_KEY_4, GLFW_KEY_5, GLFW_KEY_6, GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9, GLFW_KEY_0};
 
 std::vector<SoundPlayer> soundPlayers;
-
 std::map<std::string, std::vector<Sound>> Sounds;
 
 std::vector<std::string> Split(const std::string &s, char delim) {
@@ -379,6 +378,8 @@ void Player::Check_Pickup() {
                 blockType = 3;
             }
             
+            Play_Sound("pickup", CurrentChunk, CurrentTile);
+            
             inventory.Add_Stack(blockType, (*it)->Size);
             Mesh_Holding();
             
@@ -709,25 +710,30 @@ void Player::Break_Block() {
         Remove_Light();
     }
     
-    Play_Sound("dirt", LookingChunk, LookingTile);
+    for (auto const &types : BlockSounds) {
+        if (std::find(types.second.begin(), types.second.end(), blockType) != types.second.end()) {
+            Play_Sound(types.first, LookingChunk, LookingTile);
+            break;
+        }
+    }
     
     lookingChunk->Remove_Block(LookingTile);
     Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType);
 }
 
 void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
-	SoundPlayer player;
+	SoundPlayer soundPlayer;
 
-	player.Set_Position(Get_World_Pos(chunk, tile));
-	player.Set_Volume(VOLUME);
+	soundPlayer.Set_Position(Get_World_Pos(chunk, tile));
+	soundPlayer.Set_Volume(VOLUME);
     
     std::vector<Sound>::iterator sound = Sounds[type].begin();
     std::advance(sound, std::rand() % Sounds[type].size());
     
-	player.Add((*sound));
-	player.Play();
+	soundPlayer.Add((*sound));
+	soundPlayer.Play();
 
-	soundPlayers.push_back(player);
+	soundPlayers.push_back(soundPlayer);
 }
 
 void Player::RenderChunks() {

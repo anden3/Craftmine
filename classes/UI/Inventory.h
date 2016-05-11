@@ -14,13 +14,28 @@ typedef std::vector<float> Data;
 
 extern std::map<unsigned char, glm::vec2> textureCoords;
 
+extern bool keys[1024];
+
 extern int colorLocation;
 extern int alphaLocation;
 extern int borderColorLocation;
 
+extern int SCREEN_WIDTH, SCREEN_HEIGHT;
+
 extern Shader* UIShader;
 extern Shader* UIBorderShader;
 extern Shader* UITextureShader;
+
+template <typename T>
+double Sum(const std::vector<T> &a) {
+    double sum = 0;
+    
+    for (T const &e : a) {
+        sum += e;
+    }
+    
+    return sum;
+}
 
 extern void Upload_Data(const unsigned int vbo, const Data &data);
 extern void Extend(Data &storage, const Data input);
@@ -51,6 +66,9 @@ public:
 
 private:
     std::vector<Stack> Inv;
+    std::vector<Stack> Craft;
+    
+    Stack CraftingOutput = Stack(0, 0);
     Stack HoldingStack = Stack(0, 0);
     
     glm::vec2 MousePos = glm::vec2(0, 0);
@@ -78,6 +96,7 @@ private:
     void Init_UI();
     
     void Click_Slot(unsigned int slot, int button);
+    void Check_Crafting();
     
     void Swap_Stacks(Stack &a, Stack &b);
 };
