@@ -271,14 +271,10 @@ void Render_Scene() {
         model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile));
         glUniformMatrix4fv(glGetUniformLocation(outlineShader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         
-        glDisable(GL_DEPTH_TEST);
-        
         glBindVertexArray(OutlineVAO);
         glDrawArrays(GL_LINES, 0, 24);
         glBindVertexArray(0);
-        
-        glEnable(GL_DEPTH_TEST);
-        
+                
         outlineShader->Unbind();
     }
 }

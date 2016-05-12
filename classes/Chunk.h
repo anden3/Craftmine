@@ -37,11 +37,10 @@ public:
 };
 
 extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
-extern std::map<unsigned char, glm::vec2> textureCoords;
-extern std::map<unsigned char, float> blockHardness;
+extern std::map<unsigned int, glm::vec2> textureCoords;
+extern std::map<unsigned int, float> blockHardness;
 
-extern std::vector<glm::vec2> grassTextures;
-extern std::vector<glm::vec2> logTextures;
+extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
 
 extern float vertices[6][6][3];
 extern float tex_coords[6][6][2];

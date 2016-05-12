@@ -15,7 +15,7 @@ extern int RenderDistance;
 
 extern Chat chat;
 
-extern std::map<std::string, std::vector<unsigned char>> BlockSounds;
+extern std::map<std::string, std::vector<unsigned int>> BlockSounds;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 

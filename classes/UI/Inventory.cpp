@@ -2,7 +2,10 @@
 
 #include <glm/glm.hpp>
 
-typedef std::vector<unsigned char> Recipe;
+#include <regex>
+
+typedef std::pair<std::regex, Stack> Recipe;
+typedef std::vector<int> RecList;
 
 const int SLOTS_X = 10;
 const int SLOTS_Y = 6;
@@ -16,21 +19,19 @@ float TOOLBAR_START_X, TOOLBAR_END_X;
 float TOOLBAR_START_Y, TOOLBAR_END_Y;
 
 float CRAFTING_START_X, CRAFTING_END_X;
-float CRAFTING_START_Y;
+float CRAFTING_START_Y, CRAFTING_END_Y;
 
 float OUTPUT_START_X, OUTPUT_END_X;
 float OUTPUT_START_Y, OUTPUT_END_Y;
 
-float SLOT_WIDTH;
-
-const float INV_PAD = 10.0f;
-const float SLOT_PAD = 10.0f;
-const float TEXT_PAD = 5.0f;
+float SLOT_WIDTH_X, SLOT_WIDTH_Y;
+float INV_PAD_X, INV_PAD_Y;
+float SLOT_PAD_X, SLOT_PAD_Y;
+float TEXT_PAD_X, TEXT_PAD_Y;
 
 const int OUTPUT_SLOT = SLOTS_X * SLOTS_Y + 10;
 
 const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
-
 const glm::vec3 BORDER_COLOR = glm::vec3(0.5f);
 const glm::vec3 TOOLBAR_COLOR = glm::vec3(1.0f);
 
@@ -43,11 +44,87 @@ Shader* UIShader;
 Shader* UIBorderShader;
 Shader* UITextureShader;
 
-std::map<Recipe, Stack> Recipes_1x1 = {
-    {Recipe {}, Stack(5, 4)}
-};
+Recipe Rec(const RecList &input, const Stack result) {
+    Recipe recipe;
+    recipe.second = result;
+    
+    std::string rgx = "";
+    
+    int index = 0;
+    int multiplier = 1;
+    
+    for (auto const &block : input) {
+        if (block == -1) {
+            if (index == 0) {
+                rgx += "^(0 )*";
+            }
+            else {
+                rgx += "(0 )*$";
+            }
+        }
+        else if (block < -1) {
+            multiplier = std::abs(block);
+        }
+        else {
+            for (int i = 0; i < multiplier; i++) {
+                rgx += std::to_string(block) + " ";
+            }
+            
+            multiplier = 1;
+        }
+        
+        ++index;
+    }
+    
+    recipe.first = std::regex(rgx);
+    
+    return recipe;
+}
 
-std::map<Recipe, Stack> Recipes_1x2 = {};
+std::map<int, std::vector<Recipe>> Recipes = {
+    // -1 indicates any number of empty blocks.
+    // Other negative numbers indicates multiplier on the block after.
+    
+    {1, std::vector<Recipe> {
+        Rec(RecList {-1, 17, -1}, Stack(5, 4)), // Wooden Planks
+    }},
+    
+    {2, std::vector<Recipe> {
+        Rec(RecList {-1, 5, 0, 0, 5, -1},   Stack(280, 4)), // Stick
+        Rec(RecList {-1, 280, 0, 0, 5, -1}, Stack(69,  1)), // Lever
+        Rec(RecList {-1, 263, 0, 0, 280},   Stack(50,  4)), // Torch
+    }},
+    
+    {3, std::vector<Recipe> {
+        Rec(RecList {0, 265, 0, 0, 280, 0, 0, 280, 0}, Stack(258, 1)), // Iron Shovel
+    }},
+    
+    {4, std::vector<Recipe> {
+        Rec(RecList {-1, 5, 5, 0, 5, 5, -1}, Stack(58, 1)), // Crafting Table
+    }},
+    
+    {5, std::vector<Recipe> {
+        Rec(RecList {265, 265, 0, 265, 280, 0, 0, 280, 0}, Stack(258, 1)), // Iron Axe
+        Rec(RecList {-3, 265, 0, 280, 0, 0, 280, 0},       Stack(257, 1)), // Iron Pickaxe
+    }},
+    
+    {6, std::vector<Recipe> {
+        
+    }},
+    
+    {7, std::vector<Recipe> {
+        Rec(RecList {265, 0, 265, 265, 280, 265, 265, 0, 265}, Stack(66, 16)), // Rail
+        Rec(RecList {280, 0, -5, 280, 0, 280},                 Stack(65, 4 )), // Ladder
+    }},
+    
+    {8, std::vector<Recipe> {
+        Rec(RecList {-4, 4, 0, -4, 4}, Stack(61, 1)), // Furnace
+    }},
+    
+    {9, std::vector<Recipe> {
+        
+    }},
+};
 
 Data Get_Rect(float x1, float x2, float y1, float y2) {
     return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2};
@@ -58,9 +135,10 @@ Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float m
         multiplierY = multiplierX;
     }
     
-    static float textureStep = (1.0f / 16.0f);
+    static float textureStepX = (1.0f / 16.0f);
+    static float textureStepY = (1.0f / 32.0f);
     static float vertices[6][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
-    static float texCoords[6][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
+    static float texCoords[6][2] = { {0, 1}, {1, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 0} };
     
     glm::vec2 texPosition = textureCoords[type];
     
@@ -70,38 +148,49 @@ Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float m
         result.push_back(baseX + vertices[i][0] * multiplierX);
         result.push_back(baseY + vertices[i][1] * multiplierY);
         
-        result.push_back((texPosition.x + texCoords[i][0] - 1.0f) * textureStep);
-        result.push_back((texPosition.y + texCoords[i][1] - 1.0f) * textureStep);
+        result.push_back((texPosition.x + texCoords[i][0] - 1.0f) * textureStepX);
+        result.push_back((texPosition.y + texCoords[i][1] - 1.0f) * textureStepY);
     }
     
     return result;
 }
 
 void Inventory::Init() {
-    START_X = SCREEN_WIDTH * 11.0f / 72.0f;
-    END_X = SCREEN_WIDTH * 17.0f / 24.0f;
+    START_X = X_Frac(11, 72);
+    END_X = X_Frac(17, 24);
     
-    START_Y = SCREEN_HEIGHT * 11.0f / 45.0f;
-    END_Y = SCREEN_HEIGHT * 7.0f / 9.0f;
+    START_Y = Y_Frac(11, 45);
+    END_Y = Y_Frac(7, 9);
     
-    TOOLBAR_START_X = SCREEN_WIDTH * 13.0f / 36.0f;
-    TOOLBAR_END_X = SCREEN_WIDTH * 23.0f / 36.0f;
+    TOOLBAR_START_X = X_Frac(13, 36);
+    TOOLBAR_END_X = X_Frac(23, 36);
     
-    TOOLBAR_START_Y = SCREEN_HEIGHT * 2.0f / 45.0f;
-    TOOLBAR_END_Y = SCREEN_HEIGHT * 4.0f / 45.0f;
+    TOOLBAR_START_Y = Y_Frac(2, 45);
+    TOOLBAR_END_Y = Y_Frac(4, 45);
     
-    CRAFTING_START_X = SCREEN_WIDTH * 55.0f / 72.0f;
-    CRAFTING_END_X = SCREEN_WIDTH * 67.0f / 72.0f;
+    CRAFTING_START_X = X_Frac(55, 72);
+    CRAFTING_END_X = X_Frac(67, 72);
     
-    CRAFTING_START_Y = SCREEN_HEIGHT * 23.0f / 45.0f;
+    CRAFTING_START_Y = Y_Frac(23, 45);
+    CRAFTING_END_Y = Y_Frac(7, 9);
     
-    SLOT_WIDTH = SCREEN_WIDTH * 1.0f / 18.0f;
+    SLOT_WIDTH_X = X_Frac(1, 18);
+    SLOT_WIDTH_Y = Y_Frac(4, 45);
     
-    OUTPUT_START_X = CRAFTING_START_X + SLOT_WIDTH;
-    OUTPUT_END_X = CRAFTING_END_X - SLOT_WIDTH;
+    OUTPUT_START_X = CRAFTING_START_X + SLOT_WIDTH_X;
+    OUTPUT_END_X = CRAFTING_END_X - SLOT_WIDTH_X;
     
-    OUTPUT_START_Y = CRAFTING_START_Y - SLOT_WIDTH * 2;
-    OUTPUT_END_Y = CRAFTING_START_Y - SLOT_WIDTH;
+    OUTPUT_START_Y = CRAFTING_START_Y - SLOT_WIDTH_Y * 2;
+    OUTPUT_END_Y = CRAFTING_START_Y - SLOT_WIDTH_Y;
+    
+    INV_PAD_X = X_Frac(1, 144);
+    INV_PAD_Y = Y_Frac(1, 90);
+    
+    SLOT_PAD_X = X_Frac(1, 144);
+    SLOT_PAD_Y = Y_Frac(1, 90);
+    
+    TEXT_PAD_X = X_Frac(1, 288);
+    TEXT_PAD_Y = Y_Frac(1, 180);
     
     for (int i = 0; i < SLOTS_X * SLOTS_Y; i++) {
         Inv.push_back(Stack(0, 0));
@@ -120,32 +209,32 @@ void Inventory::Init_UI() {
     
     // Fix for missing pixel in upper left corner
     Extend(gridData, Data {START_X - 0.5f, END_Y + 0.5f, START_X + 0.5f, END_Y});
-    Extend(gridData, Data {CRAFTING_START_X - 0.5f, END_Y + 0.5f, CRAFTING_START_X + 0.5f, END_Y});
+    Extend(gridData, Data {CRAFTING_START_X - 0.5f, CRAFTING_END_Y + 0.5f, CRAFTING_START_X + 0.5f, CRAFTING_END_Y});
     
     // Grey vertical lines
-    for (float x = START_X; x <= END_X; x += SLOT_WIDTH) {
-        Extend(gridData, Data {x, START_Y + SLOT_WIDTH + 1.5f, x, END_Y});
+    for (float x = START_X; x <= END_X; x += SLOT_WIDTH_X) {
+        Extend(gridData, Data {x, START_Y + SLOT_WIDTH_Y + 1.5f, x, END_Y});
     }
     
-    for (float x = CRAFTING_START_X; x <= CRAFTING_END_X; x += SLOT_WIDTH) {
-        Extend(gridData, Data {x, CRAFTING_START_Y, x, END_Y});
+    for (float x = CRAFTING_START_X; x <= CRAFTING_END_X; x += SLOT_WIDTH_X) {
+        Extend(gridData, Data {x, CRAFTING_START_Y, x, CRAFTING_END_Y});
     }
     
     // Grey horizontal lines
-    for (float y = START_Y + SLOT_WIDTH * 2; y <= END_Y; y += SLOT_WIDTH) {
+    for (float y = START_Y + SLOT_WIDTH_Y * 2; y <= END_Y; y += SLOT_WIDTH_Y) {
         Extend(gridData, Data {START_X, y, END_X, y});
     }
     
-    for (float y = CRAFTING_START_Y; y <= END_Y; y += SLOT_WIDTH) {
+    for (float y = CRAFTING_START_Y; y <= CRAFTING_END_Y; y += SLOT_WIDTH_Y) {
         Extend(gridData, Data {CRAFTING_START_X, y, CRAFTING_END_X, y});
     }
     
     // White horizontal lines
-    Extend(gridData, Data {START_X - 0.5f, START_Y + SLOT_WIDTH, END_X, START_Y + SLOT_WIDTH, START_X, START_Y, END_X, START_Y});
+    Extend(gridData, Data {START_X - 0.5f, START_Y + SLOT_WIDTH_Y, END_X, START_Y + SLOT_WIDTH_Y, START_X, START_Y, END_X, START_Y});
     
     // White vertical lines
-    for (float x = START_X; x <= END_X; x += SLOT_WIDTH) {
-        Extend(gridData, Data {x, START_Y, x, START_Y + SLOT_WIDTH});
+    for (float x = START_X; x <= END_X; x += SLOT_WIDTH_X) {
+        Extend(gridData, Data {x, START_Y, x, START_Y + SLOT_WIDTH_Y});
     }
     
     // Crafting output
@@ -159,13 +248,13 @@ void Inventory::Init_UI() {
         TOOLBAR_START_X - 0.5f, TOOLBAR_END_Y, TOOLBAR_END_X, TOOLBAR_END_Y, TOOLBAR_START_X, TOOLBAR_START_Y, TOOLBAR_END_X, TOOLBAR_START_Y
     });
     
-    for (float x = TOOLBAR_START_X; x <= TOOLBAR_END_X; x += SLOT_WIDTH / 2) {
+    for (float x = TOOLBAR_START_X; x <= TOOLBAR_END_X; x += SLOT_WIDTH_X / 2) {
         Extend(toolbarGridData, Data {x, TOOLBAR_END_Y, x, TOOLBAR_START_Y});
     }
     
-    Data bgData = Get_Rect(START_X - INV_PAD, END_X + INV_PAD, START_Y - INV_PAD, END_Y + INV_PAD);
-    Extend(bgData, Get_Rect(CRAFTING_START_X - INV_PAD, CRAFTING_END_X + INV_PAD, CRAFTING_START_Y - INV_PAD, END_Y + INV_PAD));
-    Extend(bgData, Get_Rect(OUTPUT_START_X - INV_PAD, OUTPUT_END_X + INV_PAD, OUTPUT_START_Y - INV_PAD, OUTPUT_END_Y + INV_PAD));
+    Data bgData = Get_Rect(START_X - INV_PAD_X, END_X + INV_PAD_X, START_Y - INV_PAD_Y, END_Y + INV_PAD_Y);
+    Extend(bgData, Get_Rect(CRAFTING_START_X - INV_PAD_X, CRAFTING_END_X + INV_PAD_X, CRAFTING_START_Y - INV_PAD_Y, CRAFTING_END_Y + INV_PAD_Y));
+    Extend(bgData, Get_Rect(OUTPUT_START_X - INV_PAD_X, OUTPUT_END_X + INV_PAD_X, OUTPUT_START_Y - INV_PAD_Y, OUTPUT_END_Y + INV_PAD_Y));
     
     Data data[4] = {
         bgData, gridData, toolbarGridData,
@@ -210,7 +299,7 @@ void Inventory::Clear() {
     Mesh();
 }
 
-void Inventory::Add_Stack(unsigned char type, unsigned int size) {
+void Inventory::Add_Stack(unsigned int type, unsigned int size) {
     int index = 0;
     
     for (auto const &stack : Inv) {
@@ -275,6 +364,8 @@ Stack Inventory::Get_Info(int slot) {
 void Inventory::Click_Slot(unsigned int slot, int button) {
     if (slot == OUTPUT_SLOT) {
         if (CraftingOutput.first) {
+            Craft_Item();
+            
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 if (keys[GLFW_KEY_LEFT_SHIFT]) {
                     Add_Stack(CraftingOutput.first, CraftingOutput.second);
@@ -287,7 +378,7 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
                 }
                 else if (CraftingOutput.first == HoldingStack.first) {
                     if (CraftingOutput.second + HoldingStack.second <= MAX_STACK_SIZE) {
-                        HoldingStack.second += HoldingStack.second;
+                        HoldingStack.second += CraftingOutput.second;
                         CraftingOutput = Stack(0, 0);
                     }
                     else {
@@ -308,6 +399,8 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
                     }
                 }
             }
+            
+            Check_Crafting();
         }
     }
     
@@ -414,30 +507,40 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
 }
 
 void Inventory::Check_Crafting() {
-    int dims[2];
+    std::smatch match;
+    std::string grid = "";
+    int blocks = 0;
     
-    for (int i = 0; i < 2; i++) {
-        std::vector<bool> v = {0, 0, 0};
-        
-        for (int a = 0; a < 3; a++) {
-            for (int b = 0; b < 3; b++) {
-                if (!v[b]) {
-                    v[b] = i ? Craft[b * 3 + a].first > 0 : Craft[a * 3 + b].first > 0;
-                }
-            }
+    for (auto const &tile : Craft) {
+        grid += std::to_string(tile.first) + " ";
+        blocks += tile.first > 0;
+    }
+    
+    for (auto const &recipe : Recipes[blocks]) {
+        if (std::regex_match(grid.cbegin(), grid.cend(), recipe.first)) {
+            CraftingOutput = recipe.second;
+            Mesh();
+            return;
         }
-        
-        dims[i] = int(Sum(v));
-        
-        if (dims[i] == 2 && v == std::vector<bool> {1, 0, 1}) {
-            dims[i] = 3;
+    }
+    
+    CraftingOutput = Stack(0, 0);
+    Mesh();
+}
+
+void Inventory::Craft_Item() {
+    for (auto &stack : Craft) {
+        if (stack.first) {
+            if (--stack.second == 0) {
+                stack = Stack(0, 0);
+            }
         }
     }
 }
 
 void Inventory::Switch_Slot() {
-    float startX = TOOLBAR_START_X + ActiveToolbarSlot * SLOT_WIDTH / 2;
-    Upload_Data(Buffers["ToolbarSelect"].second, Get_Rect(startX, startX + SLOT_WIDTH / 2, TOOLBAR_START_Y, TOOLBAR_END_Y));
+    float startX = TOOLBAR_START_X + ActiveToolbarSlot * SLOT_WIDTH_X / 2.0f;
+    Upload_Data(Buffers["ToolbarSelect"].second, Get_Rect(startX, startX + SLOT_WIDTH_X / 2.0f, TOOLBAR_START_Y, TOOLBAR_END_Y));
 }
 
 void Inventory::Swap_Stacks(Stack &a, Stack &b) {
@@ -468,22 +571,22 @@ void Inventory::Mouse_Handler(double x, double y) {
     
     if (y >= START_Y && y <= END_Y) {
         if (x >= START_X && x <= END_X) {
-            float startX = float(floor((x - START_X) / SLOT_WIDTH) * SLOT_WIDTH + START_X);
-            float startY = float(floor((900 - y - START_Y) / SLOT_WIDTH) * SLOT_WIDTH + START_Y);
+            float startX = float(floor((x - START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + START_X);
+            float startY = float(floor((900 - y - START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + START_Y);
             
-            HoveringSlot = int((startY - START_Y) / SLOT_WIDTH) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH);
+            HoveringSlot = int((startY - START_Y) / SLOT_WIDTH_Y) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH_X);
             
-            Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH, startY, startY + SLOT_WIDTH));
+            Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
         }
         
         else if (x >= CRAFTING_START_X && x <= CRAFTING_END_X) {
-            if (mouseY >= CRAFTING_START_Y) {
-                float startX = float(floor((x - CRAFTING_START_X) / SLOT_WIDTH) * SLOT_WIDTH + CRAFTING_START_X);
-                float startY = float(floor((900 - y - CRAFTING_START_Y) / SLOT_WIDTH) * SLOT_WIDTH + CRAFTING_START_Y);
+            if (mouseY >= CRAFTING_START_Y && mouseY <= CRAFTING_END_Y) {
+                float startX = float(floor((x - CRAFTING_START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + CRAFTING_START_X);
+                float startY = float(floor((mouseY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + CRAFTING_START_Y);
                 
-                HoveringSlot = SLOTS_X * SLOTS_Y + int((startY - CRAFTING_START_Y) / SLOT_WIDTH) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH);
+                HoveringSlot = SLOTS_X * SLOTS_Y + int((startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
                 
-                Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH, startY, startY + SLOT_WIDTH));
+                Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
             }
             
             else if (mouseY >= OUTPUT_START_Y && mouseY <= OUTPUT_END_Y) {
@@ -497,12 +600,12 @@ void Inventory::Mouse_Handler(double x, double y) {
     
     if (HoldingStack.first) {
         Text::Set_Group(TEXT_GROUP);
-        Text::Add("holdingStack", std::to_string(HoldingStack.second), mouseY + TEXT_PAD);
-        Text::Set_X("holdingStack", mouseX + TEXT_PAD);
+        Text::Add("holdingStack", std::to_string(HoldingStack.second), mouseY + TEXT_PAD_Y);
+        Text::Set_X("holdingStack", mouseX + TEXT_PAD_X);
         Text::Set_Opacity("holdingStack", 1.0f);
         Text::Unset_Group();
         
-        Data data = Get_Vertices(HoldingStack.first, mouseX, mouseY, SLOT_WIDTH / 2);
+        Data data = Get_Vertices(HoldingStack.first, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f);
         Upload_Data(Buffers["Mouse"].second, data);
         MouseVertices = int(data.size()) / 4;
     }
@@ -522,30 +625,30 @@ void Inventory::Mesh() {
     
     for (auto const &stack : Inv) {
         if (stack.first) {
-            float startX = START_X + (index % SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
-			float startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH + SLOT_PAD;
+            float startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
+			float startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH_Y + SLOT_PAD_Y;
             
-			float toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH / 2.0f + SLOT_PAD / 2.0f;
+			float toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH_X / 2.0f + SLOT_PAD_X / 2.0f;
             
             if (Is_Open) {
-                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH - SLOT_PAD * 2.0f));
+                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
             }
             else {
-                Extend(toolbarData, Get_Vertices(stack.first, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD / 2, SLOT_WIDTH / 2 - SLOT_PAD));
+                Extend(toolbarData, Get_Vertices(stack.first, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD_Y / 2, SLOT_WIDTH_X / 2 - SLOT_PAD_X, SLOT_WIDTH_Y / 2 - SLOT_PAD_Y));
             }
             
             std::string textName = std::to_string(index);
             
             if (Is_Open) {
                 Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD);
-                Text::Set_X(textName, startX + TEXT_PAD);
+                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD_Y);
+                Text::Set_X(textName, startX + TEXT_PAD_X);
             }
             
             else {
                 Text::Set_Group(TOOLBAR_TEXT);
-                Text::Add(textName, std::to_string(stack.second), TOOLBAR_START_Y + TEXT_PAD);
-                Text::Set_X(textName, toolbarStartX + 2);
+                Text::Add(textName, std::to_string(stack.second), TOOLBAR_START_Y + TEXT_PAD_Y);
+                Text::Set_X(textName, toolbarStartX + TEXT_PAD_X / 2.0f);
             }
             
             Text::Set_Opacity(textName, 1.0f);
@@ -564,16 +667,16 @@ void Inventory::Mesh() {
         
         for (auto const &stack : Craft) {
             if (stack.first) {
-                float startX = CRAFTING_START_X + (index % 3) * SLOT_WIDTH + SLOT_PAD;
-                float startY = CRAFTING_START_Y + (index / 3) * SLOT_WIDTH + SLOT_PAD;
+                float startX = CRAFTING_START_X + (index % 3) * SLOT_WIDTH_X + SLOT_PAD_X;
+                float startY = CRAFTING_START_Y + (index / 3) * SLOT_WIDTH_Y + SLOT_PAD_Y;
                 
-                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH - SLOT_PAD * 2.0f));
+                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
                 
                 std::string textName = std::to_string(SLOTS_X * SLOTS_Y + index);
                 
                 Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD);
-                Text::Set_X(textName, startX + TEXT_PAD);
+                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD_Y);
+                Text::Set_X(textName, startX + TEXT_PAD_X);
                 Text::Unset_Group();
             }
             
@@ -581,13 +684,13 @@ void Inventory::Mesh() {
         }
         
         if (CraftingOutput.first) {
-            Extend(data, Get_Vertices(CraftingOutput.first, OUTPUT_START_X + SLOT_PAD, OUTPUT_START_Y + SLOT_PAD, SLOT_WIDTH - SLOT_PAD * 2.0f));
+            Extend(data, Get_Vertices(CraftingOutput.first, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
             
             std::string textName = std::to_string(OUTPUT_SLOT);
             
             Text::Set_Group(TEXT_GROUP);
-            Text::Add(textName, std::to_string(CraftingOutput.second), OUTPUT_START_Y + SLOT_PAD + TEXT_PAD);
-            Text::Set_X(textName, OUTPUT_START_X + SLOT_PAD + TEXT_PAD);
+            Text::Add(textName, std::to_string(CraftingOutput.second), OUTPUT_START_Y + SLOT_PAD_Y + TEXT_PAD_Y);
+            Text::Set_X(textName, OUTPUT_START_X + SLOT_PAD_X + TEXT_PAD_X);
             Text::Unset_Group();
         }
         

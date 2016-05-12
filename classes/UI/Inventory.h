@@ -8,11 +8,11 @@
 #include "Shader.h"
 #include "Text.h"
 
-typedef std::pair<unsigned char, unsigned int> Stack;
+typedef std::pair<unsigned int, unsigned int> Stack;
 typedef std::pair<unsigned int, unsigned int> Buffer;
 typedef std::vector<float> Data;
 
-extern std::map<unsigned char, glm::vec2> textureCoords;
+extern std::map<unsigned int, glm::vec2> textureCoords;
 
 extern bool keys[1024];
 
@@ -37,6 +37,16 @@ double Sum(const std::vector<T> &a) {
     return sum;
 }
 
+template <typename T>
+inline float X_Frac(const T a, const T b) {
+    return SCREEN_WIDTH * float(a) / float(b);
+}
+
+template <typename T>
+inline float Y_Frac(const T a, const T b) {
+    return SCREEN_HEIGHT * float(a) / float(b);
+}
+
 extern void Upload_Data(const unsigned int vbo, const Data &data);
 extern void Extend(Data &storage, const Data input);
 
@@ -51,7 +61,7 @@ public:
     void Init();
     void Clear();
     
-    void Add_Stack(unsigned char type, unsigned int size = 1);
+    void Add_Stack(unsigned int type, unsigned int size = 1);
     void Decrease_Size(int slot = -1);
     
     Stack Get_Info(int slot = -1);
@@ -97,6 +107,7 @@ private:
     
     void Click_Slot(unsigned int slot, int button);
     void Check_Crafting();
+    void Craft_Item();
     
     void Swap_Stacks(Stack &a, Stack &b);
 };

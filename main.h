@@ -14,59 +14,132 @@ const bool Windows = false;
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.2f, 0.3f, 0.3f);
 const std::string CONFIG_FILE = "config.conf";
 
-std::map<unsigned char, glm::vec2> textureCoords = {
-    {1,  glm::vec2(  2,   1)}, // Stone
+typedef std::vector<glm::vec2> TexArray;
+typedef glm::vec2 Coord;
+
+std::map<unsigned int, glm::vec2> textureCoords = {
     
-    {2,  glm::vec2(  1,   1)}, // Grass Top
-    {3,  glm::vec2(  3,   1)}, // Dirt
-    {4,  glm::vec2(  1,   2)}, // Cobblestone
-    {5,  glm::vec2(  5,   1)}, // Wooden Planks
+    // BLOCKS
+    {1,   Coord( 2,  1)}, // Stone
+    {2,   Coord( 1,  1)}, // Grass Top
+    {3,   Coord( 3,  1)}, // Dirt
+    {4,   Coord( 1,  2)}, // Cobblestone
+    {5,   Coord( 5,  1)}, // Wooden Planks
+    {6,   Coord(16,  1)}, // Oak Sapling
+    {7,   Coord( 2,  2)}, // Bedrock
+    {8,   Coord(13, 14)}, // Flowing Water
+    {9,   Coord(13, 14)}, // Still Water
+    {10,  Coord(15, 14)}, // Flowing Lava
+    {11,  Coord(15, 14)}, // Still Lava
+    {12,  Coord( 2,  3)}, // Sand
+    {13,  Coord( 2,  4)}, // Gravel
+    {14,  Coord( 3,  1)}, // Gold Ore
+    {15,  Coord( 3,  2)}, // Iron Ore
+    {16,  Coord( 3,  3)}, // Coal Ore
+    {17,  Coord( 5,  2)}, // Oak Log
+    {18,  Coord( 5,  4)}, // Oak Leaves
+    {19,  Coord( 1,  4)}, // Sponge
+    {20,  Coord( 2,  4)}, // Glass
+    {21,  Coord( 1, 11)}, // Lapis Lazuli Ore
+    {22,  Coord( 1, 10)}, // Lapis Lazuli Block
+    {23,  Coord(15,  3)}, // Dispenser
+    {24,  Coord( 1, 13)}, // Sandstone
+    {25,  Coord(11,  5)}, // Note Block
+    {26,  Coord(14, 19)}, // Bed
     
-    {7,  glm::vec2(  2,   2)}, // Bedrock
+    {30,  Coord(12,  1)}, // Cobweb
     
-    {9,  glm::vec2( 13,  14)}, // Water
-    {11, glm::vec2( 15,  14)}, // Lava
+    {35,  Coord( 1,  5)}, // White Wool
+    {37,  Coord(14,  1)}, // Dandelion
+    {38,  Coord(15,  1)}, // Poppy
+    {39,  Coord(15,  2)}, // Brown Mushroom
+    {40,  Coord(14,  2)}, // Red Mushroom
+    {41,  Coord( 8,  2)}, // Gold Block
+    {42,  Coord( 7,  2)}, // Iron Block
+    {43,  Coord( 6,  1)}, // Double Stone Slab
+    {44,  Coord( 7,  1)}, // Stone Slab
+    {45,  Coord( 8,  1)}, // Bricks
+    {46,  Coord( 9,  1)}, // TNT
+    {47,  Coord( 4,  3)}, // Bookshelf
+    {48,  Coord( 5,  3)}, // Mossy Cobblestone
+    {49,  Coord( 6,  3)}, // Obsidian
+    {50,  Coord( 1,  6)}, // Torch
     
-    {12, glm::vec2(  2,   3)}, // Sand
-    {13, glm::vec2(  2,   4)}, // Gravel
+    {52,  Coord( 2,  5)}, // Monster Spawner
     
-    {14, glm::vec2(  3,   1)}, // Gold Ore
-    {15, glm::vec2(  3,   2)}, // Iron Ore
-    {16, glm::vec2(  3,   3)}, // Coal Ore
+    {54,  Coord(12,  2)}, // Chest
     
-    {17, glm::vec2(  5,   2)}, // Oak Log
+    {56,  Coord( 3,  4)}, // Diamond Ore
+    {57,  Coord( 9,  2)}, // Diamond Block
+    {58,  Coord(13,  4)}, // Crafting Table
     
-    {18, glm::vec2(  5,   4)}, // Transparent Leaves
+    {60,  Coord( 8,  6)}, // Farmland
+    {61,  Coord(13,  3)}, // Furnace
+    {62,  Coord(14,  4)}, // Burning Furnace
     
-    {50, glm::vec2(  1,   6)}, // Torch
+    {65,  Coord( 4,  6)}, // Ladder
+    {66,  Coord( 1,  9)}, // Rail
+    
+    {69,  Coord( 1,  7)}, // Lever
     
     // Damage Textures
-    {246, glm::vec2( 1,  16)},
-    {247, glm::vec2( 2,  16)},
-    {248, glm::vec2( 3,  16)},
-    {249, glm::vec2( 4,  16)},
-    {250, glm::vec2( 5,  16)},
-    {251, glm::vec2( 6,  16)},
-    {252, glm::vec2( 7,  16)},
-    {253, glm::vec2( 8,  16)},
-    {254, glm::vec2( 9,  16)},
-    {255, glm::vec2(10,  16)}
+    {246, Coord( 1, 16)},
+    {247, Coord( 2, 16)},
+    {248, Coord( 3, 16)},
+    {249, Coord( 4, 16)},
+    {250, Coord( 5, 16)},
+    {251, Coord( 6, 16)},
+    {252, Coord( 7, 16)},
+    {253, Coord( 8, 16)},
+    {254, Coord( 9, 16)},
+    {255, Coord(10, 16)},
+    
+    // ITEMS
+    {256, Coord(3 , 22)}, // Iron Shovel
+    {257, Coord(3 , 23)}, // Iron Pickaxe
+    {258, Coord(3 , 24)}, // Iron Axe
+    {259, Coord(6 , 17)}, // Flint and Steel
+    {260, Coord(11, 17)}, // Apple
+    {261, Coord(6 , 18)}, // Bow
+    {262, Coord(6 , 19)}, // Arrow
+    {263, Coord(8 , 17)}, // Coal
+    {264, Coord(8 , 20)}, // Diamond
+    {265, Coord(8 , 18)}, // Iron Ingot
+    {266, Coord(8 , 19)}, // Gold Ingot
+    
+    {280, Coord(6 , 20)}, // Stick
 };
 
-std::map<unsigned char, float> blockHardness = {
+std::map<unsigned int, TexArray> MultiTextures = {
+    //             LEFT           RIGHT          DOWN           UP             BACK           FRONT
+    {2,  TexArray {Coord( 4,  1), Coord( 4,  1), Coord( 3,  1), Coord( 1,  1), Coord( 4,  1), Coord( 4,  1)}}, // Grass
+    {17, TexArray {Coord( 5,  2), Coord( 5,  2), Coord( 6,  2), Coord( 6,  2), Coord( 5,  2), Coord( 5,  2)}}, // Oak Log
+    {23, TexArray {Coord(14,  3), Coord(14,  3), Coord(15,  4), Coord(15,  4), Coord(14,  3), Coord(15,  3)}}, // Dispenser
+    {24, TexArray {Coord( 1, 13), Coord( 1, 13), Coord( 1, 12), Coord( 1, 12), Coord( 1, 13), Coord( 1, 13)}}, // Sandstone
+    {25, TexArray {Coord(11,  5), Coord(11,  5), Coord(11,  5), Coord(12,  5), Coord(11,  5), Coord(11,  5)}}, // Note Block
+    {46, TexArray {Coord( 9,  1), Coord( 9,  1), Coord(11,  1), Coord(10,  1), Coord( 9,  1), Coord( 9,  1)}}, // TNT
+    {47, TexArray {Coord( 4,  3), Coord( 4,  3), Coord(5 ,  1), Coord(5 ,  1), Coord( 4,  3), Coord( 4,  3)}}, // Bookshelf
+    {54, TexArray {Coord(11,  2), Coord(11,  2), Coord(10,  2), Coord(10,  2), Coord(11,  2), Coord(12,  2)}}, // Chest
+    {58, TexArray {Coord(12,  4), Coord(12,  4), Coord( 5,  1), Coord(12,  3), Coord(13,  4), Coord(13,  4)}}, // Crafting Table
+    {60, TexArray {Coord( 3,  1), Coord( 3,  1), Coord( 3,  1), Coord( 8,  6), Coord( 3,  1), Coord( 3,  1)}}, // Farmland
+    {61, TexArray {Coord(14,  3), Coord(14,  3), Coord(15,  4), Coord(15,  4), Coord(14,  3), Coord(13,  3)}}, // Furnace
+    {62, TexArray {Coord(14,  3), Coord(14,  3), Coord(15,  4), Coord(15,  4), Coord(14,  3), Coord(14,  4)}}, // Burning Furnace
+};
+
+std::map<unsigned int, float> blockHardness = {
     {1, 1.5f},
     {2, 0.5f},
     {3, 0.5f}
 };
 
-std::map<std::string, std::vector<unsigned char>> BlockSounds = {
-    {"cloth", std::vector<unsigned char> {}},
-    {"dirt", std::vector<unsigned char> {2, 3}},
-    {"gravel", std::vector<unsigned char> {13}},
-    {"sand", std::vector<unsigned char> {12}},
-    {"snow", std::vector<unsigned char> {}},
-    {"stone", std::vector<unsigned char> {1, 4, 7, 14, 15, 16}},
-    {"wood", std::vector<unsigned char> {5}}
+std::map<std::string, std::vector<unsigned int>> BlockSounds = {
+    {"cloth", std::vector<unsigned int> {}},
+    {"dirt", std::vector<unsigned int> {2, 3}},
+    {"gravel", std::vector<unsigned int> {13}},
+    {"sand", std::vector<unsigned int> {12}},
+    {"snow", std::vector<unsigned int> {}},
+    {"stone", std::vector<unsigned int> {1, 4, 7, 14, 15, 16}},
+    {"wood", std::vector<unsigned int> {5}}
 };
 
 int Fullscreen;

@@ -17,10 +17,11 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
-    static float textureStep = (1.0f / 16.0f);
+    static float textureStepX = (1.0f / 16.0f);
+    static float textureStepY = (1.0f / 32.0f);
     
-    float texStartX = textureStep * (texPosition.x - 1.0f);
-    float texStartY = textureStep * (texPosition.y - 1.0f);
+    float texStartX = textureStepX * (texPosition.x - 1.0f);
+    float texStartY = textureStepY * (texPosition.y - 1.0f);
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
@@ -28,13 +29,13 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
                 (vertices[i][j][0] - 0.5f) * ENTITY_SCALE, (vertices[i][j][1] - 0.5f) * ENTITY_SCALE, (vertices[i][j][2] - 0.5f) * ENTITY_SCALE
             });
             
-            if (type == 2) {
-                data.push_back(textureStep * (grassTextures[i].x - 1.0f) + tex_coords[i][j][0] * textureStep);
-                data.push_back(textureStep * (grassTextures[i].y - 1.0f) + tex_coords[i][j][1] * textureStep);
+            if (MultiTextures.count(type)) {
+                data.push_back(textureStepX * (MultiTextures[type][i].x - 1.0f) + tex_coords[i][j][0] * textureStepX);
+                data.push_back(textureStepY * (MultiTextures[type][i].y - 1.0f) + tex_coords[i][j][1] * textureStepY);
             }
             else {
-                data.push_back(texStartX + tex_coords[i][j][0] * textureStep);
-                data.push_back(texStartY + tex_coords[i][j][1] * textureStep);
+                data.push_back(texStartX + tex_coords[i][j][0] * textureStepX);
+                data.push_back(texStartY + tex_coords[i][j][1] * textureStepY);
             }
         }
     }

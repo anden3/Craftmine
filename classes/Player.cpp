@@ -95,22 +95,23 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
-    static float textureStep = (1.0f / 16.0f);
+    static float textureStepX = (1.0f / 16.0f);
+    static float textureStepY = (1.0f / 32.0f);
     
-    float texStartX = textureStep * (texPosition.x - 1.0f);
-    float texStartY = textureStep * (texPosition.y - 1.0f);
+    float texStartX = textureStepX * (texPosition.x - 1.0f);
+    float texStartY = textureStepY * (texPosition.y - 1.0f);
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
             Extend(data, Data {vertices[i][j][0] + offset.x, vertices[i][j][1] + offset.y, vertices[i][j][2] + offset.z});
             
-            if (type == 2) {
-                data.push_back(textureStep * (grassTextures[i].x - 1.0f) + tex_coords[i][j][0] * textureStep);
-                data.push_back(textureStep * (grassTextures[i].y - 1.0f) + tex_coords[i][j][1] * textureStep);
+            if (MultiTextures.count(type)) {
+                data.push_back(textureStepX * (MultiTextures[type][i].x - 1.0f) + tex_coords[i][j][0] * textureStepX);
+                data.push_back(textureStepY * (MultiTextures[type][i].y - 1.0f) + tex_coords[i][j][1] * textureStepY);
             }
             else {
-                data.push_back(texStartX + tex_coords[i][j][0] * textureStep);
-                data.push_back(texStartY + tex_coords[i][j][1] * textureStep);
+                data.push_back(texStartX + tex_coords[i][j][0] * textureStepX);
+                data.push_back(texStartY + tex_coords[i][j][1] * textureStepY);
             }
         }
     }
@@ -374,7 +375,11 @@ void Player::Check_Pickup() {
         if (dist < PICKUP_RANGE) {
             int blockType = (*it)->Type;
             
-            if (blockType == 2) {
+            if (blockType == 1) {
+                blockType = 4;
+            }
+            
+            else if (blockType == 2) {
                 blockType = 3;
             }
             
@@ -669,7 +674,7 @@ void Player::ClickHandler(int button, int action) {
         }
         
         if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (LookingAtBlock && CurrentBlock) {
+            if (LookingAtBlock && CurrentBlock && CurrentBlock < 246) {
                 glm::vec3 newBlockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
                 
                 if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {

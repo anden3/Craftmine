@@ -19,9 +19,6 @@ static const float MERGING_RADIUS = 1.0f;
 
 const float GRAVITY = 0.004f;
 
-extern std::map<unsigned char, glm::vec2> textureCoords;
-extern std::vector<glm::vec2> grassTextures;
-
 extern float vertices[6][6][3];
 extern float tex_coords[6][6][2];
 

@@ -16,9 +16,6 @@ noise::module::RidgedMulti ridgedNoise;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
-std::vector<glm::vec2> grassTextures = { glm::vec2(4, 1), glm::vec2(4, 1), glm::vec2(3, 1), glm::vec2(1, 1), glm::vec2(4, 1), glm::vec2(4, 1) }; // ID 2
-std::vector<glm::vec2> logTextures = { glm::vec2(5, 2), glm::vec2(5, 2), glm::vec2(6, 2), glm::vec2(6, 2), glm::vec2(5, 2), glm::vec2(5, 2) }; // ID 17
-
 std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
 
@@ -350,7 +347,8 @@ void Chunk::Mesh() {
     
     std::set<glm::vec3>::iterator block = Blocks.begin();
 
-	float textureStep = (1.0f / 16.0f);
+	float textureStepX = (1.0f / 16.0f);
+    float textureStepY = (1.0f / 32.0f);
 
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
@@ -361,11 +359,11 @@ void Chunk::Mesh() {
         }
         else {
             int bit = 0;
-			unsigned char blockType = Get_Block(*block);
+			unsigned int blockType = Get_Block(*block);
 			glm::vec2 texPosition = textureCoords[blockType];
 
-			float texStartX = textureStep * (texPosition.x - 1.0f);
-			float texStartY = textureStep * (texPosition.y - 1.0f);
+			float texStartX = textureStepX * (texPosition.x - 1.0f);
+			float texStartY = textureStepY * (texPosition.y - 1.0f);
 
             while (bit < 6) {
                 if (seesAir & 1) {
@@ -378,14 +376,14 @@ void Chunk::Mesh() {
 						VBOData.push_back(normals[bit][1]);
 						VBOData.push_back(normals[bit][2]);
 
-						if (blockType == 2) {
-							VBOData.push_back(textureStep * (grassTextures[bit].x - 1.0f) + tex_coords[bit][j][0] * textureStep);
-							VBOData.push_back(textureStep * (grassTextures[bit].y - 1.0f) + tex_coords[bit][j][1] * textureStep);
+						if (MultiTextures.count(blockType)) {
+							VBOData.push_back(textureStepX * (MultiTextures[blockType][bit].x - 1.0f) + tex_coords[bit][j][0] * textureStepX);
+							VBOData.push_back(textureStepY * (MultiTextures[blockType][bit].y - 1.0f) + tex_coords[bit][j][1] * textureStepY);
 						}
 
 						else {
-							VBOData.push_back(texStartX + tex_coords[bit][j][0] * textureStep);
-							VBOData.push_back(texStartY + tex_coords[bit][j][1] * textureStep);
+							VBOData.push_back(texStartX + tex_coords[bit][j][0] * textureStepX);
+							VBOData.push_back(texStartY + tex_coords[bit][j][1] * textureStepY);
 						}
                         
                         VBOData.push_back(lightValue);

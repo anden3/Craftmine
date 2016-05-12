@@ -193,34 +193,66 @@ void Init_Background() {
 }
 
 void Init_Menu() {
-    Button::Add("options", "Options", Toggle_Options_Menu, 620, 500, 200, "mainMenu");
-    Button::Add("exit", "Quit", Exit, 620, 200, 200, "mainMenu");
+    float buttonWidth = X_Frac(5, 36);
     
-    Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, 420, 500, 200, "optionMenu");
-    Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, 780, 500, 200, "optionMenu");
+    float optionsButtonX = X_Frac(31, 72);
+    float optionsButtonY = Y_Frac(5, 9);
     
-    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), Change_Render_Distance, 620, 700, 200, 0, 10, float(RenderDistance), "optionMenu");
+    float exitButtonX = X_Frac(31, 72);
+    float exitButtonY = Y_Frac(2, 9);
     
-    Button::Add("option_back", "Back", Toggle_Options_Menu, 620, 200, 200, "optionMenu");
+    float vSyncButtonX = X_Frac(7, 24);
+    float vSyncButtonY = Y_Frac(5, 9);
+    
+    float wireframeButtonX = X_Frac(13, 24);
+    float wireframeButtonY = Y_Frac(5, 9);
+    
+    float renderDistButtonX = X_Frac(31, 72);
+    float renderDistButtonY = Y_Frac(7, 9);
+    
+    float backButtonX = X_Frac(31, 72);
+    float backButtonY = Y_Frac(2, 9);
+    
+    Button::Add("options", "Options", Toggle_Options_Menu, optionsButtonX, optionsButtonY, buttonWidth, "mainMenu");
+    Button::Add("exit", "Quit", Exit, exitButtonX, exitButtonY, buttonWidth, "mainMenu");
+    
+    Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, vSyncButtonX, vSyncButtonY, buttonWidth, "optionMenu");
+    Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, wireframeButtonX, wireframeButtonY, buttonWidth, "optionMenu");
+    
+    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), Change_Render_Distance, renderDistButtonX, renderDistButtonY, buttonWidth, 0, 10, float(RenderDistance), "optionMenu");
+    
+    Button::Add("option_back", "Back", Toggle_Options_Menu, backButtonX, backButtonY, buttonWidth, "optionMenu");
 }
 
 void Init_Debug() {
     lastUIUpdate = glfwGetTime();
     
-    Text::Set_Group("debug");
-    Text::Set_X("debug", 30);
+    float debugX = X_Frac(1, 48);
     
-    Text::Add("fps", "FPS: 0", 850);
-    Text::Add("cpu", "CPU: 0%", 820);
-    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), 750);
-    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), 720);
-    Text::Add("playerChunk", "Chunk:    ", 680);
-    Text::Add("playerTile", "Tile:     ", 650);
-    Text::Add("playerPos", "Position: ", 620);
-    Text::Add("chunkQueue", "Chunks Queued: ", 580);
+    float fpsY = Y_Frac(17, 18);
+    float cpuY = Y_Frac(41, 45);
+    float ramY = Y_Frac(5, 6);
+    float virtualY = Y_Frac(4, 5);
+    float chunkY = Y_Frac(34, 45);
+    float tileY = Y_Frac(13, 18);
+    float posY = Y_Frac(31, 45);
+    float queueY = Y_Frac(29, 45);
+    
+    Text::Set_Group("debug");
+    Text::Set_X("debug", debugX);
+    
+    Text::Add("fps", "FPS: 0", fpsY);
+    Text::Add("cpu", "CPU: 0%", cpuY);
+    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), ramY);
+    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), virtualY);
+    Text::Add("playerChunk", "Chunk:    ", chunkY);
+    Text::Add("playerTile", "Tile:     ", tileY);
+    Text::Add("playerPos", "Position: ", posY);
+    Text::Add("chunkQueue", "Chunks Loaded: ", queueY);
     
     if (Windows) {
-        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), 780);
+        float vramY = Y_Frac(13, 15);
+        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), vramY);
     }
     
     Text::Unset_Group();
@@ -259,6 +291,16 @@ void Draw_Menu() {
     }
 }
 
+int Get_Loaded() {
+    int total = 0;
+    
+    for (auto const &chunk : ChunkMap) {
+        total += chunk.second->Meshed;
+    }
+    
+    return total;
+}
+
 void Draw_Debug() {
     for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
         if (i < AVG_UPDATE_RANGE - 1) {
@@ -289,7 +331,9 @@ void Draw_Debug() {
         Text::Set_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage());
         Text::Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
         
-        if (Windows) Text::Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
+        if (Windows) {
+            Text::Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
+        }
     }
     
     Text::Set_Group("debug");
@@ -297,7 +341,7 @@ void Draw_Debug() {
     Text::Set_Text("playerChunk", "Chunk:      " + Format_Vector(player.CurrentChunk));
     Text::Set_Text("playerTile", "Tile:            " + Format_Vector(player.CurrentTile));
     Text::Set_Text("playerPos", "Position:  " + Format_Vector(player.WorldPos));
-    Text::Set_Text("chunkQueue", "Chunks Loaded: " + std::to_string(ChunkMap.size()));
+    Text::Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(int(ChunkMap.size()) - Get_Loaded()));
     
     Text::Unset_Group();
     
