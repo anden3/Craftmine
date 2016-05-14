@@ -12,12 +12,12 @@ int main() {
     
 	Init_GL();
 	Init_Textures();
-	
-    UI::Init();
     
 	Init_Shaders();
     Init_Buffers();
 	Init_Rendering();
+    
+    UI::Init();
     
     player.Init();
     
@@ -179,10 +179,7 @@ void Init_Shaders() {
 }
 
 void Init_Buffers() {
-    glGenBuffers(1, &OutlineVBO);
-    glGenVertexArrays(1, &OutlineVAO);
-    
-    std::vector<float> data;
+    Data data;
     
     float points[8][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}, {1, 0}, {1, 1}, {0, 1} };
     float n[2] {float(-1 / sqrt(3)), float(1 / sqrt(3))};
@@ -207,20 +204,9 @@ void Init_Buffers() {
         }
     }
     
-    
-    glBindVertexArray(OutlineVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, OutlineVBO);
-    
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 6 * sizeof(float), (void*)0);
-    
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    OutlineBuffer.Init(outlineShader);
+    OutlineBuffer.Create(std::vector<int> {3, 3}, data);
+    OutlineBuffer.VertexType = GL_LINES;
 }
 
 void Init_Rendering() {
@@ -243,8 +229,6 @@ void Render_Scene() {
     
     shader->Upload("model", model);
     
-    shader->Bind();
-    
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
 		ToggleWireframe = false;
@@ -262,25 +246,21 @@ void Render_Scene() {
     for (auto const &chunk : ChunkMap) {
         if (chunk.second->Meshed) {
             if (!chunk.second->DataUploaded) {
-                chunk.second->vbo.Data(chunk.second->VBOData);
+                chunk.second->buffer.Upload(chunk.second->VBOData);
                 chunk.second->DataUploaded = true;
             }
             
-            chunk.second->vbo.Draw();
+            chunk.second->buffer.Draw();
         }
 	}
     
-    shader->Unbind();
-    
     if (player.LookingAtBlock) {
-        outlineShader->Bind();
         outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
         
-        glBindVertexArray(OutlineVAO);
-        glDrawArrays(GL_LINES, 0, 24);
-        glBindVertexArray(0);
-        
-        outlineShader->Unbind();
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(-50.0f, -50.0f);
+        OutlineBuffer.Draw();
+        glDisable(GL_POLYGON_OFFSET_FILL);
     }
 }
 

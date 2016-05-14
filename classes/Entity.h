@@ -1,14 +1,6 @@
 #pragma once
 
-#include <vector>
-#include <map>
-
-#include <glm/glm.hpp>
-
 #include "Chunk.h"
-#include "Shader.h"
-
-typedef std::vector<float> Data;
 
 static const float ENTITY_SCALE = 0.4f;
 static const float ROTATION_RATE = 10.0f;
@@ -46,8 +38,7 @@ private:
     float Rotation = 0.0f;
     bool OnGround = false;
     
-    unsigned int VAO, VBO;
-    int VertexCount = 0;
+    Buffer EntityBuffer;
     
     void Col_Check(float deltaTime);
 };

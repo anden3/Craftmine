@@ -1,6 +1,6 @@
 #include "Inventory.h"
 
-#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <regex>
 
@@ -42,6 +42,7 @@ const std::string TOOLBAR_TEXT = "toolbar";
 Shader* UIShader;
 Shader* UIBorderShader;
 Shader* UITextureShader;
+Shader* UIOrthoShader;
 
 class Recipe {
 public:
@@ -253,6 +254,8 @@ Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float m
 }
 
 void Inventory::Init() {
+    UIOrthoShader = new Shader("ortho");
+    
     START_X = X_Frac(11, 72);
     END_X = X_Frac(17, 24);
     
@@ -358,47 +361,35 @@ void Inventory::Init_UI() {
         Get_Rect(TOOLBAR_START_X, TOOLBAR_END_X, TOOLBAR_START_Y, TOOLBAR_END_Y) // Toolbar background
     };
     
+    Shader* shaders[3] = {UIShader, UIBorderShader, UITextureShader};
+    
     int index = 0;
     
-    for (auto const &name : BufferNames) {
-        Buffers[name] = Buffer();
+    for (auto const &buffer : BufferNames) {
+        Buffers[buffer.first] = Buffer();
+        Buffers[buffer.first].Init(shaders[buffer.second]);
         
-        glBindVertexArray(Buffers[name].VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[name].VBO);
-        
-        if (index < 4) {
-            Buffers[name].Vertices = int(data[index].size()) / 2;
-            glBufferData(GL_ARRAY_BUFFER, data[index].size() * sizeof(float), data[index].data(), GL_STATIC_DRAW);
-        }
-        
-        glEnableVertexAttribArray(0);
-        
-        if (index < 9) {
-            glVertexAttribPointer(0, 2, GL_FLOAT, false, (2 + 2 * (index >= 6)) * sizeof(float), (void*)0);
-        }
-        else {
-            glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)0);
-        }
+        std::vector<int> config = {2};
         
         if (index >= 6) {
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, false, (4 + (index == 9)) * sizeof(float), (void*)((2 + (index == 9)) * sizeof(float)));
-            Buffers[name].VertexSize = 4 + (index == 9);
+            config.push_back(2);
+        }
+        
+        if (index < 4) {
+            Buffers[buffer.first].Create(config, data[index]);
         }
         else {
-            Buffers[name].VertexSize = 2;
+            Buffers[buffer.first].Create(config);
         }
         
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-        
-        if (name == "ToolbarGrid") {
-            Buffers["ToolbarGrid"].VertexType = GL_LINES;
+        if (buffer.first == "ToolbarGrid" || buffer.first == "Grid") {
+            Buffers[buffer.first].VertexType = GL_LINES;
         }
         
         index++;
     }
     
+    Render_GUI_Block(2);
     Switch_Slot();
 }
 
@@ -501,13 +492,7 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
             }
             else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
                 if (!HoldingStack.Type) {
-                    HoldingStack.Type = CraftingOutput.Type;
-                    HoldingStack.Size = int(ceil(CraftingOutput.Size / 2));
-                    CraftingOutput.Size -= HoldingStack.Size;
-                    
-                    if (CraftingOutput.Size == 0) {
-                        CraftingOutput.Type = 0;
-                    }
+                    Split_Stack(HoldingStack, CraftingOutput);
                 }
             }
             
@@ -556,13 +541,7 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
                 }
             }
             else if (Craft[slot].Type) {
-                HoldingStack.Type = Craft[slot].Type;
-                HoldingStack.Size = int(ceil(Craft[slot].Size / 2.0));;
-                Craft[slot].Size -= HoldingStack.Size;
-                
-                if (Craft[slot].Size == 0) {
-                    Craft[slot].Type = 0;
-                }
+                Split_Stack(HoldingStack, Craft[slot]);
             }
         }
         
@@ -605,15 +584,19 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
                 }
             }
             else if (Inv[slot].Type) {
-                HoldingStack.Type = Inv[slot].Type;
-                HoldingStack.Size = int(ceil(Inv[slot].Size / 2.0));
-                Inv[slot].Size -= HoldingStack.Size;
-                
-                if (Inv[slot].Size == 0) {
-                    Inv[slot].Type = 0;
-                }
+                Split_Stack(HoldingStack, Inv[slot]);
             }
         }
+    }
+}
+
+void Inventory::Split_Stack(Stack &a, Stack &b) {
+    a.Type = b.Type;
+    a.Size = int(ceil(b.Size / 2.0));
+    b.Size -= a.Size;
+    
+    if (b.Size == 0) {
+        b.Type = 0;
     }
 }
 
@@ -715,16 +698,17 @@ void Inventory::Mouse_Handler(double x, double y) {
         Text::Set_Opacity("holdingStack", 1.0f);
         Text::Unset_Group();
         
-        Data data = Get_Vertices(HoldingStack.Type, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f);
-        Buffers["Mouse"].Upload(data);
-        MouseVertices = int(data.size()) / 4;
-    }
-    else {
-        MouseVertices = 0;
+        Buffers["Mouse"].Upload(Get_Vertices(HoldingStack.Type, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
     }
 }
 
 void Inventory::Render_GUI_Block(unsigned int type) {
+    glm::mat4 projection = glm::ortho(100, 200, 100, 200);
+    glm::mat4 model;
+    
+    UIOrthoShader->Upload("projection", projection);
+    UIOrthoShader->Upload("model", model);
+    
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
@@ -762,7 +746,8 @@ void Inventory::Render_GUI_Block(unsigned int type) {
         }
     }
     
-    Buffers["Test"].Upload(data);
+    TestBuffer.Init(UIOrthoShader);
+    TestBuffer.Create(std::vector<int>{3, 2}, data);
 }
 
 void Inventory::Mesh() {
@@ -846,12 +831,10 @@ void Inventory::Mesh() {
         }
         
         Buffers["Slots"].Upload(data);
-        SlotVertices = int(data.size()) / 4;
     }
     
     else {
         Buffers["Toolbar"].Upload(toolbarData);
-        ToolbarSlotVertices = int(toolbarData.size()) / 4;
     }
     
     Mouse_Handler(MousePos.x, MousePos.y);
@@ -862,25 +845,15 @@ void Inventory::Draw() {
         UIShader->Upload(colorLocation, BACKGROUND_COLOR);
         UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
         
-        UIShader->Bind();
         Buffers["Background"].Draw();
-        UIShader->Unbind();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         
-        UIBorderShader->Bind();
-        
-        glBindVertexArray(Buffers["Grid"].VAO);
-        
         UIBorderShader->Upload(borderColorLocation, BORDER_COLOR);
-        glDrawArrays(GL_LINES, 0, 52);
+        Buffers["Grid"].Draw(0, 52);
         
         UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
-        glDrawArrays(GL_LINES, 52, 34);
-        
-        glBindVertexArray(0);
-        
-        UITextureShader->Bind();
+        Buffers["Grid"].Draw(52, 34);
         
         Buffers["Slots"].Draw();
         
@@ -888,8 +861,6 @@ void Inventory::Draw() {
             glClear(GL_DEPTH_BUFFER_BIT);
             Buffers["Mouse"].Draw();
         }
-        
-        UITextureShader->Unbind();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         Text::Draw_Group(TEXT_GROUP);
@@ -900,16 +871,14 @@ void Inventory::Draw() {
             UIShader->Upload(colorLocation, glm::vec3(1));
             UIShader->Upload(alphaLocation, 0.3f);
             
-            UIShader->Bind();
             Buffers["Hover"].Draw();
-            UIShader->Unbind();
         }
+        
+        glClear(GL_DEPTH_BUFFER_BIT);
+        TestBuffer.Draw();
     }
     else {
         UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
-        
-        UIShader->Bind();
-        
         UIShader->Upload(colorLocation, BACKGROUND_COLOR);
         Buffers["ToolbarBackground"].Draw();
         
@@ -918,16 +887,12 @@ void Inventory::Draw() {
         UIShader->Upload(colorLocation, glm::vec3(1));
         Buffers["ToolbarSelect"].Draw();
         
-        UIShader->Unbind();
-        
-        UIBorderShader->Bind();
         UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
         Buffers["ToolbarGrid"].Draw();
-        UIBorderShader->Unbind();
         
-        UITextureShader->Bind();
+        glClear(GL_DEPTH_BUFFER_BIT);
+        
         Buffers["Toolbar"].Draw();
-        UITextureShader->Unbind();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         Text::Draw_Group(TOOLBAR_TEXT);

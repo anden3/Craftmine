@@ -13,7 +13,7 @@ const bool Windows = false;
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
 const glm::vec3 AMBIENT_LIGHT = glm::vec3(0.1f);
-const glm::vec3 DIFFUSE_LIGHT = glm::vec3(0.1f);
+const glm::vec3 DIFFUSE_LIGHT = glm::vec3(0.7f);
 
 const std::string CONFIG_FILE = "config.conf";
 
@@ -309,8 +309,8 @@ std::map<std::string, int*> Options = {
     {"VSync", &VSync}
 };
 
-unsigned int DebugVBO, DebugVAO;
-unsigned int OutlineVBO, OutlineVAO;
+Buffer OutlineBuffer;
+
 unsigned int UBO;
 
 unsigned int IMAGE_SIZE = 0;

@@ -1,14 +1,8 @@
 #include "Chat.h"
 
-#include <vector>
-
 #include "Text.h"
 
 #include <unicode/ustream.h>
-
-// #ifdef __APPLE__
-// using UnicodeString;
-// #endif
 
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
@@ -54,12 +48,6 @@ void Chat::Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned in
 }
 
 void Chat::Init_Chat_Background() {
-    glGenBuffers(1, &BackgroundVBO);
-    glGenVertexArrays(1, &BackgroundVAO);
-    
-    glGenBuffers(1, &MessageVBO);
-    glGenVertexArrays(1, &MessageVAO);
-    
     std::vector<float> bgData {
         START_X - CHAT_PAD,  START_Y - CHAT_PAD,
         END_X   + CHAT_PAD,  START_Y - CHAT_PAD,
@@ -78,24 +66,11 @@ void Chat::Init_Chat_Background() {
         START_X - CHAT_PAD,  START_Y   + CHAT_PAD
     };
     
-    glBindVertexArray(BackgroundVAO);
+    BackgroundBuffer.Init(UIShader);
+    MessageBuffer.Init(UIShader);
     
-    glBindBuffer(GL_ARRAY_BUFFER, BackgroundVBO);
-    glBufferData(GL_ARRAY_BUFFER, bgData.size() * sizeof(float), bgData.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(MessageVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, MessageVBO);
-    glBufferData(GL_ARRAY_BUFFER, messageData.size() * sizeof(float), messageData.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    BackgroundBuffer.Create(std::vector<int> {2}, bgData);
+    MessageBuffer.Create(std::vector<int> {2}, messageData);
 }
 
 void Chat::Write(std::string text) {
@@ -280,19 +255,11 @@ void Chat::Draw_Background() {
     UIShader->Upload(ColorLocation, BACKGROUND_COLOR);
     UIShader->Upload(AlphaLocation, BACKGROUND_OPACITY);
     
-    UIShader->Bind();
-    
-    glBindVertexArray(BackgroundVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
+    BackgroundBuffer.Draw();
     
     UIShader->Upload(AlphaLocation, MESSAGE_BOX_OPACITY);
     
-    glBindVertexArray(MessageVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-    
-    UIShader->Unbind();
+    MessageBuffer.Draw();
 }
 
 void Chat::Update() {

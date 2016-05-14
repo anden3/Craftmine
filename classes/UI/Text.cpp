@@ -1,15 +1,11 @@
 #include "Text.h"
 
-#include <map>
-#include <vector>
-
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
-#include "Shader.h"
+#include "Buffer.h"
 
 struct Character {
 	unsigned int TextureID;
@@ -40,7 +36,7 @@ glm::vec3 Color = glm::vec3(1.0f);
 std::string currentGroup = "default";
 
 const int TEXT_TEXTURE_UNIT = 10;
-unsigned int textVAO, textVBO;
+Buffer TextBuffer;
 
 Shader* textShader;
 
@@ -99,19 +95,11 @@ void Text::Init(std::string font, int font_size) {
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
     
-    glGenVertexArrays(1, &textVAO);
-    glGenBuffers(1, &textVBO);
+    Data data;
+    data.resize(4 * 6);
     
-    glBindVertexArray(textVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-    
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    TextBuffer.Init(textShader);
+    TextBuffer.Create(std::vector<int> {4}, data);
     
     textShader->Upload("projection", glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT));
     textShader->Upload("text", TEXT_TEXTURE_UNIT);
@@ -241,10 +229,7 @@ void Text::Draw(String string) {
     
     textShader->Upload("textColor", glm::vec4(color, opacity));
     
-    textShader->Bind();
-    
     glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
-    glBindVertexArray(textVAO);
     
     std::string::const_iterator c;
     
@@ -257,28 +242,24 @@ void Text::Draw(String string) {
         float w = ch.Size.x * scale;
         float h = ch.Size.y * scale;
         
-        float text_vertices[6][4] = {
-            { xPos,     yPos + h,   0, 0 },
-            { xPos,     yPos,       0, 1 },
-            { xPos + w, yPos,       1, 1 },
+        Data text_vertices = {
+            xPos,     yPos + h,   0, 0,
+            xPos,     yPos,       0, 1,
+            xPos + w, yPos,       1, 1,
             
-            { xPos,     yPos + h,   0, 0 },
-            { xPos + w, yPos,       1, 1 },
-            { xPos + w, yPos + h,   1, 0 }
+            xPos,     yPos + h,   0, 0,
+            xPos + w, yPos,       1, 1,
+            xPos + w, yPos + h,   1, 0
         };
         
         glBindTexture(GL_TEXTURE_2D, ch.TextureID);
         
-        glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(text_vertices), text_vertices);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        TextBuffer.Upload(text_vertices, 0, true);
+        TextBuffer.Draw();
         
         x += (ch.Advance >> 6) * scale;
     }
     
-    glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     
     textShader->Unbind();

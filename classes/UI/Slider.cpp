@@ -1,15 +1,7 @@
 #include "Slider.h"
 
-#include <vector>
-#include <map>
-
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
-#include <glm/glm.hpp>
-
 #include "Text.h"
-#include "Shader.h"
+#include "Buffer.h"
 
 const int padding = 20;
 const float sliderWidth = 10.0f;
@@ -48,9 +40,9 @@ struct SliderStruct {
     glm::vec3 BackgroundColor = backgroundColor;
     glm::vec3 TextColor = glm::vec3(1.0f);
     
-    unsigned int BackgroundVAO, BackgroundVBO;
-    unsigned int HandleVAO, HandleVBO;
-    unsigned int BorderVAO, BorderVBO;
+    Buffer BackgroundBuffer;
+    Buffer HandleBuffer;
+    Buffer BorderBuffer;
     
     bool IsHovering = false;
     bool Active = true;
@@ -95,54 +87,21 @@ void Slider::Add(std::string name, std::string text, Func &function, float x, fl
     std::vector<float> handle = {sx, y + h,  sx, y,  sx + sw, y,  sx, y + h,  sx + sw, y,  sx + sw, y + h};
     std::vector<float> border = {x, y,  x + w, y,  x + w, y + h,  x - 0.5f, y + h};
     
-    glGenBuffers(1, &slider.BackgroundVBO);
-    glGenBuffers(1, &slider.HandleVBO);
-    glGenBuffers(1, &slider.BorderVBO);
+    slider.BackgroundBuffer.Init(UIShader);
+    slider.HandleBuffer.Init(UIShader);
+    slider.BorderBuffer.Init(UIBorderShader);
     
-    glGenVertexArrays(1, &slider.BackgroundVAO);
-    glGenVertexArrays(1, &slider.HandleVAO);
-    glGenVertexArrays(1, &slider.BorderVAO);
+    slider.BackgroundBuffer.Create(std::vector<int> {2}, background);
+    slider.HandleBuffer.Create(std::vector<int> {2}, handle);
+    slider.BorderBuffer.Create(std::vector<int> {2}, border);
     
-    glBindVertexArray(slider.BackgroundVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, slider.BackgroundVBO);
-    glBufferData(GL_ARRAY_BUFFER, background.size() * sizeof(float), background.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(slider.HandleVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, slider.HandleVBO);
-    glBufferData(GL_ARRAY_BUFFER, handle.size() * sizeof(float), handle.data(), GL_DYNAMIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(slider.BorderVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, slider.BorderVBO);
-    glBufferData(GL_ARRAY_BUFFER, border.size() * sizeof(float), border.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    slider.BorderBuffer.VertexType = GL_LINE_LOOP;
     
     Sliders[name] = slider;
 }
 
 void Slider::Delete(std::string name) {
     SliderStruct slider = Sliders[name];
-    
-    glDeleteBuffers(1, &slider.BackgroundVBO);
-    glDeleteBuffers(1, &slider.HandleVBO);
-    glDeleteBuffers(1, &slider.BorderVBO);
-    
-    glDeleteVertexArrays(1, &slider.BackgroundVAO);
-    glDeleteVertexArrays(1, &slider.HandleVAO);
-    glDeleteVertexArrays(1, &slider.BorderVAO);
 }
 
 void Slider::Draw(std::string name) {
@@ -151,30 +110,18 @@ void Slider::Draw(std::string name) {
     UIShader->Upload(alphaLocation, slider.BackgroundOpacity);
     UIShader->Upload(colorLocation, slider.BackgroundColor);
     
-    UIShader->Bind();
-    
-    glBindVertexArray(slider.BackgroundVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
+    slider.BackgroundBuffer.Draw();
     
     glClear(GL_DEPTH_BUFFER_BIT);
     
     UIShader->Upload(alphaLocation, slider.HandleOpacity);
     UIShader->Upload(colorLocation, slider.HandleColor);
     
-    glBindVertexArray(slider.HandleVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-    
-    UIShader->Unbind();
+    slider.HandleBuffer.Draw();
     
     glClear(GL_DEPTH_BUFFER_BIT);
     
-    UIBorderShader->Bind();
-    
-    glBindVertexArray(slider.BorderVAO);
-    glDrawArrays(GL_LINE_LOOP, 0, 4);
-    glBindVertexArray(0);
+    slider.BorderBuffer.Draw();
     
     Text::Draw_String(slider.Name);
 }
@@ -206,9 +153,7 @@ void Slider::Move(std::string name, float position) {
     
     std::vector<float> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
     
-    glBindBuffer(GL_ARRAY_BUFFER, slider.HandleVBO);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    slider.HandleBuffer.Upload(data);
     
     Sliders[name].HandleX = x;
     Sliders[name].Value = (slider.Max - slider.Min) * percentage;

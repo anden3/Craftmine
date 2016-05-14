@@ -1,16 +1,11 @@
 #pragma once
 
-#include <map>
 #include <set>
 #include <queue>
 #include <thread>
 #include <chrono>
 
-#define GLM_SWIZZLE
-#include <glm/glm.hpp>
-#include <glm/gtx/string_cast.hpp>
-
-#include "VBO.h"
+#include "Buffer.h"
 
 const int CHUNK_SIZE = 16;
 const unsigned int SUN_LIGHT_LEVEL = 15;
@@ -82,9 +77,9 @@ class Chunk {
 public:
     glm::vec3 Position;
     std::set<glm::vec3, Vec3Comparator> Blocks;
-    VBO vbo;
+    Buffer buffer;
     
-    std::vector<float> VBOData;
+    Data VBOData;
     std::queue<LightNode> LightQueue;
     std::queue<LightNode> LightRemovalQueue;
     

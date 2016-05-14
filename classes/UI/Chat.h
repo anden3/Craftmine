@@ -1,10 +1,6 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <vector>
-
-#include "Shader.h"
+#include "Buffer.h"
 
 struct Message {
     unsigned int ID;
@@ -50,8 +46,8 @@ private:
     
     std::string NewMessage = "";
     
-    unsigned int BackgroundVAO, BackgroundVBO;
-    unsigned int MessageVAO, MessageVBO;
+    Buffer BackgroundBuffer;
+    Buffer MessageBuffer;
     
     void Init_Chat_Background();
     

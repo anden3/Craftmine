@@ -56,39 +56,10 @@ void Upload_Data(const unsigned int vbo, const Data &data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Draw_Cube(unsigned const int vao, const glm::mat4 model, int vertices) {
-    modelShader->Upload("model", model);
-    
-    modelShader->Bind();
-    
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-    
-    modelShader->Unbind();
-}
-
 void Extend(Data &storage, const Data input) {
     for (auto const &object : input) {
         storage.push_back(object);
     }
-}
-
-void Init_3D_Textured(unsigned int &vao, unsigned int &vbo) {
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)0);
-    
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
 Data Create_Textured_Cube(const int type, glm::vec3 offset) {
@@ -142,18 +113,18 @@ void Player::Init() {
 }
 
 void Player::Init_Model() {
-    Data data = Create_Textured_Cube(5, glm::vec3(-0.5f, -0.5f + CAMERA_HEIGHT, -0.5f));
-    
-    Init_3D_Textured(ModelVAO, ModelVBO);
-    Upload_Data(ModelVBO, data);
+    ModelBuffer.Init(modelShader);
+    ModelBuffer.Create(std::vector<int> {3, 2}, Create_Textured_Cube(5, glm::vec3(-0.5f, -0.5f + CAMERA_HEIGHT, -0.5f)));
 }
 
 void Player::Init_Holding() {
-    Init_3D_Textured(HoldingVAO, HoldingVBO);
+    HoldingBuffer.Init(modelShader);
+    HoldingBuffer.Create(std::vector<int> {3, 2});
 }
 
 void Player::Init_Damage() {
-    Init_3D_Textured(DamageVAO, DamageVBO);
+    DamageBuffer.Init(modelShader);
+    DamageBuffer.Create(std::vector<int> {3, 2});
 }
 
 void Player::Init_Sounds() {
@@ -184,13 +155,11 @@ void Player::Mesh_Holding() {
         return;
     }
     
-    Data data = Create_Textured_Cube(CurrentBlock);
-    Upload_Data(HoldingVBO, data);
+    HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlock));
 }
 
 void Player::Mesh_Damage(int index) {
-    Data data = Create_Textured_Cube(246 + index, glm::vec3(0.0f));
-    Upload_Data(DamageVBO, data);
+    DamageBuffer.Upload(Create_Textured_Cube(246 + index, glm::vec3(0.0f)));
 }
 
 
@@ -199,7 +168,8 @@ void Player::Draw_Model() {
     model = glm::translate(model, WorldPos);
     model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
     
-    Draw_Cube(ModelVAO, model);
+    modelShader->Upload("model", model);
+    ModelBuffer.Draw();
 }
 
 void Player::Draw_Holding() {
@@ -218,7 +188,8 @@ void Player::Draw_Holding() {
     model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
     model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
     
-    Draw_Cube(HoldingVAO, model);
+    modelShader->Upload("model", model);
+    HoldingBuffer.Draw();
 }
 
 void Player::Draw_Damage() {
@@ -227,11 +198,11 @@ void Player::Draw_Damage() {
     }
     
     glm::mat4 model;
-    model = glm::translate(model, Get_World_Pos(LookingChunk, LookingTile));
+    modelShader->Upload("model", glm::translate(model, Get_World_Pos(LookingChunk, LookingTile)));
     
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-50.0f, -50.0f);
-    Draw_Cube(DamageVAO, model);
+    DamageBuffer.Draw();
     glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
@@ -786,6 +757,8 @@ void Player::RenderChunks() {
 				if (pos != CurrentChunk && !ChunkMap.count(pos)) {
                     if (pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RenderDistance, 2)) {
                         ChunkMap[pos] = new Chunk(pos);
+                        ChunkMap[pos]->buffer.Init(shader);
+                        ChunkMap[pos]->buffer.Create(std::vector<int> {3, 2, 1, 1});
                     }
 				}
             }

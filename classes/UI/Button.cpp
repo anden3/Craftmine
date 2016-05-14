@@ -1,10 +1,7 @@
 #include "Button.h"
 
-#include <vector>
-#include <map>
-
 #include "Text.h"
-#include "Shader.h"
+#include "Buffer.h"
 
 const int padding = 20;
 
@@ -29,8 +26,8 @@ struct ButtonStruct {
     glm::vec3 BackgroundColor = backgroundColor;
     glm::vec3 TextColor = glm::vec3(1.0f);
     
-    unsigned int BackgroundVAO, BackgroundVBO;
-    unsigned int BorderVAO, BorderVBO;
+    Buffer BackgroundBuffer;
+    Buffer BorderBuffer;
     
     bool IsHovering = false;
     bool Active = true;
@@ -66,33 +63,16 @@ void Button::Add(std::string name, std::string text, Func &function, float x, fl
     
     Text::Unset_Group();
     
-    std::vector<float> data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
-    std::vector<float> border = {x, y,  x + w, y,  x + w, y + h,  x, y + h};
+    Data data = {x, y + h,  x, y,  x + w, y,  x, y + h,  x + w, y,  x + w, y + h};
+    Data border = {x, y,  x + w, y,  x + w, y + h,  x, y + h};
     
-    glGenBuffers(1, &button.BackgroundVBO);
-    glGenBuffers(1, &button.BorderVBO);
+    button.BackgroundBuffer.Init(UIShader);
+    button.BorderBuffer.Init(UIBorderShader);
     
-    glGenVertexArrays(1, &button.BackgroundVAO);
-    glGenVertexArrays(1, &button.BorderVAO);
+    button.BackgroundBuffer.Create(std::vector<int> {2}, data);
+    button.BorderBuffer.Create(std::vector<int> {2}, border);
     
-    glBindVertexArray(button.BackgroundVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, button.BackgroundVBO);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(button.BorderVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, button.BorderVBO);
-    glBufferData(GL_ARRAY_BUFFER, border.size() * sizeof(float), border.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    button.BorderBuffer.VertexType = GL_LINE_LOOP;
     
     Buttons[name] = button;
 }
@@ -103,12 +83,6 @@ void Button::Delete(std::string name) {
     Text::Set_Group(button.Group);
     Text::Remove(button.Name);
     Text::Unset_Group();
-    
-    glDeleteBuffers(1, &button.BackgroundVBO);
-    glDeleteBuffers(1, &button.BorderVBO);
-    
-    glDeleteVertexArrays(1, &button.BackgroundVAO);
-    glDeleteVertexArrays(1, &button.BorderVAO);
 }
 
 void Button::Draw(std::string name) {
@@ -117,23 +91,12 @@ void Button::Draw(std::string name) {
     UIShader->Upload(alphaLocation, button.BackgroundOpacity);
     UIShader->Upload(colorLocation, button.BackgroundColor);
     
-    UIShader->Bind();
-    
-    glBindVertexArray(button.BackgroundVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-    
-    UIShader->Unbind();
+    button.BackgroundBuffer.Draw();
     
     glClear(GL_DEPTH_BUFFER_BIT);
     
     UIBorderShader->Upload(borderColorLocation, glm::vec3(0));
-    
-    UIBorderShader->Bind();
-    
-    glBindVertexArray(button.BorderVAO);
-    glDrawArrays(GL_LINE_LOOP, 0, 4);
-    glBindVertexArray(0);
+    button.BorderBuffer.Draw();
     
     Text::Set_Group(button.Group);
     Text::Draw_String(button.Name);

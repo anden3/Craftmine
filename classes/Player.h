@@ -6,6 +6,8 @@
 #include "Inventory.h"
 #include "Entity.h"
 
+#include "Buffer.h"
+
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
 extern bool MouseEnabled;
@@ -14,6 +16,7 @@ extern bool ChunkMapBusy;
 extern int RenderDistance;
 
 extern Chat chat;
+extern Shader* shader;
 
 extern std::map<std::string, std::vector<unsigned int>> BlockSounds;
 
@@ -79,9 +82,9 @@ private:
     bool FirstTime = true;
     bool ThirdPerson = false;
     
-    unsigned int HoldingVAO, HoldingVBO;
-    unsigned int ModelVAO, ModelVBO;
-    unsigned int DamageVAO, DamageVBO;
+    Buffer HoldingBuffer;
+    Buffer ModelBuffer;
+    Buffer DamageBuffer;
     
     int LightLevel = SUN_LIGHT_LEVEL;
     

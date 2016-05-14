@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-
-#include "Shader.h"
+#include "Buffer.h"
 
 typedef void (Func)(void);
 

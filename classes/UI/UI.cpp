@@ -26,6 +26,7 @@ int alphaLocation;
 int borderColorLocation;
 
 unsigned int BackgroundVAO, BackgroundVBO;
+Buffer BackgroundBuffer;
 
 glm::vec3 BackgroundColor = glm::vec3(0);
 float BackgroundOpacity = 0.5f;
@@ -166,24 +167,11 @@ void Init_UI() {
 }
 
 void Init_Background() {
-    glGenBuffers(1, &BackgroundVBO);
-    glGenVertexArrays(1, &BackgroundVAO);
-    
     float w = float(SCREEN_WIDTH);
     float h = float(SCREEN_HEIGHT);
     
-    std::vector<float> data {0, 0,  w, 0,  w, h,  0, 0,  w, h,  0, h};
-    
-    glBindVertexArray(BackgroundVAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, BackgroundVBO);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(float), (void*)0);
-    
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    BackgroundBuffer.Init(UIShader);
+    BackgroundBuffer.Create(std::vector<int> {2}, Data {0, 0,  w, 0,  w, h,  0, 0,  w, h,  0, h});
 }
 
 void Init_Menu() {
@@ -260,13 +248,7 @@ void Draw_Background() {
     UIShader->Upload(colorLocation, BackgroundColor);
     UIShader->Upload(alphaLocation, BackgroundOpacity);
     
-    UIShader->Bind();
-    
-    glBindVertexArray(BackgroundVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-    
-    UIShader->Unbind();
+    BackgroundBuffer.Draw();
     
     glClear(GL_DEPTH_BUFFER_BIT);
 }

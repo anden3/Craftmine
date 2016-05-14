@@ -1,44 +1,9 @@
 #pragma once
 
-#include <vector>
-#include <map>
-
-#include <glm/glm.hpp>
-
-#include "Shader.h"
+#include "Buffer.h"
 #include "Text.h"
 
 typedef std::vector<float> Data;
-
-class Buffer {
-public:
-    unsigned int VAO;
-    unsigned int VBO;
-    
-    unsigned int VertexSize;
-    int VertexType = GL_TRIANGLES;
-    
-    int Vertices;
-    
-    Buffer() {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-    }
-    
-    void Upload(const Data &data) {
-        Vertices = int(data.size()) / VertexSize;
-        
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-    
-    void Draw() {
-        glBindVertexArray(VAO);
-        glDrawArrays(VertexType, 0, Vertices);
-        glBindVertexArray(0);
-    }
-};
 
 struct Stack {
     Stack(int type = 0, int size = 1) : Type(type), Size(size) {
@@ -130,9 +95,21 @@ private:
     
     int HoveringSlot = -1;
     
-    std::vector<std::string> BufferNames = {"Background", "Grid", "ToolbarGrid", "ToolbarBackground", "ToolbarSelect", "Hover", "Slots", "Mouse", "Toolbar", "Test"};
+    std::vector<std::pair<std::string, int>> BufferNames = {
+        {"Background", 0},
+        {"Grid", 1},
+        {"ToolbarGrid", 1},
+        {"ToolbarBackground", 0},
+        {"ToolbarSelect", 0},
+        {"Hover", 0},
+        {"Slots", 2},
+        {"Mouse", 2},
+        {"Toolbar", 2}
+    };
     
     std::map<std::string, Buffer> Buffers = {};
+    
+    Buffer TestBuffer;
     
     int SlotVertices = 0;
     int MouseVertices = 0;
@@ -145,6 +122,7 @@ private:
     void Craft_Item();
     
     void Swap_Stacks(Stack &a, Stack &b);
+    void Split_Stack(Stack &a, Stack &b);
     
     void Render_GUI_Block(unsigned int type);
 };
