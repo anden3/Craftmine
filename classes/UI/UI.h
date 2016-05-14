@@ -22,6 +22,8 @@ extern GLFWwindow* Window;
 extern Player player;
 extern Chat chat;
 
+extern void Write_Config();
+
 namespace UI {
     void Init();
     void Draw();

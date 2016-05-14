@@ -8,11 +8,56 @@
 #include "Shader.h"
 #include "Text.h"
 
-typedef std::pair<unsigned int, unsigned int> Stack;
-typedef std::pair<unsigned int, unsigned int> Buffer;
 typedef std::vector<float> Data;
 
+class Buffer {
+public:
+    unsigned int VAO;
+    unsigned int VBO;
+    
+    unsigned int VertexSize;
+    int VertexType = GL_TRIANGLES;
+    
+    int Vertices;
+    
+    Buffer() {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+    }
+    
+    void Upload(const Data &data) {
+        Vertices = int(data.size()) / VertexSize;
+        
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    
+    void Draw() {
+        glBindVertexArray(VAO);
+        glDrawArrays(VertexType, 0, Vertices);
+        glBindVertexArray(0);
+    }
+};
+
+struct Stack {
+    Stack(int type = 0, int size = 1) : Type(type), Size(size) {
+        if (type == 0) {
+            size = 0;
+        }
+    }
+    
+    unsigned int Type;
+    unsigned int Size = 1;
+};
+
+extern float vertices[6][6][3];
+extern float tex_coords[6][6][2];
+
 extern std::map<unsigned int, glm::vec2> textureCoords;
+extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
+extern std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoords;
+extern std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
 
 extern bool keys[1024];
 
@@ -78,26 +123,16 @@ private:
     std::vector<Stack> Inv;
     std::vector<Stack> Craft;
     
-    Stack CraftingOutput = Stack(0, 0);
-    Stack HoldingStack = Stack(0, 0);
+    Stack CraftingOutput = Stack();
+    Stack HoldingStack = Stack();
     
     glm::vec2 MousePos = glm::vec2(0, 0);
     
     int HoveringSlot = -1;
     
-    std::vector<std::string> BufferNames = {"Background", "Grid", "ToolbarGrid", "ToolbarBackground", "ToolbarSelect", "Hover", "Slots", "Mouse", "Toolbar"};
+    std::vector<std::string> BufferNames = {"Background", "Grid", "ToolbarGrid", "ToolbarBackground", "ToolbarSelect", "Hover", "Slots", "Mouse", "Toolbar", "Test"};
     
-    std::map<std::string, Buffer> Buffers = {
-        {"Background", Buffer(0, 0)},
-        {"Grid", Buffer(0, 0)},
-        {"ToolbarGrid", Buffer(0, 0)},
-        {"ToolbarBackground", Buffer(0, 0)},
-        {"ToolbarSelect", Buffer(0, 0)},
-        {"Hover", Buffer(0, 0)},
-        {"Slots", Buffer(0, 0)},
-        {"Mouse", Buffer(0, 0)},
-        {"Toolbar", Buffer(0, 0)}
-    };
+    std::map<std::string, Buffer> Buffers = {};
     
     int SlotVertices = 0;
     int MouseVertices = 0;
@@ -110,4 +145,6 @@ private:
     void Craft_Item();
     
     void Swap_Stacks(Stack &a, Stack &b);
+    
+    void Render_GUI_Block(unsigned int type);
 };

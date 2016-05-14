@@ -114,10 +114,10 @@ void Button::Delete(std::string name) {
 void Button::Draw(std::string name) {
     ButtonStruct button = Buttons[name];
     
-    UIShader->Bind();
+    UIShader->Upload(alphaLocation, button.BackgroundOpacity);
+    UIShader->Upload(colorLocation, button.BackgroundColor);
     
-    glUniform1f(alphaLocation, button.BackgroundOpacity);
-    glUniform3f(colorLocation, button.BackgroundColor.r, button.BackgroundColor.g, button.BackgroundColor.b);
+    UIShader->Bind();
     
     glBindVertexArray(button.BackgroundVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -127,9 +127,9 @@ void Button::Draw(std::string name) {
     
     glClear(GL_DEPTH_BUFFER_BIT);
     
-    UIBorderShader->Bind();
+    UIBorderShader->Upload(borderColorLocation, glm::vec3(0));
     
-    glUniform3f(borderColorLocation, 0, 0, 0);
+    UIBorderShader->Bind();
     
     glBindVertexArray(button.BorderVAO);
     glDrawArrays(GL_LINE_LOOP, 0, 4);

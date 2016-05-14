@@ -9,12 +9,12 @@ VBO::VBO() {
     glBindVertexArray(VertexArrayObject);
     glBindBuffer(GL_ARRAY_BUFFER, VertexBufferObject);
     
-    int sizes[5] = {3, 3, 2, 1, 1};
+    int sizes[4] = {3, 2, 1, 1};
     int size = 0;
     
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
         glEnableVertexAttribArray(i);
-        glVertexAttribPointer(i, sizes[i], GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(size * sizeof(float)));
+        glVertexAttribPointer(i, sizes[i], GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(size * sizeof(float)));
         size += sizes[i];
     }
     
@@ -32,7 +32,7 @@ void VBO::Data(std::vector<float> data) {
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    vertexCount = int(data.size() / 10);
+    vertexCount = int(data.size() / 7);
 }
 
 void VBO::Draw() {

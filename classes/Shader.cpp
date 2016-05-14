@@ -68,11 +68,3 @@ void Shader::Link() {
 	glDeleteShader(vShader);
 	glDeleteShader(fShader);
 }
-
-void Shader::Bind() {
-    glUseProgram(Program);
-}
-
-void Shader::Unbind() {
-	glUseProgram(0);
-}

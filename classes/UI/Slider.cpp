@@ -148,10 +148,10 @@ void Slider::Delete(std::string name) {
 void Slider::Draw(std::string name) {
     SliderStruct slider = Sliders[name];
     
-    UIShader->Bind();
+    UIShader->Upload(alphaLocation, slider.BackgroundOpacity);
+    UIShader->Upload(colorLocation, slider.BackgroundColor);
     
-    glUniform1f(alphaLocation, slider.BackgroundOpacity);
-    glUniform3f(colorLocation, slider.BackgroundColor.r, slider.BackgroundColor.g, slider.BackgroundColor.b);
+    UIShader->Bind();
     
     glBindVertexArray(slider.BackgroundVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -159,8 +159,8 @@ void Slider::Draw(std::string name) {
     
     glClear(GL_DEPTH_BUFFER_BIT);
     
-    glUniform1f(alphaLocation, slider.HandleOpacity);
-    glUniform3f(colorLocation, slider.HandleColor.r, slider.HandleColor.g, slider.HandleColor.b);
+    UIShader->Upload(alphaLocation, slider.HandleOpacity);
+    UIShader->Upload(colorLocation, slider.HandleColor);
     
     glBindVertexArray(slider.HandleVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);

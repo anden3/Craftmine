@@ -4,9 +4,6 @@
 
 #include <regex>
 
-typedef std::pair<std::regex, Stack> Recipe;
-typedef std::vector<int> RecList;
-
 const int SLOTS_X = 10;
 const int SLOTS_Y = 6;
 
@@ -29,7 +26,9 @@ float INV_PAD_X, INV_PAD_Y;
 float SLOT_PAD_X, SLOT_PAD_Y;
 float TEXT_PAD_X, TEXT_PAD_Y;
 
-const int OUTPUT_SLOT = SLOTS_X * SLOTS_Y + 10;
+float BLOCK_SCALE = 0.1f;
+
+const int OUTPUT_SLOT = SLOTS_X * SLOTS_Y + 9;
 
 const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
 const glm::vec3 BORDER_COLOR = glm::vec3(0.5f);
@@ -44,85 +43,183 @@ Shader* UIShader;
 Shader* UIBorderShader;
 Shader* UITextureShader;
 
-Recipe Rec(const RecList &input, const Stack result) {
-    Recipe recipe;
-    recipe.second = result;
+class Recipe {
+public:
+    std::regex Pattern;
+    Stack Result;
     
-    std::string rgx = "";
-    
-    int index = 0;
-    int multiplier = 1;
-    
-    for (auto const &block : input) {
-        if (block == -1) {
-            if (index == 0) {
-                rgx += "^(0 )*";
-            }
-            else {
-                rgx += "(0 )*$";
-            }
-        }
-        else if (block < -1) {
-            multiplier = std::abs(block);
-        }
-        else {
-            for (int i = 0; i < multiplier; i++) {
-                rgx += std::to_string(block) + " ";
+    Recipe(std::string pattern, Stack result) {
+        Result = result;
+        
+        std::vector<std::string> setNums;
+        
+        std::string rgx = "";
+        std::string setNum = "";
+        std::string capture = "";
+        
+        bool set = false;
+        bool capturing = false;
+        bool checkNext = false;
+        bool setAcceptZero = false;
+        bool ignoreNextSpace = false;
+        
+        for (const char &c : pattern) {
+            if (c == '(') {
+                capture = "";
+                capturing = true;
+                continue;
             }
             
-            multiplier = 1;
+            if (capturing) {
+                if (c == ')') {
+                    capturing = false;
+                    checkNext = true;
+                }
+                else {
+                    if (c == ' ') {
+                        capture += ",";
+                    }
+                    else {
+                        capture += c;
+                    }
+                }
+                
+                continue;
+            }
+            
+            if (c == '%') {
+                rgx += "(0,)*";
+                ignoreNextSpace = true;
+            }
+            
+            else if (checkNext) {
+                if (isdigit(c)) {
+                    for (int i = 0; i < (c - 48); i++) {
+                        rgx += capture + ",";
+                    }
+                    
+                    rgx.pop_back();
+                }
+                
+                else if (c == '[') {
+                    set = true;
+                }
+                
+                checkNext = false;
+            }
+            
+            else if (set) {
+                if (c == ']') {
+                    set = false;
+                    
+                    setNums.push_back(setNum);
+                    setNum = "";
+                    
+                    if (setAcceptZero) {
+                        rgx += "(";
+                    }
+                    
+                    for (auto const &num : setNums) {
+                        rgx += "(" + capture + ",){" + num + "}|";
+                    }
+                    
+                    rgx.pop_back();
+                    
+                    if (setAcceptZero) {
+                        rgx += ")?";
+                    }
+                    
+                    ignoreNextSpace = true;
+                    setAcceptZero = false;
+                }
+                
+                else if (c == '0') {
+                    setAcceptZero = true;
+                }
+                
+                else if (isdigit(c)) {
+                    setNum += c;
+                }
+                
+                else if (c == ',' && setNum != "") {
+                    setNums.push_back(setNum);
+                    setNum = "";
+                }
+            }
+            
+            else {
+                if (c != ' ' ) {
+                    rgx += c;
+                }
+                else if (!ignoreNextSpace) {
+                    rgx += ",";
+                }
+                
+                ignoreNextSpace = false;
+            }
         }
         
-        ++index;
+        if (rgx.back() != ',' && rgx.back() != '*') {
+            rgx += ",";
+        }
+        
+        Pattern = std::regex("^" + rgx + "$");
     }
     
-    recipe.first = std::regex(rgx);
-    
-    return recipe;
-}
+    inline bool Check(const std::string grid) const {
+        return std::regex_match(grid.cbegin(), grid.cend(), Pattern);
+    }
+};
 
 std::map<int, std::vector<Recipe>> Recipes = {
-    // -1 indicates any number of empty blocks.
-    // Other negative numbers indicates multiplier on the block after.
+    // %   == Any number of zeroes.
+    // ()  == Capture expression
+    // ()x == Repeating captured expression x times.
+    // []  == Repeating n times, where n is any of the numbers in the set.
     
     {1, std::vector<Recipe> {
-        Rec(RecList {-1, 17, -1}, Stack(5, 4)), // Wooden Planks
+        Recipe("% 17 %", Stack(5, 4)), // Wooden Planks
     }},
     
     {2, std::vector<Recipe> {
-        Rec(RecList {-1, 5, 0, 0, 5, -1},   Stack(280, 4)), // Stick
-        Rec(RecList {-1, 280, 0, 0, 5, -1}, Stack(69,  1)), // Lever
-        Rec(RecList {-1, 263, 0, 0, 280},   Stack(50,  4)), // Torch
+        Recipe("% 5 (0)2 5 %",     Stack(280, 4)), // Stick
+        Recipe("% 280 (0)2 4 %",   Stack(69)),     // Lever
+        Recipe("% 263 (0)2 280 %", Stack(50, 4)),  // Torch
     }},
     
     {3, std::vector<Recipe> {
-        Rec(RecList {0, 265, 0, 0, 280, 0, 0, 280, 0}, Stack(258, 1)), // Iron Shovel
+        Recipe("% 265 (0 0 280)2 %", Stack(256)),   // Iron Shovel
+        Recipe("(0)[0,3,6] (1)3 %",  Stack(44, 6)), // Stone Slab
     }},
     
     {4, std::vector<Recipe> {
-        Rec(RecList {-1, 5, 5, 0, 5, 5, -1}, Stack(58, 1)), // Crafting Table
+        Recipe("% (5)2 0 (5)2 %",   Stack(58)), // Crafting Table
+        Recipe("% (12)2 0 (12)2 %", Stack(24)), // Sandstone
     }},
     
     {5, std::vector<Recipe> {
-        Rec(RecList {265, 265, 0, 265, 280, 0, 0, 280, 0}, Stack(258, 1)), // Iron Axe
-        Rec(RecList {-3, 265, 0, 280, 0, 0, 280, 0},       Stack(257, 1)), // Iron Pickaxe
+        Recipe("% (265)2 0 265 280 (0)2 280 %", Stack(258)), // Iron Axe
+        Recipe("(265)3 (0 280 0)2",             Stack(257)), // Iron Pickaxe
     }},
     
     {6, std::vector<Recipe> {
-        
+        Recipe("(0)[0,3] (35)3 (5)3 %", Stack(26)), // Bed
     }},
     
     {7, std::vector<Recipe> {
-        Rec(RecList {265, 0, 265, 265, 280, 265, 265, 0, 265}, Stack(66, 16)), // Rail
-        Rec(RecList {280, 0, -5, 280, 0, 280},                 Stack(65, 4 )), // Ladder
+        Recipe("265 0 (265)2 280 (265)2 0 265", Stack(66, 16)), // Rail
+        Recipe("280 0 (280)5 0 280",            Stack(65, 4)), // Ladder
     }},
     
     {8, std::vector<Recipe> {
-        Rec(RecList {-4, 4, 0, -4, 4}, Stack(61, 1)), // Furnace
+        Recipe("(4)4 0 (4)4", Stack(61)), // Furnace
+        Recipe("(5)4 0 (5)4", Stack(54)), // Chest
     }},
     
     {9, std::vector<Recipe> {
-        
+        Recipe("(264)9", Stack(57)), // Diamond Block
+        Recipe("(265)9", Stack(42)), // Iron Block
+        Recipe("(266)9", Stack(41)), // Gold Block
     }},
 };
 
@@ -193,11 +290,11 @@ void Inventory::Init() {
     TEXT_PAD_Y = Y_Frac(1, 180);
     
     for (int i = 0; i < SLOTS_X * SLOTS_Y; i++) {
-        Inv.push_back(Stack(0, 0));
+        Inv.push_back(Stack());
     }
     
     for (int i = 0; i < 9; i++) {
-        Craft.push_back(Stack(0, 0));
+        Craft.push_back(Stack());
     }
     
     Init_UI();
@@ -264,26 +361,40 @@ void Inventory::Init_UI() {
     int index = 0;
     
     for (auto const &name : BufferNames) {
-        glGenVertexArrays(1, &Buffers[name].first);
-        glGenBuffers(1, &Buffers[name].second);
+        Buffers[name] = Buffer();
         
-        glBindVertexArray(Buffers[name].first);
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[name].second);
+        glBindVertexArray(Buffers[name].VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, Buffers[name].VBO);
         
         if (index < 4) {
+            Buffers[name].Vertices = int(data[index].size()) / 2;
             glBufferData(GL_ARRAY_BUFFER, data[index].size() * sizeof(float), data[index].data(), GL_STATIC_DRAW);
         }
         
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, (2 + 2 * (index >= 6)) * sizeof(float), (void*)0);
+        
+        if (index < 9) {
+            glVertexAttribPointer(0, 2, GL_FLOAT, false, (2 + 2 * (index >= 6)) * sizeof(float), (void*)0);
+        }
+        else {
+            glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)0);
+        }
         
         if (index >= 6) {
             glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, (4 + (index == 9)) * sizeof(float), (void*)((2 + (index == 9)) * sizeof(float)));
+            Buffers[name].VertexSize = 4 + (index == 9);
+        }
+        else {
+            Buffers[name].VertexSize = 2;
         }
         
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+        
+        if (name == "ToolbarGrid") {
+            Buffers["ToolbarGrid"].VertexType = GL_LINES;
+        }
         
         index++;
     }
@@ -293,7 +404,7 @@ void Inventory::Init_UI() {
 
 void Inventory::Clear() {
     for (int i = 0; i < int(Inv.size()); i++) {
-        Inv[i] = Stack(0, 0);
+        Inv[i] = Stack();
     }
     
     Mesh();
@@ -303,16 +414,16 @@ void Inventory::Add_Stack(unsigned int type, unsigned int size) {
     int index = 0;
     
     for (auto const &stack : Inv) {
-        if (stack.first == type) {
-            if (stack.second < MAX_STACK_SIZE) {
-                if (stack.second + size <= MAX_STACK_SIZE) {
-                    Inv[index].second += size;
+        if (stack.Type == type) {
+            if (stack.Size < MAX_STACK_SIZE) {
+                if (stack.Size + size <= MAX_STACK_SIZE) {
+                    Inv[index].Size += size;
                     Mesh();
                     return;
                 }
                 else {
-                    size -= MAX_STACK_SIZE - stack.second;
-                    Inv[index].second = MAX_STACK_SIZE;
+                    size -= MAX_STACK_SIZE - stack.Size;
+                    Inv[index].Size = MAX_STACK_SIZE;
                 }
             }
         }
@@ -323,7 +434,7 @@ void Inventory::Add_Stack(unsigned int type, unsigned int size) {
     index = 0;
     
     for (auto const &stack : Inv) {
-        if (stack.second == 0) {
+        if (stack.Type == 0) {
             if (size <= MAX_STACK_SIZE) {
                 Inv[index] = Stack(type, size);
                 Mesh();
@@ -344,10 +455,10 @@ void Inventory::Decrease_Size(int slot) {
         slot = ActiveToolbarSlot;
     }
     
-    Inv[slot].second--;
+    Inv[slot].Size--;
     
-    if (Inv[slot].second == 0) {
-        Inv[slot].first = 0;
+    if (Inv[slot].Size == 0) {
+        Inv[slot].Type = 0;
     }
     
     Mesh();
@@ -363,39 +474,39 @@ Stack Inventory::Get_Info(int slot) {
 
 void Inventory::Click_Slot(unsigned int slot, int button) {
     if (slot == OUTPUT_SLOT) {
-        if (CraftingOutput.first) {
+        if (CraftingOutput.Type) {
             Craft_Item();
             
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 if (keys[GLFW_KEY_LEFT_SHIFT]) {
-                    Add_Stack(CraftingOutput.first, CraftingOutput.second);
-                    CraftingOutput = Stack(0, 0);
+                    Add_Stack(CraftingOutput.Type, CraftingOutput.Size);
+                    CraftingOutput = Stack();
                 }
                 
-                else if (!HoldingStack.first) {
+                else if (!HoldingStack.Type) {
                     HoldingStack = CraftingOutput;
-                    CraftingOutput = Stack(0, 0);
+                    CraftingOutput = Stack();
                 }
-                else if (CraftingOutput.first == HoldingStack.first) {
-                    if (CraftingOutput.second + HoldingStack.second <= MAX_STACK_SIZE) {
-                        HoldingStack.second += CraftingOutput.second;
-                        CraftingOutput = Stack(0, 0);
+                else if (CraftingOutput.Type == HoldingStack.Type) {
+                    if (CraftingOutput.Size + HoldingStack.Size <= MAX_STACK_SIZE) {
+                        HoldingStack.Size += CraftingOutput.Size;
+                        CraftingOutput = Stack();
                     }
                     else {
-                        int remainder = CraftingOutput.second - (MAX_STACK_SIZE - HoldingStack.second);
-                        HoldingStack.second = MAX_STACK_SIZE;
-                        CraftingOutput.second = remainder;
+                        int remainder = CraftingOutput.Size - (MAX_STACK_SIZE - HoldingStack.Size);
+                        HoldingStack.Size = MAX_STACK_SIZE;
+                        CraftingOutput.Size = remainder;
                     }
                 }
             }
             else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                if (!HoldingStack.first) {
-                    HoldingStack.first = CraftingOutput.first;
-                    HoldingStack.second = int(ceil(CraftingOutput.second / 2));
-                    CraftingOutput.second -= HoldingStack.second;
+                if (!HoldingStack.Type) {
+                    HoldingStack.Type = CraftingOutput.Type;
+                    HoldingStack.Size = int(ceil(CraftingOutput.Size / 2));
+                    CraftingOutput.Size -= HoldingStack.Size;
                     
-                    if (CraftingOutput.second == 0) {
-                        CraftingOutput.first = 0;
+                    if (CraftingOutput.Size == 0) {
+                        CraftingOutput.Type = 0;
                     }
                 }
             }
@@ -408,16 +519,16 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
         slot -= SLOTS_X * SLOTS_Y;
         
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (HoldingStack.first && HoldingStack.first == Craft[slot].first) {
-                if (Craft[slot].second < MAX_STACK_SIZE) {
-                    if (HoldingStack.second <= MAX_STACK_SIZE - Craft[slot].second) {
-                        Craft[slot].second += HoldingStack.second;
-                        HoldingStack = Stack(0, 0);
+            if (HoldingStack.Type && HoldingStack.Type == Craft[slot].Type) {
+                if (Craft[slot].Size < MAX_STACK_SIZE) {
+                    if (HoldingStack.Size <= MAX_STACK_SIZE - Craft[slot].Size) {
+                        Craft[slot].Size += HoldingStack.Size;
+                        HoldingStack = Stack();
                     }
                     else {
-                        int remainder = HoldingStack.second - (MAX_STACK_SIZE - Craft[slot].second);
-                        Craft[slot].second = MAX_STACK_SIZE;
-                        HoldingStack.second = remainder;
+                        int remainder = HoldingStack.Size - (MAX_STACK_SIZE - Craft[slot].Size);
+                        Craft[slot].Size = MAX_STACK_SIZE;
+                        HoldingStack.Size = remainder;
                     }
                 }
                 else {
@@ -430,27 +541,27 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
         }
         
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (HoldingStack.first) {
-                if (Craft[slot].first == HoldingStack.first && Craft[slot].second < MAX_STACK_SIZE) {
-                    Craft[slot].second++;
-                    HoldingStack.second--;
+            if (HoldingStack.Type) {
+                if (Craft[slot].Type == HoldingStack.Type && Craft[slot].Size < MAX_STACK_SIZE) {
+                    Craft[slot].Size++;
+                    HoldingStack.Size--;
                 }
-                else if (!Craft[slot].first) {
-                    Craft[slot] = Stack(HoldingStack.first, 1);
-                    HoldingStack.second--;
+                else if (!Craft[slot].Type) {
+                    Craft[slot] = Stack(HoldingStack.Type);
+                    HoldingStack.Size--;
                 }
                 
-                if (HoldingStack.second == 0) {
-                    HoldingStack.first = 0;
+                if (HoldingStack.Size == 0) {
+                    HoldingStack.Type = 0;
                 }
             }
-            else if (Craft[slot].first) {
-                HoldingStack.first = Craft[slot].first;
-                HoldingStack.second = int(ceil(Craft[slot].second / 2.0));;
-                Craft[slot].second -= HoldingStack.second;
+            else if (Craft[slot].Type) {
+                HoldingStack.Type = Craft[slot].Type;
+                HoldingStack.Size = int(ceil(Craft[slot].Size / 2.0));;
+                Craft[slot].Size -= HoldingStack.Size;
                 
-                if (Craft[slot].second == 0) {
-                    Craft[slot].first = 0;
+                if (Craft[slot].Size == 0) {
+                    Craft[slot].Type = 0;
                 }
             }
         }
@@ -460,17 +571,17 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
     
     else {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (HoldingStack.first && HoldingStack.first == Inv[slot].first) {
-                if (Inv[slot].second < MAX_STACK_SIZE) {
-                    if (HoldingStack.second <= MAX_STACK_SIZE - Inv[slot].second) {
-                        Inv[slot].second += HoldingStack.second;
-                        HoldingStack = Stack(0, 0);
+            if (HoldingStack.Type && HoldingStack.Type == Inv[slot].Type) {
+                if (Inv[slot].Size < MAX_STACK_SIZE) {
+                    if (HoldingStack.Size <= MAX_STACK_SIZE - Inv[slot].Size) {
+                        Inv[slot].Size += HoldingStack.Size;
+                        HoldingStack = Stack();
                         return;
                     }
                     else {
-                        int remainder = HoldingStack.second - (MAX_STACK_SIZE - Inv[slot].second);
-                        Inv[slot].second = MAX_STACK_SIZE;
-                        HoldingStack.second = remainder;
+                        int remainder = HoldingStack.Size - (MAX_STACK_SIZE - Inv[slot].Size);
+                        Inv[slot].Size = MAX_STACK_SIZE;
+                        HoldingStack.Size = remainder;
                         return;
                     }
                 }
@@ -479,27 +590,27 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
             Swap_Stacks(HoldingStack, Inv[slot]);
         }
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (HoldingStack.first) {
-                if (Inv[slot].first == HoldingStack.first && Inv[slot].second < MAX_STACK_SIZE) {
-                    Inv[slot].second++;
-                    HoldingStack.second--;
+            if (HoldingStack.Type) {
+                if (Inv[slot].Type == HoldingStack.Type && Inv[slot].Size < MAX_STACK_SIZE) {
+                    Inv[slot].Size++;
+                    HoldingStack.Size--;
                 }
-                else if (!Inv[slot].first) {
-                    Inv[slot] = Stack(HoldingStack.first, 1);
-                    HoldingStack.second--;
+                else if (!Inv[slot].Type) {
+                    Inv[slot] = Stack(HoldingStack.Type);
+                    HoldingStack.Size--;
                 }
                 
-                if (HoldingStack.second == 0) {
-                    HoldingStack.first = 0;
+                if (HoldingStack.Size == 0) {
+                    HoldingStack.Type = 0;
                 }
             }
-            else if (Inv[slot].first) {
-                HoldingStack.first = Inv[slot].first;
-                HoldingStack.second = int(ceil(Inv[slot].second / 2.0));
-                Inv[slot].second -= HoldingStack.second;
+            else if (Inv[slot].Type) {
+                HoldingStack.Type = Inv[slot].Type;
+                HoldingStack.Size = int(ceil(Inv[slot].Size / 2.0));
+                Inv[slot].Size -= HoldingStack.Size;
                 
-                if (Inv[slot].second == 0) {
-                    Inv[slot].first = 0;
+                if (Inv[slot].Size == 0) {
+                    Inv[slot].Type = 0;
                 }
             }
         }
@@ -507,32 +618,31 @@ void Inventory::Click_Slot(unsigned int slot, int button) {
 }
 
 void Inventory::Check_Crafting() {
-    std::smatch match;
     std::string grid = "";
     int blocks = 0;
     
     for (auto const &tile : Craft) {
-        grid += std::to_string(tile.first) + " ";
-        blocks += tile.first > 0;
+        grid += std::to_string(tile.Type) + ",";
+        blocks += tile.Type > 0;
     }
     
     for (auto const &recipe : Recipes[blocks]) {
-        if (std::regex_match(grid.cbegin(), grid.cend(), recipe.first)) {
-            CraftingOutput = recipe.second;
+        if (recipe.Check(grid)) {
+            CraftingOutput = recipe.Result;
             Mesh();
             return;
         }
     }
     
-    CraftingOutput = Stack(0, 0);
+    CraftingOutput = Stack();
     Mesh();
 }
 
 void Inventory::Craft_Item() {
     for (auto &stack : Craft) {
-        if (stack.first) {
-            if (--stack.second == 0) {
-                stack = Stack(0, 0);
+        if (stack.Type) {
+            if (--stack.Size == 0) {
+                stack = Stack();
             }
         }
     }
@@ -540,7 +650,7 @@ void Inventory::Craft_Item() {
 
 void Inventory::Switch_Slot() {
     float startX = TOOLBAR_START_X + ActiveToolbarSlot * SLOT_WIDTH_X / 2.0f;
-    Upload_Data(Buffers["ToolbarSelect"].second, Get_Rect(startX, startX + SLOT_WIDTH_X / 2.0f, TOOLBAR_START_Y, TOOLBAR_END_Y));
+    Buffers["ToolbarSelect"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X / 2.0f, TOOLBAR_START_Y, TOOLBAR_END_Y));
 }
 
 void Inventory::Swap_Stacks(Stack &a, Stack &b) {
@@ -576,7 +686,7 @@ void Inventory::Mouse_Handler(double x, double y) {
             
             HoveringSlot = int((startY - START_Y) / SLOT_WIDTH_Y) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH_X);
             
-            Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
+            Buffers["Hover"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
         }
         
         else if (x >= CRAFTING_START_X && x <= CRAFTING_END_X) {
@@ -584,34 +694,75 @@ void Inventory::Mouse_Handler(double x, double y) {
                 float startX = float(floor((x - CRAFTING_START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + CRAFTING_START_X);
                 float startY = float(floor((mouseY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + CRAFTING_START_Y);
                 
-                HoveringSlot = SLOTS_X * SLOTS_Y + int((startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
+                HoveringSlot = SLOTS_X * SLOTS_Y + int(2 - (startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
                 
-                Upload_Data(Buffers["Hover"].second, Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
+                Buffers["Hover"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
             }
             
             else if (mouseY >= OUTPUT_START_Y && mouseY <= OUTPUT_END_Y) {
                 if (x >= OUTPUT_START_X && x <= OUTPUT_END_X) {
                     HoveringSlot = OUTPUT_SLOT;
-                    Upload_Data(Buffers["Hover"].second, Get_Rect(OUTPUT_START_X, OUTPUT_END_X, OUTPUT_START_Y, OUTPUT_END_Y));
+                    Buffers["Hover"].Upload(Get_Rect(OUTPUT_START_X, OUTPUT_END_X, OUTPUT_START_Y, OUTPUT_END_Y));
                 }
             }
         }
     }
     
-    if (HoldingStack.first) {
+    if (HoldingStack.Type) {
         Text::Set_Group(TEXT_GROUP);
-        Text::Add("holdingStack", std::to_string(HoldingStack.second), mouseY + TEXT_PAD_Y);
+        Text::Add("holdingStack", std::to_string(HoldingStack.Size), mouseY + TEXT_PAD_Y);
         Text::Set_X("holdingStack", mouseX + TEXT_PAD_X);
         Text::Set_Opacity("holdingStack", 1.0f);
         Text::Unset_Group();
         
-        Data data = Get_Vertices(HoldingStack.first, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f);
-        Upload_Data(Buffers["Mouse"].second, data);
+        Data data = Get_Vertices(HoldingStack.Type, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f);
+        Buffers["Mouse"].Upload(data);
         MouseVertices = int(data.size()) / 4;
     }
     else {
         MouseVertices = 0;
     }
+}
+
+void Inventory::Render_GUI_Block(unsigned int type) {
+    Data data;
+    
+    glm::vec2 texPosition = textureCoords[type];
+    static float textureStepX = (1.0f / 16.0f);
+    static float textureStepY = (1.0f / 32.0f);
+    
+    float texStartX = textureStepX * (texPosition.x - 1.0f);
+    float texStartY = textureStepY * (texPosition.y - 1.0f);
+    
+    for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+            if (CustomVertices.count(type)) {
+                data.push_back((CustomVertices[type][i][vertices[i][j][0]].x - 0.5f) * BLOCK_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j][1]].y - 0.5f) * BLOCK_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j][2]].z - 0.5f) * BLOCK_SCALE);
+            }
+            else {
+                data.push_back((vertices[i][j][0] - 0.5f) * BLOCK_SCALE);
+                data.push_back((vertices[i][j][1] - 0.5f) * BLOCK_SCALE);
+                data.push_back((vertices[i][j][2] - 0.5f) * BLOCK_SCALE);
+            }
+            
+            if (CustomTexCoords.count(type)) {
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
+            }
+            else if (MultiTextures.count(type)) {
+                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / 16.0f);
+                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / 32.0f);
+            }
+            else {
+                data.push_back(texStartX + tex_coords[i][j][0] / 16.0f);
+                data.push_back(texStartY + tex_coords[i][j][1] / 32.0f);
+            }
+        }
+    }
+    
+    Buffers["Test"].Upload(data);
 }
 
 void Inventory::Mesh() {
@@ -624,30 +775,30 @@ void Inventory::Mesh() {
     int index = 0;
     
     for (auto const &stack : Inv) {
-        if (stack.first) {
+        if (stack.Type) {
             float startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
 			float startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH_Y + SLOT_PAD_Y;
             
 			float toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH_X / 2.0f + SLOT_PAD_X / 2.0f;
             
             if (Is_Open) {
-                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
+                Extend(data, Get_Vertices(stack.Type, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
             }
             else {
-                Extend(toolbarData, Get_Vertices(stack.first, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD_Y / 2, SLOT_WIDTH_X / 2 - SLOT_PAD_X, SLOT_WIDTH_Y / 2 - SLOT_PAD_Y));
+                Extend(toolbarData, Get_Vertices(stack.Type, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD_Y / 2, SLOT_WIDTH_X / 2 - SLOT_PAD_X, SLOT_WIDTH_Y / 2 - SLOT_PAD_Y));
             }
             
             std::string textName = std::to_string(index);
             
             if (Is_Open) {
                 Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD_Y);
+                Text::Add(textName, std::to_string(stack.Size), startY + TEXT_PAD_Y);
                 Text::Set_X(textName, startX + TEXT_PAD_X);
             }
             
             else {
                 Text::Set_Group(TOOLBAR_TEXT);
-                Text::Add(textName, std::to_string(stack.second), TOOLBAR_START_Y + TEXT_PAD_Y);
+                Text::Add(textName, std::to_string(stack.Size), TOOLBAR_START_Y + TEXT_PAD_Y);
                 Text::Set_X(textName, toolbarStartX + TEXT_PAD_X / 2.0f);
             }
             
@@ -666,16 +817,16 @@ void Inventory::Mesh() {
         index = 0;
         
         for (auto const &stack : Craft) {
-            if (stack.first) {
+            if (stack.Type) {
                 float startX = CRAFTING_START_X + (index % 3) * SLOT_WIDTH_X + SLOT_PAD_X;
-                float startY = CRAFTING_START_Y + (index / 3) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+                float startY = CRAFTING_START_Y + (2 - (index / 3)) * SLOT_WIDTH_Y + SLOT_PAD_Y;
                 
-                Extend(data, Get_Vertices(stack.first, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
+                Extend(data, Get_Vertices(stack.Type, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
                 
                 std::string textName = std::to_string(SLOTS_X * SLOTS_Y + index);
                 
                 Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.second), startY + TEXT_PAD_Y);
+                Text::Add(textName, std::to_string(stack.Size), startY + TEXT_PAD_Y);
                 Text::Set_X(textName, startX + TEXT_PAD_X);
                 Text::Unset_Group();
             }
@@ -683,23 +834,23 @@ void Inventory::Mesh() {
             index++;
         }
         
-        if (CraftingOutput.first) {
-            Extend(data, Get_Vertices(CraftingOutput.first, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
+        if (CraftingOutput.Type) {
+            Extend(data, Get_Vertices(CraftingOutput.Type, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
             
             std::string textName = std::to_string(OUTPUT_SLOT);
             
             Text::Set_Group(TEXT_GROUP);
-            Text::Add(textName, std::to_string(CraftingOutput.second), OUTPUT_START_Y + SLOT_PAD_Y + TEXT_PAD_Y);
+            Text::Add(textName, std::to_string(CraftingOutput.Size), OUTPUT_START_Y + SLOT_PAD_Y + TEXT_PAD_Y);
             Text::Set_X(textName, OUTPUT_START_X + SLOT_PAD_X + TEXT_PAD_X);
             Text::Unset_Group();
         }
         
-        Upload_Data(Buffers["Slots"].second, data);
+        Buffers["Slots"].Upload(data);
         SlotVertices = int(data.size()) / 4;
     }
     
     else {
-        Upload_Data(Buffers["Toolbar"].second, toolbarData);
+        Buffers["Toolbar"].Upload(toolbarData);
         ToolbarSlotVertices = int(toolbarData.size()) / 4;
     }
     
@@ -708,41 +859,34 @@ void Inventory::Mesh() {
 
 void Inventory::Draw() {
     if (Is_Open) {
+        UIShader->Upload(colorLocation, BACKGROUND_COLOR);
+        UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
+        
         UIShader->Bind();
-        
-        glUniform3f(colorLocation, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
-        glUniform1f(alphaLocation, BACKGROUND_OPACITY);
-        
-        glBindVertexArray(Buffers["Background"].first);
-        glDrawArrays(GL_TRIANGLES, 0, 18);
-        glBindVertexArray(0);
+        Buffers["Background"].Draw();
+        UIShader->Unbind();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         
         UIBorderShader->Bind();
         
-        glBindVertexArray(Buffers["Grid"].first);
+        glBindVertexArray(Buffers["Grid"].VAO);
         
-        glUniform3f(borderColorLocation, BORDER_COLOR.r, BORDER_COLOR.g, BORDER_COLOR.b);
+        UIBorderShader->Upload(borderColorLocation, BORDER_COLOR);
         glDrawArrays(GL_LINES, 0, 52);
         
-        glUniform3f(borderColorLocation, TOOLBAR_COLOR.r, TOOLBAR_COLOR.g, TOOLBAR_COLOR.b);
+        UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
         glDrawArrays(GL_LINES, 52, 34);
         
         glBindVertexArray(0);
         
         UITextureShader->Bind();
         
-        glBindVertexArray(Buffers["Slots"].first);
-        glDrawArrays(GL_TRIANGLES, 0, SlotVertices);
-        glBindVertexArray(0);
+        Buffers["Slots"].Draw();
         
-        if (HoldingStack.first) {
+        if (HoldingStack.Type) {
             glClear(GL_DEPTH_BUFFER_BIT);
-            
-            glBindVertexArray(Buffers["Mouse"].first);
-            glDrawArrays(GL_TRIANGLES, 0, MouseVertices);
-            glBindVertexArray(0);
+            Buffers["Mouse"].Draw();
         }
         
         UITextureShader->Unbind();
@@ -753,52 +897,36 @@ void Inventory::Draw() {
         if (HoveringSlot >= 0) {
             glClear(GL_DEPTH_BUFFER_BIT);
             
+            UIShader->Upload(colorLocation, glm::vec3(1));
+            UIShader->Upload(alphaLocation, 0.3f);
+            
             UIShader->Bind();
-            
-            glUniform3f(colorLocation, 1, 1, 1);
-            glUniform1f(alphaLocation, 0.3f);
-            
-            glBindVertexArray(Buffers["Hover"].first);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            glBindVertexArray(0);
-            
+            Buffers["Hover"].Draw();
             UIShader->Unbind();
         }
     }
     else {
+        UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
+        
         UIShader->Bind();
         
-        glUniform3f(colorLocation, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
-        glUniform1f(alphaLocation, BACKGROUND_OPACITY);
-        
-        glBindVertexArray(Buffers["ToolbarBackground"].first);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
-        
-        glUniform3f(colorLocation, 1, 1, 1);
+        UIShader->Upload(colorLocation, BACKGROUND_COLOR);
+        Buffers["ToolbarBackground"].Draw();
         
         glClear(GL_DEPTH_BUFFER_BIT);
         
-        glBindVertexArray(Buffers["ToolbarSelect"].first);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        UIShader->Upload(colorLocation, glm::vec3(1));
+        Buffers["ToolbarSelect"].Draw();
         
-        glClear(GL_DEPTH_BUFFER_BIT);
+        UIShader->Unbind();
         
         UIBorderShader->Bind();
-        
-        glUniform3f(borderColorLocation, TOOLBAR_COLOR.r, TOOLBAR_COLOR.g, TOOLBAR_COLOR.b);
-        
-        glBindVertexArray(Buffers["ToolbarGrid"].first);
-        glDrawArrays(GL_LINES, 0, 26);
-        glBindVertexArray(0);
+        UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
+        Buffers["ToolbarGrid"].Draw();
+        UIBorderShader->Unbind();
         
         UITextureShader->Bind();
-        
-        glBindVertexArray(Buffers["Toolbar"].first);
-        glDrawArrays(GL_TRIANGLES, 0, ToolbarSlotVertices);
-        glBindVertexArray(0);
-        
+        Buffers["Toolbar"].Draw();
         UITextureShader->Unbind();
         
         glClear(GL_DEPTH_BUFFER_BIT);

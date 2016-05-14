@@ -113,13 +113,8 @@ void Text::Init(std::string font, int font_size) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     
-    textShader->Bind();
-    
-    glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
-    glUniformMatrix4fv(glGetUniformLocation(textShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(textShader->Program, "text"), TEXT_TEXTURE_UNIT);
-    
-    textShader->Unbind();
+    textShader->Upload("projection", glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT));
+    textShader->Upload("text", TEXT_TEXTURE_UNIT);
 }
 
 void Text::Add(std::string name, std::string text, float y) {
@@ -244,9 +239,9 @@ void Text::Draw(String string) {
     if (opacity == -1) opacity = Opacity;
     if (color == glm::vec3(-1)) color = Color;
     
-    textShader->Bind();
+    textShader->Upload("textColor", glm::vec4(color, opacity));
     
-    glUniform4f(glGetUniformLocation(textShader->Program, "textColor"), color.r, color.g, color.b, opacity);
+    textShader->Bind();
     
     glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
     glBindVertexArray(textVAO);

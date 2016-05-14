@@ -277,16 +277,16 @@ void Chat::Get_Next() {
 }
 
 void Chat::Draw_Background() {
-    UIShader->Bind();
+    UIShader->Upload(ColorLocation, BACKGROUND_COLOR);
+    UIShader->Upload(AlphaLocation, BACKGROUND_OPACITY);
     
-    glUniform3f(ColorLocation, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
-    glUniform1f(AlphaLocation, BACKGROUND_OPACITY);
+    UIShader->Bind();
     
     glBindVertexArray(BackgroundVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
     
-    glUniform1f(AlphaLocation, MESSAGE_BOX_OPACITY);
+    UIShader->Upload(AlphaLocation, MESSAGE_BOX_OPACITY);
     
     glBindVertexArray(MessageVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);

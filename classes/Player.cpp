@@ -57,9 +57,9 @@ void Upload_Data(const unsigned int vbo, const Data &data) {
 }
 
 void Draw_Cube(unsigned const int vao, const glm::mat4 model, int vertices) {
-    modelShader->Bind();
+    modelShader->Upload("model", model);
     
-    glUniformMatrix4fv(glGetUniformLocation(modelShader->Program, "model"), 1, false, glm::value_ptr(model));
+    modelShader->Bind();
     
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -103,9 +103,22 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
-            Extend(data, Data {vertices[i][j][0] + offset.x, vertices[i][j][1] + offset.y, vertices[i][j][2] + offset.z});
+            if (CustomVertices.count(type)) {
+                data.push_back(CustomVertices[type][i][vertices[i][j][0]].x);
+                data.push_back(CustomVertices[type][i][vertices[i][j][1]].y);
+                data.push_back(CustomVertices[type][i][vertices[i][j][2]].z);
+            }
+            else {
+                data.push_back(vertices[i][j][0] + offset.x);
+                data.push_back(vertices[i][j][1] + offset.y);
+                data.push_back(vertices[i][j][2] + offset.z);
+            }
             
-            if (MultiTextures.count(type)) {
+            if (CustomTexCoords.count(type)) {
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
+            }
+            else if (MultiTextures.count(type)) {
                 data.push_back(textureStepX * (MultiTextures[type][i].x - 1.0f) + tex_coords[i][j][0] * textureStepX);
                 data.push_back(textureStepY * (MultiTextures[type][i].y - 1.0f) + tex_coords[i][j][1] * textureStepY);
             }
@@ -165,7 +178,7 @@ void Player::Init_Sounds() {
 
 
 void Player::Mesh_Holding() {
-    CurrentBlock = inventory.Get_Info().first;
+    CurrentBlock = inventory.Get_Info().Type;
     
     if (CurrentBlock == 0) {
         return;
@@ -319,10 +332,7 @@ void Player::Move(float deltaTime, bool update) {
                     LightLevel = SUN_LIGHT_LEVEL;
                 }
             }
-            
-            modelShader->Bind();
-            glUniform1i(glGetUniformLocation(modelShader->Program, "lightLevel"), LightLevel);
-            modelShader->Unbind();
+            modelShader->Upload("lightLevel", LightLevel);
         }
         
         Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
@@ -405,7 +415,7 @@ void Player::Check_Pickup() {
         }
     }
     
-    if (CurrentBlock == 0 && inventory.Get_Info().first) {
+    if (CurrentBlock == 0 && inventory.Get_Info().Type) {
         Mesh_Holding();
     }
 }
@@ -693,7 +703,7 @@ void Player::ClickHandler(int button, int action) {
                     ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
                     
                     inventory.Decrease_Size();
-                    CurrentBlock = inventory.Get_Info().first;
+                    CurrentBlock = inventory.Get_Info().Type;
                     
                     if (CurrentBlock == 11) {
                         Place_Light(TORCH_LIGHT_LEVEL);
@@ -827,21 +837,33 @@ std::string Process_Commands(std::string message) {
     std::string command = parameters[0];
     
     if (command == "tp") {
+        if (parameters.size() < 4) {
+            return "Error! Not enough parameters.";
+        }
+        
         int x = std::stoi(parameters[1]);
         int y = std::stoi(parameters[2]);
         int z = std::stoi(parameters[3]);
         
         player.Teleport(glm::vec3(x, y, z));
         
-        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")";
+        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ").";
     }
     
     else if (command == "give") {
+        if (parameters.size() < 2) {
+            return "Error! Not enough parameters.";
+        }
+        
         int block = std::stoi(parameters[1]);
-        int size = std::stoi(parameters[2]);
+        int size = 64;
+        
+        if (parameters.size() >= 3) {
+            size = std::stoi(parameters[2]);
+        }
         
         player.inventory.Add_Stack(block, size);
-        return "Given block " + parameters[1] + " to player";
+        return "Given block " + parameters[1] + " to player.";
     }
     
     else if (command == "clear") {
@@ -851,20 +873,24 @@ std::string Process_Commands(std::string message) {
     }
     
     else if (command == "gamemode") {
+        if (parameters.size() < 2) {
+            return "Error! Not enough parameters.";
+        }
+        
         if (parameters[1] == "c") {
             Creative = true;
-            return "Gamemode changed to Creative";
+            return "Gamemode changed to Creative.";
         }
         else if (parameters[1] == "s") {
             Creative = false;
-            return "Gamemode changed to Survival";
+            return "Gamemode changed to Survival.";
         }
         else {
-            return "Error! Invalid gamemode";
+            return "Error! Invalid gamemode.";
         }
     }
     
     else {
-        return "Error! Command not recognized";
+        return "Error! Command not recognized.";
     }
 }

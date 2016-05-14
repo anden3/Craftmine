@@ -151,19 +151,13 @@ void Init_UI_Shaders() {
     
     glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
     
-    UIShader->Bind();
-    glUniformMatrix4fv(glGetUniformLocation(UIShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    UIShader->Unbind();
+    UIShader->Upload("projection", projection);
     
-    UIBorderShader->Bind();
-    glUniformMatrix4fv(glGetUniformLocation(UIBorderShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform3f(borderColorLocation, 0.0f, 0.0f, 0.0f);
-    UIBorderShader->Unbind();
+    UIBorderShader->Upload("projection", projection);
+    UIBorderShader->Upload(borderColorLocation, glm::vec3(0));
     
-    UITextureShader->Bind();
-    glUniformMatrix4fv(glGetUniformLocation(UITextureShader->Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(UITextureShader->Program, "tex"), 0);
-    UITextureShader->Unbind();
+    UITextureShader->Upload("projection", projection);
+    UITextureShader->Upload("tex", 0);
 }
 
 void Init_UI() {
@@ -263,10 +257,10 @@ void Draw_UI() {
 }
 
 void Draw_Background() {
-    UIShader->Bind();
+    UIShader->Upload(colorLocation, BackgroundColor);
+    UIShader->Upload(alphaLocation, BackgroundOpacity);
     
-    glUniform3f(colorLocation, BackgroundColor.r, BackgroundColor.g, BackgroundColor.b);
-    glUniform1f(alphaLocation, BackgroundOpacity);
+    UIShader->Bind();
     
     glBindVertexArray(BackgroundVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -357,6 +351,7 @@ void Toggle_VSync() {
     Button::Set_Text("option_vsync", "V-Sync: " + BoolStrings[VSync]);
     
     glfwSwapInterval(VSync);
+    Write_Config();
 }
 
 void Toggle_Wireframe() {
@@ -370,6 +365,7 @@ void Change_Render_Distance() {
     if (value != RenderDistance) {
         RenderDistance = value;
         Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(value));
+        Write_Config();
         
         player.RenderChunks();
     }

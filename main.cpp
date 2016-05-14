@@ -85,6 +85,16 @@ void Parse_Config() {
     }
 }
 
+void Write_Config() {
+    std::ofstream file(CONFIG_FILE);
+    
+    for (auto const &option : Options) {
+        file << option.first << "=" << *option.second << "\n";
+    }
+    
+    file.close();
+}
+
 void Init_GL() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -214,15 +224,11 @@ void Init_Buffers() {
 }
 
 void Init_Rendering() {
-	shader->Bind();
-	glUniform3f(glGetUniformLocation(shader->Program, "ambient"), 0.1f, 0.1f, 0.1f);
-    glUniform3f(glGetUniformLocation(shader->Program, "diffuse"), 0.7f, 0.7f, 0.7f);
-	glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
-	shader->Unbind();
+    shader->Upload("ambient", AMBIENT_LIGHT);
+    shader->Upload("diffuse", DIFFUSE_LIGHT);
+    shader->Upload("diffTex", 0);
     
-    modelShader->Bind();
-    glUniform1i(glGetUniformLocation(modelShader->Program, "tex"), 0);
-    modelShader->Unbind();
+    modelShader->Upload("tex", 0);
 }
 
 void Render_Scene() {
@@ -235,20 +241,21 @@ void Render_Scene() {
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     
+    shader->Upload("model", model);
+    
     shader->Bind();
-    glUniformMatrix4fv(glGetUniformLocation(shader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
+    
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
 		ToggleWireframe = false;
 
 		if (Wireframe) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 50);
+            shader->Upload("diffTex", 50);
 		}
 		else {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			glUniform1i(glGetUniformLocation(shader->Program, "diffTex"), 0);
+            shader->Upload("diffTex", 0);
 		}
 	}
     
@@ -267,14 +274,12 @@ void Render_Scene() {
     
     if (player.LookingAtBlock) {
         outlineShader->Bind();
-        
-        model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile));
-        glUniformMatrix4fv(glGetUniformLocation(outlineShader->Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
         
         glBindVertexArray(OutlineVAO);
         glDrawArrays(GL_LINES, 0, 24);
         glBindVertexArray(0);
-                
+        
         outlineShader->Unbind();
     }
 }

@@ -41,6 +41,8 @@ extern std::map<unsigned int, glm::vec2> textureCoords;
 extern std::map<unsigned int, float> blockHardness;
 
 extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
+extern std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoords;
+extern std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
 
 extern float vertices[6][6][3];
 extern float tex_coords[6][6][2];

@@ -21,26 +21,6 @@ std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> Un
 
 std::map<glm::vec3, std::map<glm::vec3, int, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
 
-float vertices[6][6][3] = {
-		{ {0, 0, 0}, {0, 1, 1}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}, {0, 0, 1} },
-		{ {1, 0, 0}, {1, 1, 0}, {1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {1, 0, 1} },
-		{ {0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {1, 0, 1}, {0, 0, 1}, {0, 0, 0} },
-		{ {0, 1, 0}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}, {0, 1, 1}, {1, 1, 1} },
-		{ {0, 0, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0} },
-		{ {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1} }
-};
-
-float normals[6][3] = { {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1} };
-
-float tex_coords[6][6][2] = {
-	{ {0, 1}, {1, 0}, {0, 0}, {1, 0}, {0, 1}, {1, 1} },
-	{ {1, 1}, {1, 0}, {0, 0}, {1, 1}, {0, 0}, {0, 1} },
-	{ {0, 0}, {1, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 0} },
-	{ {0, 0}, {1, 1}, {1, 0}, {0, 0}, {0, 1}, {1, 1} },
-	{ {1, 1}, {0, 0}, {0, 1}, {1, 1}, {1, 0}, {0, 0} },
-	{ {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1} }
-};
-
 void Seed() {
     Seeded = true;
     
@@ -368,15 +348,23 @@ void Chunk::Mesh() {
             while (bit < 6) {
                 if (seesAir & 1) {
                     for (int j = 0; j < 6; j++) {
-                        VBOData.push_back(vertices[bit][j][0] + Position.x * CHUNK_SIZE + block->x);
-                        VBOData.push_back(vertices[bit][j][1] + Position.y * CHUNK_SIZE + block->y);
-                        VBOData.push_back(vertices[bit][j][2] + Position.z * CHUNK_SIZE + block->z);
+                        if (CustomVertices.count(blockType)) {
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][0]].x + block->x + Position.x * CHUNK_SIZE);
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][1]].y + block->y + Position.y * CHUNK_SIZE);
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][2]].z + block->z + Position.z * CHUNK_SIZE);
+                        }
+                        else {
+                            VBOData.push_back(vertices[bit][j][0] + block->x + Position.x * CHUNK_SIZE);
+                            VBOData.push_back(vertices[bit][j][1] + block->y + Position.y * CHUNK_SIZE);
+                            VBOData.push_back(vertices[bit][j][2] + block->z + Position.z * CHUNK_SIZE);
+                        }
                         
-						VBOData.push_back(normals[bit][0]);
-						VBOData.push_back(normals[bit][1]);
-						VBOData.push_back(normals[bit][2]);
+                        if (CustomTexCoords.count(blockType)) {
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][0]].x / 16.0f);
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][1]].y / 32.0f);
+                        }
 
-						if (MultiTextures.count(blockType)) {
+						else if (MultiTextures.count(blockType)) {
 							VBOData.push_back(textureStepX * (MultiTextures[blockType][bit].x - 1.0f) + tex_coords[bit][j][0] * textureStepX);
 							VBOData.push_back(textureStepY * (MultiTextures[blockType][bit].y - 1.0f) + tex_coords[bit][j][1] * textureStepY);
 						}

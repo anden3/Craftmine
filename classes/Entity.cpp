@@ -25,17 +25,28 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
-            Extend(data, std::vector<float> {
-                (vertices[i][j][0] - 0.5f) * ENTITY_SCALE, (vertices[i][j][1] - 0.5f) * ENTITY_SCALE, (vertices[i][j][2] - 0.5f) * ENTITY_SCALE
-            });
-            
-            if (MultiTextures.count(type)) {
-                data.push_back(textureStepX * (MultiTextures[type][i].x - 1.0f) + tex_coords[i][j][0] * textureStepX);
-                data.push_back(textureStepY * (MultiTextures[type][i].y - 1.0f) + tex_coords[i][j][1] * textureStepY);
+            if (CustomVertices.count(type)) {
+                data.push_back((CustomVertices[type][i][vertices[i][j][0]].x - 0.5f) * ENTITY_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j][1]].y - 0.5f) * ENTITY_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j][2]].z - 0.5f) * ENTITY_SCALE);
             }
             else {
-                data.push_back(texStartX + tex_coords[i][j][0] * textureStepX);
-                data.push_back(texStartY + tex_coords[i][j][1] * textureStepY);
+                data.push_back((vertices[i][j][0] - 0.5f) * ENTITY_SCALE);
+                data.push_back((vertices[i][j][1] - 0.5f) * ENTITY_SCALE);
+                data.push_back((vertices[i][j][2] - 0.5f) * ENTITY_SCALE);
+            }
+            
+            if (CustomTexCoords.count(type)) {
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
+            }
+            else if (MultiTextures.count(type)) {
+                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / 16.0f);
+                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / 32.0f);
+            }
+            else {
+                data.push_back(texStartX + tex_coords[i][j][0] / 16.0f);
+                data.push_back(texStartY + tex_coords[i][j][1] / 32.0f);
             }
         }
     }
@@ -162,14 +173,14 @@ void EntityInstance::Draw() {
         }
     }
     
-    modelShader->Bind();
-    
     glm::mat4 model;
     model = glm::translate(model, Position);
     model = glm::rotate(model, glm::radians(Rotation), glm::vec3(0, 1, 0));
     
-    glUniform1i(glGetUniformLocation(modelShader->Program, "lightLevel"), lightLevel);
-    glUniformMatrix4fv(glGetUniformLocation(modelShader->Program, "model"), 1, false, glm::value_ptr(model));
+    modelShader->Upload("lightLevel", lightLevel);
+    modelShader->Upload("model", model);
+    
+    modelShader->Bind();
     
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, VertexCount);
