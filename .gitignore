@@ -45,6 +45,8 @@ Debug/vc140.pdb
 Dependencies/
 build/
 
+images/atlas.psd
+
 Base.lproj
 Info.plist
 *.obj

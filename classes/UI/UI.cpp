@@ -107,8 +107,8 @@ void UI::Click(double mouseX, double mouseY, int action, int button) {
         Slider::Check_Click(mouseX, SCREEN_HEIGHT - mouseY, action);
     }
     
-    if (ShowInventory && action == GLFW_PRESS) {
-        player.inventory.Click_Handler(mouseX, mouseY, button);
+    if (ShowInventory) {
+        player.inventory.Click_Handler(mouseX, mouseY, button, action);
     }
 }
 

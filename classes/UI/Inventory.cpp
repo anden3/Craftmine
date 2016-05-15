@@ -3,10 +3,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <regex>
+#include <set>
 
 const int SLOTS_X = 10;
 const int SLOTS_Y = 6;
 
+const int INV_SIZE = SLOTS_X * SLOTS_Y;
 const int MAX_STACK_SIZE = 64;
 
 float START_X, END_X;
@@ -28,7 +30,7 @@ float TEXT_PAD_X, TEXT_PAD_Y;
 
 float BLOCK_SCALE = 0.1f;
 
-const int OUTPUT_SLOT = SLOTS_X * SLOTS_Y + 9;
+const int OUTPUT_SLOT = INV_SIZE + 9;
 
 const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
 const glm::vec3 BORDER_COLOR = glm::vec3(0.5f);
@@ -38,6 +40,22 @@ const float BACKGROUND_OPACITY = 0.7f;
 
 const std::string TEXT_GROUP = "inv";
 const std::string TOOLBAR_TEXT = "toolbar";
+
+enum MouseButtons {
+    NONE,
+    MOUSE_LEFT,
+    MOUSE_RIGHT
+};
+
+static int MouseDown = NONE;
+
+bool MouseState = 0;
+
+int LastSlot = -1;
+int StartSlot = -1;
+
+std::set<Stack*> DivideSlots;
+int HoldingSize = 0;
 
 Shader* UIShader;
 Shader* UIBorderShader;
@@ -292,7 +310,7 @@ void Inventory::Init() {
     TEXT_PAD_X = X_Frac(1, 288);
     TEXT_PAD_Y = Y_Frac(1, 180);
     
-    for (int i = 0; i < SLOTS_X * SLOTS_Y; i++) {
+    for (int i = 0; i < INV_SIZE; i++) {
         Inv.push_back(Stack());
     }
     
@@ -463,140 +481,145 @@ Stack Inventory::Get_Info(int slot) {
     return Inv[slot];
 }
 
-void Inventory::Click_Slot(unsigned int slot, int button) {
-    if (slot == OUTPUT_SLOT) {
-        if (CraftingOutput.Type) {
+Stack& Inventory::Get_Stack(int slot) {
+    return (slot >= INV_SIZE) ? Craft[slot - INV_SIZE] : Inv[slot];
+}
+
+void Inventory::Click_Slot(int slot, int button) {
+    if (slot == OUTPUT_SLOT && CraftingOutput.Type) {
+        if (keys[GLFW_KEY_LEFT_SHIFT]) {
+            Add_Stack(CraftingOutput);
+            CraftingOutput = Stack();
             Craft_Item();
-            
-            if (button == GLFW_MOUSE_BUTTON_LEFT) {
-                if (keys[GLFW_KEY_LEFT_SHIFT]) {
-                    Add_Stack(CraftingOutput.Type, CraftingOutput.Size);
-                    CraftingOutput = Stack();
-                }
-                
-                else if (!HoldingStack.Type) {
-                    HoldingStack = CraftingOutput;
-                    CraftingOutput = Stack();
-                }
-                else if (CraftingOutput.Type == HoldingStack.Type) {
-                    if (CraftingOutput.Size + HoldingStack.Size <= MAX_STACK_SIZE) {
-                        HoldingStack.Size += CraftingOutput.Size;
-                        CraftingOutput = Stack();
-                    }
-                    else {
-                        int remainder = CraftingOutput.Size - (MAX_STACK_SIZE - HoldingStack.Size);
-                        HoldingStack.Size = MAX_STACK_SIZE;
-                        CraftingOutput.Size = remainder;
-                    }
-                }
-            }
-            else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                if (!HoldingStack.Type) {
-                    Split_Stack(HoldingStack, CraftingOutput);
-                }
-            }
-            
-            Check_Crafting();
+        }
+        
+        else if (!HoldingStack.Type) {
+            Swap_Stacks(CraftingOutput);
+            Craft_Item();
+        }
+        
+        else if (Left_Click_Stack(CraftingOutput, HoldingStack)) {
+            Craft_Item();
+        }
+    }
+    else {
+        Stack& stack = Get_Stack(slot);
+        
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            Left_Click_Stack(HoldingStack, stack, true);
+        }
+        else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+            Right_Click_Stack(stack);
         }
     }
     
-    else if (slot >= SLOTS_X * SLOTS_Y) {
-        slot -= SLOTS_X * SLOTS_Y;
-        
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (HoldingStack.Type && HoldingStack.Type == Craft[slot].Type) {
-                if (Craft[slot].Size < MAX_STACK_SIZE) {
-                    if (HoldingStack.Size <= MAX_STACK_SIZE - Craft[slot].Size) {
-                        Craft[slot].Size += HoldingStack.Size;
-                        HoldingStack = Stack();
-                    }
-                    else {
-                        int remainder = HoldingStack.Size - (MAX_STACK_SIZE - Craft[slot].Size);
-                        Craft[slot].Size = MAX_STACK_SIZE;
-                        HoldingStack.Size = remainder;
-                    }
-                }
-                else {
-                    Swap_Stacks(HoldingStack, Craft[slot]);
-                }
-            }
-            else {
-                Swap_Stacks(HoldingStack, Craft[slot]);
-            }
-        }
-        
-        else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (HoldingStack.Type) {
-                if (Craft[slot].Type == HoldingStack.Type && Craft[slot].Size < MAX_STACK_SIZE) {
-                    Craft[slot].Size++;
-                    HoldingStack.Size--;
-                }
-                else if (!Craft[slot].Type) {
-                    Craft[slot] = Stack(HoldingStack.Type);
-                    HoldingStack.Size--;
-                }
-                
-                if (HoldingStack.Size == 0) {
-                    HoldingStack.Type = 0;
-                }
-            }
-            else if (Craft[slot].Type) {
-                Split_Stack(HoldingStack, Craft[slot]);
-            }
-        }
-        
+    if (slot >= INV_SIZE) {
         Check_Crafting();
     }
+}
+
+void Inventory::Swap_Stacks(Stack &stack) {
+    Stack toBePlaced = HoldingStack;
+    HoldingStack = stack;
+    stack = toBePlaced;
+}
+
+bool Inventory::Left_Click_Stack(Stack &a, Stack &b, bool swap) {
+    if (a.Type != 0 && a.Type == b.Type) {
+        if (b.Size < MAX_STACK_SIZE) {
+            if (a.Size <= MAX_STACK_SIZE - b.Size) {
+                b.Size += a.Size;
+                a = Stack();
+            }
+            else {
+                int remainder = a.Size - (MAX_STACK_SIZE - b.Size);
+                b.Size = MAX_STACK_SIZE;
+                a.Size = remainder;
+            }
+            
+            return true;
+        }
+    }
     
-    else {
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (HoldingStack.Type && HoldingStack.Type == Inv[slot].Type) {
-                if (Inv[slot].Size < MAX_STACK_SIZE) {
-                    if (HoldingStack.Size <= MAX_STACK_SIZE - Inv[slot].Size) {
-                        Inv[slot].Size += HoldingStack.Size;
-                        HoldingStack = Stack();
-                        return;
-                    }
-                    else {
-                        int remainder = HoldingStack.Size - (MAX_STACK_SIZE - Inv[slot].Size);
-                        Inv[slot].Size = MAX_STACK_SIZE;
-                        HoldingStack.Size = remainder;
-                        return;
-                    }
+    if (swap) {
+        Swap_Stacks(b);
+    }
+    
+    return false;
+}
+
+void Inventory::Left_Drag(int slot) {
+    Stack &stack = (slot >= INV_SIZE) ? Craft[slot - INV_SIZE] : Inv[slot];
+    
+    if (MouseState == 0) {
+        if (HoldingStack.Type == 0 || stack.Type == HoldingStack.Type) {
+            HoldingStack.Type = stack.Type;
+            
+            if (HoldingStack.Size <= MAX_STACK_SIZE - stack.Size) {
+                HoldingStack.Size += stack.Size;
+                stack = Stack();
+            }
+            else {
+                int remainder = stack.Size - (MAX_STACK_SIZE - HoldingStack.Size);
+                HoldingStack.Size = MAX_STACK_SIZE;
+                stack.Size = remainder;
+                
+                if (stack.Size == 0) {
+                    stack.Type = 0;
                 }
             }
             
-            Swap_Stacks(HoldingStack, Inv[slot]);
+            Mesh();
         }
-        else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (HoldingStack.Type) {
-                if (Inv[slot].Type == HoldingStack.Type && Inv[slot].Size < MAX_STACK_SIZE) {
-                    Inv[slot].Size++;
-                    HoldingStack.Size--;
-                }
-                else if (!Inv[slot].Type) {
-                    Inv[slot] = Stack(HoldingStack.Type);
-                    HoldingStack.Size--;
-                }
-                
-                if (HoldingStack.Size == 0) {
-                    HoldingStack.Type = 0;
-                }
+    }
+    else if (!stack.Type || stack.Type == HoldingStack.Type) {
+        if (HoldingSize <= DivideSlots.size()) {
+            return;
+        }
+        
+        stack.Type = HoldingStack.Type;
+        DivideSlots.insert(&stack);
+        
+        if (DivideSlots.size() > 1) {
+            int floorNum = HoldingSize / int(DivideSlots.size());
+            int remainder = HoldingSize % int(DivideSlots.size());
+            
+            for (auto &stack : DivideSlots) {
+                stack->Size += floorNum;
             }
-            else if (Inv[slot].Type) {
-                Split_Stack(HoldingStack, Inv[slot]);
+            
+            HoldingStack.Size = remainder;
+            
+            Mesh();
+            
+            for (auto &stack : DivideSlots) {
+                stack->Size -= floorNum;
             }
         }
     }
 }
 
-void Inventory::Split_Stack(Stack &a, Stack &b) {
-    a.Type = b.Type;
-    a.Size = int(ceil(b.Size / 2.0));
-    b.Size -= a.Size;
-    
-    if (b.Size == 0) {
-        b.Type = 0;
+void Inventory::Right_Click_Stack(Stack &stack) {
+    if (HoldingStack.Type) {
+        if (HoldingStack.Type == stack.Type && stack.Size < MAX_STACK_SIZE) {
+            stack.Size++;
+        }
+        else if (!stack.Type) {
+            stack = Stack(HoldingStack.Type);
+        }
+        
+        if (--HoldingStack.Size == 0) {
+            HoldingStack.Type = 0;
+        }
+    }
+    else if (stack.Type) {
+        HoldingStack.Type = stack.Type;
+        HoldingStack.Size = int(ceil(stack.Size / 2.0));
+        stack.Size -= HoldingStack.Size;
+        
+        if (stack.Size == 0) {
+            stack.Type = 0;
+        }
     }
 }
 
@@ -625,7 +648,7 @@ void Inventory::Craft_Item() {
     for (auto &stack : Craft) {
         if (stack.Type) {
             if (--stack.Size == 0) {
-                stack = Stack();
+                stack.Type = 0;
             }
         }
     }
@@ -636,15 +659,49 @@ void Inventory::Switch_Slot() {
     Buffers["ToolbarSelect"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X / 2.0f, TOOLBAR_START_Y, TOOLBAR_END_Y));
 }
 
-void Inventory::Swap_Stacks(Stack &a, Stack &b) {
-    Stack toBePlaced = a;
-    a = b;
-    b = toBePlaced;
-}
-
-void Inventory::Click_Handler(double x, double y, int button) {
-    if (HoveringSlot >= 0) {
-        Click_Slot(HoveringSlot, button);
+void Inventory::Click_Handler(double x, double y, int button, int action) {
+    MouseDown = ((button == GLFW_MOUSE_BUTTON_LEFT) ? MOUSE_LEFT : MOUSE_RIGHT) * (action == GLFW_PRESS);
+    
+    if (HoveringSlot >= 0 && MouseDown) {
+        MouseState = (HoldingStack.Type > 0);
+        
+        if (MouseDown == MOUSE_RIGHT) {
+            Click_Slot(HoveringSlot, button);
+            Mesh();
+        }
+        else {
+            StartSlot = HoveringSlot;
+            
+            if (MouseState) {
+                HoldingSize = HoldingStack.Size;
+                Left_Drag(HoveringSlot);
+            }
+        }
+    }
+    
+    else if (!MouseDown) {
+        if (StartSlot == HoveringSlot && DivideSlots.size() < 2) {
+            StartSlot = -1;
+            Click_Slot(HoveringSlot, GLFW_MOUSE_BUTTON_LEFT);
+        }
+        
+        else if (!DivideSlots.empty()) {
+            int floorNum = HoldingSize / int(DivideSlots.size());
+            int remainder = HoldingSize % int(DivideSlots.size());
+            
+            for (auto &stack : DivideSlots) {
+                stack->Type = HoldingStack.Type;
+                stack->Size += floorNum;
+            }
+            
+            HoldingStack.Size = remainder;
+            
+            if (remainder == 0) {
+                HoldingStack = Stack();
+            }
+        }
+        
+        DivideSlots.clear();
         Mesh();
     }
 }
@@ -677,7 +734,7 @@ void Inventory::Mouse_Handler(double x, double y) {
                 float startX = float(floor((x - CRAFTING_START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + CRAFTING_START_X);
                 float startY = float(floor((mouseY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + CRAFTING_START_Y);
                 
-                HoveringSlot = SLOTS_X * SLOTS_Y + int(2 - (startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
+                HoveringSlot = INV_SIZE + int(2 - (startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
                 
                 Buffers["Hover"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
             }
@@ -688,6 +745,18 @@ void Inventory::Mouse_Handler(double x, double y) {
                     Buffers["Hover"].Upload(Get_Rect(OUTPUT_START_X, OUTPUT_END_X, OUTPUT_START_Y, OUTPUT_END_Y));
                 }
             }
+        }
+    }
+    
+    if (HoveringSlot != LastSlot) {
+        LastSlot = HoveringSlot;
+        
+        if (MouseDown == MOUSE_RIGHT && MouseState == 1) {
+            Click_Slot(HoveringSlot, GLFW_MOUSE_BUTTON_RIGHT);
+            Mesh();
+        }
+        else if (MouseDown == MOUSE_LEFT && HoveringSlot != OUTPUT_SLOT) {
+            Left_Drag(HoveringSlot);
         }
     }
     
@@ -808,7 +877,7 @@ void Inventory::Mesh() {
                 
                 Extend(data, Get_Vertices(stack.Type, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
                 
-                std::string textName = std::to_string(SLOTS_X * SLOTS_Y + index);
+                std::string textName = std::to_string(INV_SIZE + index);
                 
                 Text::Set_Group(TEXT_GROUP);
                 Text::Add(textName, std::to_string(stack.Size), startY + TEXT_PAD_Y);
@@ -836,8 +905,6 @@ void Inventory::Mesh() {
     else {
         Buffers["Toolbar"].Upload(toolbarData);
     }
-    
-    Mouse_Handler(MousePos.x, MousePos.y);
 }
 
 void Inventory::Draw() {
