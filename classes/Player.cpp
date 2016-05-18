@@ -56,12 +56,6 @@ void Upload_Data(const unsigned int vbo, const Data &data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Extend(Data &storage, const Data input) {
-    for (auto const &object : input) {
-        storage.push_back(object);
-    }
-}
-
 Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     Data data;
     
@@ -338,6 +332,15 @@ void Player::Move(float deltaTime, bool update) {
             RenderChunks();
         }
     }
+}
+
+void Player::Draw() {
+    Draw_Damage();
+    
+    glClear(GL_DEPTH_BUFFER_BIT);
+    
+    Draw_Model();
+    Draw_Holding();
 }
 
 void Player::Check_Pickup() {

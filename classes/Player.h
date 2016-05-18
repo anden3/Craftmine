@@ -56,13 +56,12 @@ public:
     
     void Mesh_Holding();
     void Mesh_Damage(int index);
-    
-    void Draw_Model();
-    void Draw_Holding();
-    void Draw_Damage();
 
 	void PollSounds();
+    
     void Move(float deltaTime, bool update = false);
+    void Draw();
+    
     void Teleport(glm::vec3 pos);
         
     void RenderChunks();
@@ -101,6 +100,10 @@ private:
     void Init_Damage();
     
     void Init_Sounds();
+    
+    void Draw_Model();
+    void Draw_Holding();
+    void Draw_Damage();
     
 	void ColDetection();
 	std::vector<glm::vec3> Hitscan();

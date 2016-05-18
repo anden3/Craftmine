@@ -10,6 +10,7 @@ typedef std::vector<float> Data;
 class Buffer {
 public:
     int VertexType = GL_TRIANGLES;
+    Shader* BufferShader;
     
     void Init(Shader *shader);
     void Create(const std::vector<int> &config, const Data &data = Data {});
@@ -18,8 +19,6 @@ public:
     void Draw(int start = 0, int length = 0);
     
 private:
-    Shader* BufferShader;
-    
     unsigned int VAO;
     unsigned int VBO;
     

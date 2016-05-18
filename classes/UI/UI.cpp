@@ -1,11 +1,7 @@
 #include "UI.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include "System.h"
-
-const int FONT_SIZE = 15;
+#include "Interface.h"
 
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
@@ -20,16 +16,6 @@ bool ShowInventory = false;
 bool ShowMenu = false;
 bool ShowDebug = false;
 bool ShowOptions = false;
-
-int colorLocation;
-int alphaLocation;
-int borderColorLocation;
-
-unsigned int BackgroundVAO, BackgroundVBO;
-Buffer BackgroundBuffer;
-
-glm::vec3 BackgroundColor = glm::vec3(0);
-float BackgroundOpacity = 0.5f;
 
 std::string BoolStrings[2] = {"False", "True"};
 
@@ -55,15 +41,14 @@ void Change_Render_Distance();
 void Exit();
 
 void UI::Init() {
-    Text::Init(FONT, FONT_SIZE);
+    interface.Init();
+    player.inventory.Init();
+    chat.Init();
     
-    Init_UI_Shaders();
-    Init_UI();
-    Init_Background();
     Init_Menu();
     Init_Debug();
     
-    player.inventory.Mesh();
+    // player.inventory.Mesh();
 }
 
 void UI::Draw() {
@@ -72,7 +57,6 @@ void UI::Draw() {
     }
     
     if (ShowMenu) {
-        Draw_Background();
         Draw_Menu();
     }
     else {
@@ -91,24 +75,27 @@ void UI::Draw() {
     }
 }
 
-void UI::Clean() {
-    delete UIShader;
-    delete UIBorderShader;
-    delete UITextureShader;
-    
-    UIShader = nullptr;
-    UIBorderShader = nullptr;
-    UITextureShader = nullptr;
-}
-
 void UI::Click(double mouseX, double mouseY, int action, int button) {
-    if (ShowMenu && button == GLFW_MOUSE_BUTTON_LEFT) {
-        Button::Check_Click(mouseX, SCREEN_HEIGHT - mouseY, action);
-        Slider::Check_Click(mouseX, SCREEN_HEIGHT - mouseY, action);
+    if (ShowMenu) {
+        interface.Click(button, action);
     }
     
     if (ShowInventory) {
         player.inventory.Click_Handler(mouseX, mouseY, button, action);
+    }
+}
+
+void UI::Mouse_Handler(double x, double y) {
+    if (ShowMenu) {
+        if (ShowOptions) {
+            interface.Set_Document("options");
+        }
+        else {
+            interface.Set_Document("mainMenu");
+        }
+        
+        interface.Mouse_Handler(float(x), float(SCREEN_HEIGHT - y));
+        interface.Set_Document("");
     }
 }
 
@@ -141,39 +128,6 @@ void Toggle_Mouse(bool enable) {
     }
 }
 
-void Init_UI_Shaders() {
-    UIShader = new Shader("ui");
-    UIBorderShader = new Shader("uiBorder");
-    UITextureShader = new Shader("uiTex");
-    
-    colorLocation = glGetUniformLocation(UIShader->Program, "color");
-    alphaLocation = glGetUniformLocation(UIShader->Program, "alpha");
-    borderColorLocation = glGetUniformLocation(UIBorderShader->Program, "color");
-    
-    glm::mat4 projection = glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT);
-    
-    UIShader->Upload("projection", projection);
-    
-    UIBorderShader->Upload("projection", projection);
-    UIBorderShader->Upload(borderColorLocation, glm::vec3(0));
-    
-    UITextureShader->Upload("projection", projection);
-    UITextureShader->Upload("tex", 0);
-}
-
-void Init_UI() {
-    chat.Init(*UIShader, *UIBorderShader, colorLocation, alphaLocation);
-    player.inventory.Init();
-}
-
-void Init_Background() {
-    float w = float(SCREEN_WIDTH);
-    float h = float(SCREEN_HEIGHT);
-    
-    BackgroundBuffer.Init(UIShader);
-    BackgroundBuffer.Create(std::vector<int> {2}, Data {0, 0,  w, 0,  w, h,  0, 0,  w, h,  0, h});
-}
-
 void Init_Menu() {
     float buttonWidth = X_Frac(5, 36);
     
@@ -195,15 +149,24 @@ void Init_Menu() {
     float backButtonX = X_Frac(31, 72);
     float backButtonY = Y_Frac(2, 9);
     
-    Button::Add("options", "Options", Toggle_Options_Menu, optionsButtonX, optionsButtonY, buttonWidth, "mainMenu");
-    Button::Add("exit", "Quit", Exit, exitButtonX, exitButtonY, buttonWidth, "mainMenu");
+    float w = float(SCREEN_WIDTH);
+    float h = float(SCREEN_HEIGHT);
     
-    Button::Add("option_vsync", "V-Sync: " + BoolStrings[VSync], Toggle_VSync, vSyncButtonX, vSyncButtonY, buttonWidth, "optionMenu");
-    Button::Add("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], Toggle_Wireframe, wireframeButtonX, wireframeButtonY, buttonWidth, "optionMenu");
+    interface.Set_Document("mainMenu");
     
-    Slider::Add("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), Change_Render_Distance, renderDistButtonX, renderDistButtonY, buttonWidth, 0, 10, float(RenderDistance), "optionMenu");
+    interface.Add_Background("menuBg", 0, 0, w, h);
+    interface.Add_Button("options", "Options", optionsButtonX, optionsButtonY, buttonWidth, Toggle_Options_Menu);
+    interface.Add_Button("exit", "Quit", exitButtonX, exitButtonY, buttonWidth, Exit);
     
-    Button::Add("option_back", "Back", Toggle_Options_Menu, backButtonX, backButtonY, buttonWidth, "optionMenu");
+    interface.Set_Document("options");
+    
+    interface.Add_Background("menuBg", 0, 0, w, h);
+    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vSyncButtonX, vSyncButtonY, buttonWidth, Toggle_VSync);
+    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonX, wireframeButtonY, buttonWidth, Toggle_Wireframe);
+    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistButtonX, renderDistButtonY, buttonWidth, 0, 10, float(RenderDistance), Change_Render_Distance);
+    interface.Add_Button("option_back", "Back", backButtonX, backButtonY, buttonWidth, Toggle_Options_Menu);
+    
+    interface.Set_Document("");
 }
 
 void Init_Debug() {
@@ -220,50 +183,37 @@ void Init_Debug() {
     float posY = Y_Frac(31, 45);
     float queueY = Y_Frac(29, 45);
     
-    Text::Set_Group("debug");
-    Text::Set_X("debug", debugX);
+    interface.Set_Document("debug");
     
-    Text::Add("fps", "FPS: 0", fpsY);
-    Text::Add("cpu", "CPU: 0%", cpuY);
-    Text::Add("ram", "RAM: " + System::GetPhysicalMemoryUsage(), ramY);
-    Text::Add("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), virtualY);
-    Text::Add("playerChunk", "Chunk:    ", chunkY);
-    Text::Add("playerTile", "Tile:     ", tileY);
-    Text::Add("playerPos", "Position: ", posY);
-    Text::Add("chunkQueue", "Chunks Loaded: ", queueY);
+    interface.Add_Text("fps", "FPS: 0", debugX, fpsY);
+    interface.Add_Text("cpu", "CPU: 0%", debugX, cpuY);
+    interface.Add_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage(), debugX, ramY);
+    interface.Add_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), debugX, virtualY);
+    interface.Add_Text("playerChunk", "Chunk:    ", debugX, chunkY);
+    interface.Add_Text("playerTile", "Tile:     ", debugX, tileY);
+    interface.Add_Text("playerPos", "Position: ", debugX, posY);
+    interface.Add_Text("chunkQueue", "Chunks Loaded: ", debugX, queueY);
     
     if (Windows) {
         float vramY = Y_Frac(13, 15);
-        Text::Add("vram", "VRAM: " + System::GetVRAMUsage(), vramY);
+        interface.Add_Text("vram", "VRAM: " + System::GetVRAMUsage(), debugX, vramY);
     }
     
-    Text::Unset_Group();
+    interface.Set_Document("");
 }
 
 void Draw_UI() {
     chat.Update();
 }
 
-void Draw_Background() {
-    UIShader->Upload(colorLocation, BackgroundColor);
-    UIShader->Upload(alphaLocation, BackgroundOpacity);
-    
-    BackgroundBuffer.Draw();
-    
-    glClear(GL_DEPTH_BUFFER_BIT);
-}
-
 void Draw_Menu() {
-    Button::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
-    Slider::Check_Hover(player.LastMousePos.x, SCREEN_HEIGHT - player.LastMousePos.y);
+    interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
     
     if (ShowOptions) {
-        Button::Draw_All("optionMenu");
-        Slider::Draw_All("optionMenu");
+        interface.Draw_Document("options");
     }
     else {
-        Button::Draw_All("mainMenu");
-        Slider::Draw_All("mainMenu");
+        interface.Draw_Document("mainMenu");
     }
 }
 
@@ -300,28 +250,28 @@ void Draw_Debug() {
             cpu_sum += last_cpu[i];
         }
         
-        Text::Set_Group("debug");
+        interface.Set_Document("debug");
         
-        Text::Set_Text("fps", "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE)));
-        Text::Set_Text("cpu", "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%");
-        Text::Set_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage());
-        Text::Set_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage());
+        interface.Get_Text_Element("fps")->Text = "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE));
+        interface.Get_Text_Element("cpu")->Text = "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%";
+        interface.Get_Text_Element("ram")->Text = "RAM: " + System::GetPhysicalMemoryUsage();
+        interface.Get_Text_Element("virtualMemory")->Text = "Virtual Memory: " + System::GetVirtualMemoryUsage();
         
         if (Windows) {
-            Text::Set_Text("vram", "VRAM: " + System::GetVRAMUsage());
+            interface.Get_Text_Element("vram")->Text = "VRAM: " + System::GetVRAMUsage();
         }
     }
     
-    Text::Set_Group("debug");
+    interface.Set_Document("debug");
     
-    Text::Set_Text("playerChunk", "Chunk:      " + Format_Vector(player.CurrentChunk));
-    Text::Set_Text("playerTile", "Tile:            " + Format_Vector(player.CurrentTile));
-    Text::Set_Text("playerPos", "Position:  " + Format_Vector(player.WorldPos));
-    Text::Set_Text("chunkQueue", "Chunks Queued: " + std::to_string(int(ChunkMap.size()) - Get_Loaded()));
+    interface.Get_Text_Element("playerChunk")->Text = "Chunk:      " + Format_Vector(player.CurrentChunk);
+    interface.Get_Text_Element("playerTile")->Text = "Tile:            " + Format_Vector(player.CurrentTile);
+    interface.Get_Text_Element("playerPos")->Text = "Position:  " + Format_Vector(player.WorldPos);
+    interface.Get_Text_Element("chunkQueue")->Text = "Chunks Queued: " + std::to_string(int(ChunkMap.size()) - Get_Loaded());
     
-    Text::Unset_Group();
+    interface.Set_Document("");
     
-    Text::Draw_Group("debug");
+    interface.Draw_Document("debug");
 }
 
 void Toggle_Options_Menu() {
@@ -330,7 +280,7 @@ void Toggle_Options_Menu() {
 
 void Toggle_VSync() {
     VSync = !VSync;
-    Button::Set_Text("option_vsync", "V-Sync: " + BoolStrings[VSync]);
+    interface.Get_Button("option_vsync")->Text.Text = "V-Sync: " + BoolStrings[VSync];
     
     glfwSwapInterval(VSync);
     Write_Config();
@@ -338,15 +288,17 @@ void Toggle_VSync() {
 
 void Toggle_Wireframe() {
     ToggleWireframe = true;
-    Button::Set_Text("option_wireframe", "Wireframe: " + BoolStrings[!Wireframe]);
+    interface.Get_Button("option_wireframe")->Text.Text = "Wireframe: " + BoolStrings[!Wireframe];
 }
 
 void Change_Render_Distance() {
-    int value = int(ceil(Slider::Get_Value("option_renderDistance")));
+    Slider* slider = interface.Get_Slider("option_renderDistance");
+    
+    int value = int(ceil(slider->Value));
     
     if (value != RenderDistance) {
         RenderDistance = value;
-        Slider::Set_Text("option_renderDistance", "Render Distance: " + std::to_string(value));
+        slider->Text.Text = "Render Distance: " + std::to_string(value);
         Write_Config();
         
         player.RenderChunks();

@@ -38,14 +38,10 @@ int main() {
         }
 		
 		Render_Scene();
-        player.Draw_Damage();
-        
         Entity::Draw();
+        player.Draw();
         
         glClear(GL_DEPTH_BUFFER_BIT);
-        
-        player.Draw_Model();
-        player.Draw_Holding();
         UI::Draw();
         
 		glfwSwapBuffers(Window);
@@ -53,10 +49,6 @@ int main() {
     
     chunkGeneration.join();
     
-    UI::Clean();
-    
-	delete shader;
-
     glfwTerminate();
     return 0;
 }
@@ -367,6 +359,8 @@ void text_proxy(GLFWwindow* window, unsigned int codepoint) {
     }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {
+    UI::Mouse_Handler(posX, posY);
+    
     if (!chat.Focused) {
         player.MouseHandler(posX, posY);
     }

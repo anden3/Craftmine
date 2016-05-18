@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Buffer.h"
+#include "Interface.h"
+
+extern Interface interface;
 
 struct Message {
     unsigned int ID;
@@ -23,9 +26,9 @@ public:
     bool Focused = false;
     bool FocusToggled = false;
     
-    Chat();
+    Chat() {};
     
-    void Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned int alphaLoc);
+    void Init();
     
     void Write(std::string text);
     void Input(unsigned int key);
@@ -48,14 +51,6 @@ private:
     
     Buffer BackgroundBuffer;
     Buffer MessageBuffer;
-    
-    void Init_Chat_Background();
-    
-    Shader* UIShader;
-    Shader* UIBorderShader;
-    
-    unsigned int ColorLocation;
-    unsigned int AlphaLocation;
     
     void Get_Prev();
     void Get_Next();

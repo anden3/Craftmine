@@ -28,18 +28,7 @@ float INV_PAD_X, INV_PAD_Y;
 float SLOT_PAD_X, SLOT_PAD_Y;
 float TEXT_PAD_X, TEXT_PAD_Y;
 
-float BLOCK_SCALE = 0.1f;
-
 const int OUTPUT_SLOT = INV_SIZE + 9;
-
-const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
-const glm::vec3 BORDER_COLOR = glm::vec3(0.5f);
-const glm::vec3 TOOLBAR_COLOR = glm::vec3(1.0f);
-
-const float BACKGROUND_OPACITY = 0.7f;
-
-const std::string TEXT_GROUP = "inv";
-const std::string TOOLBAR_TEXT = "toolbar";
 
 enum MouseButtons {
     NONE,
@@ -56,11 +45,6 @@ int StartSlot = -1;
 
 std::set<Stack*> DivideSlots;
 int HoldingSize = 0;
-
-Shader* UIShader;
-Shader* UIBorderShader;
-Shader* UITextureShader;
-Shader* UIOrthoShader;
 
 class Recipe {
 public:
@@ -242,10 +226,6 @@ std::map<int, std::vector<Recipe>> Recipes = {
     }},
 };
 
-Data Get_Rect(float x1, float x2, float y1, float y2) {
-    return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2};
-}
-
 Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float multiplierY) {
     if (multiplierY == -1) {
         multiplierY = multiplierX;
@@ -272,8 +252,6 @@ Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float m
 }
 
 void Inventory::Init() {
-    UIOrthoShader = new Shader("ortho");
-    
     START_X = X_Frac(11, 72);
     END_X = X_Frac(17, 24);
     
@@ -310,104 +288,66 @@ void Inventory::Init() {
     TEXT_PAD_X = X_Frac(1, 288);
     TEXT_PAD_Y = Y_Frac(1, 180);
     
+    interface.Set_Document("toolbar");
+    
+    for (int i = 0; i < SLOTS_X; i++) {
+        std::string name = std::to_string(i);
+        float startX = TOOLBAR_START_X + i * (SLOT_WIDTH_X / 2.0f);
+        float startY = TOOLBAR_START_Y;
+        
+        interface.Add_Text(name, "0", floor(startX + TEXT_PAD_X / 2.0f), floor(startY + TEXT_PAD_Y / 2.0f));
+        interface.Get_Text_Element(name)->Opacity = 0.0f;
+        interface.Add_3D_Element(name, 0, startX, startY + SLOT_PAD_Y, SLOT_WIDTH_X / 2.0f);
+    }
+    
+    interface.Set_Document("inventory");
+    
     for (int i = 0; i < INV_SIZE; i++) {
+        float startX = START_X + (i % SLOTS_X) * SLOT_WIDTH_X;
+        float startY = START_Y + (i / SLOTS_X) * SLOT_WIDTH_Y;
+        std::string name = std::to_string(i);
+        
         Inv.push_back(Stack());
+        interface.Add_Text(name, "0", floor(startX + SLOT_PAD_X), floor(startY + SLOT_PAD_Y));
+        interface.Get_Text_Element(name)->Opacity = 0.0f;
+        interface.Add_3D_Element(name, 0, startX, startY + SLOT_PAD_Y, SLOT_WIDTH_X);
     }
     
     for (int i = 0; i < 9; i++) {
+        float startX = CRAFTING_START_X + (i % 3) * SLOT_WIDTH_X + SLOT_PAD_X;
+        float startY = CRAFTING_START_Y + (i / 3) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+        std::string name = std::to_string(INV_SIZE + i);
+        
         Craft.push_back(Stack());
+        interface.Add_Text(name, "0", startX, startY);
+        interface.Get_Text_Element(name)->Opacity = 0.0f;
+        interface.Add_3D_Element(name, 0, startX, startY, SLOT_WIDTH_X);
     }
     
-    Init_UI();
-}
-
-void Inventory::Init_UI() {
-    Data gridData;
-    Data toolbarGridData;
+    interface.Add_Text(std::to_string(INV_SIZE + 9), "0", OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y);
+    interface.Get_Text_Element(std::to_string(INV_SIZE + 9))->Opacity = 0.0f;
+    interface.Add_3D_Element(std::to_string(INV_SIZE + 9), 0, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X);
     
-    // Fix for missing pixel in upper left corner
-    Extend(gridData, Data {START_X - 0.5f, END_Y + 0.5f, START_X + 0.5f, END_Y});
-    Extend(gridData, Data {CRAFTING_START_X - 0.5f, CRAFTING_END_Y + 0.5f, CRAFTING_START_X + 0.5f, CRAFTING_END_Y});
+    interface.Add_Background("bgInv",
+                             START_X - INV_PAD_X, START_Y - INV_PAD_Y,
+                             (END_X - START_X) + INV_PAD_X * 2.0f, (END_Y - START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y));
+    interface.Add_Background("bgCraft",
+                             CRAFTING_START_X - INV_PAD_X, CRAFTING_START_Y - INV_PAD_Y,
+                             (CRAFTING_END_X - CRAFTING_START_X) + INV_PAD_X * 2.0f, (CRAFTING_END_Y - CRAFTING_START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y));
+    interface.Add_Background("bgOutput", OUTPUT_START_X - INV_PAD_X, OUTPUT_START_Y - INV_PAD_Y,
+                             SLOT_WIDTH_X + INV_PAD_X * 2.0f, SLOT_WIDTH_Y + INV_PAD_Y * 2.0f, true);
+    interface.Add_Background("bgHover", 0, 0, SLOT_WIDTH_X, SLOT_WIDTH_Y);
     
-    // Grey vertical lines
-    for (float x = START_X; x <= END_X; x += SLOT_WIDTH_X) {
-        Extend(gridData, Data {x, START_Y + SLOT_WIDTH_Y + 1.5f, x, END_Y});
-    }
+    interface.Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
+    interface.Get_Text_Element("mouseStack")->Opacity = 0.0f;
     
-    for (float x = CRAFTING_START_X; x <= CRAFTING_END_X; x += SLOT_WIDTH_X) {
-        Extend(gridData, Data {x, CRAFTING_START_Y, x, CRAFTING_END_Y});
-    }
+    interface.Add_3D_Element("mouseStack", 0, 0, 0, SLOT_WIDTH_X);
     
-    // Grey horizontal lines
-    for (float y = START_Y + SLOT_WIDTH_Y * 2; y <= END_Y; y += SLOT_WIDTH_Y) {
-        Extend(gridData, Data {START_X, y, END_X, y});
-    }
+    interface.Set_Document("toolbar");
     
-    for (float y = CRAFTING_START_Y; y <= CRAFTING_END_Y; y += SLOT_WIDTH_Y) {
-        Extend(gridData, Data {CRAFTING_START_X, y, CRAFTING_END_X, y});
-    }
+    interface.Add_Background("bgToolbar", TOOLBAR_START_X, TOOLBAR_START_Y, (TOOLBAR_END_X - TOOLBAR_START_X), (TOOLBAR_END_Y - TOOLBAR_START_Y), true, glm::vec2(SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
+    interface.Add_Background("selectToolbar", TOOLBAR_START_X, TOOLBAR_START_Y, SLOT_WIDTH_X / 2.0f, (TOOLBAR_END_Y - TOOLBAR_START_Y), true, glm::vec2(SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
     
-    // White horizontal lines
-    Extend(gridData, Data {START_X - 0.5f, START_Y + SLOT_WIDTH_Y, END_X, START_Y + SLOT_WIDTH_Y, START_X, START_Y, END_X, START_Y});
-    
-    // White vertical lines
-    for (float x = START_X; x <= END_X; x += SLOT_WIDTH_X) {
-        Extend(gridData, Data {x, START_Y, x, START_Y + SLOT_WIDTH_Y});
-    }
-    
-    // Crafting output
-    Extend(gridData, Data {OUTPUT_START_X - 0.5f, OUTPUT_END_Y,   OUTPUT_END_X, OUTPUT_END_Y});
-    Extend(gridData, Data {OUTPUT_START_X - 0.5f, OUTPUT_START_Y, OUTPUT_END_X, OUTPUT_START_Y});
-    
-    Extend(gridData, Data {OUTPUT_START_X - 0.5f, OUTPUT_END_Y, OUTPUT_START_X - 0.5f, OUTPUT_START_Y});
-    Extend(gridData, Data {OUTPUT_END_X, OUTPUT_END_Y, OUTPUT_END_X, OUTPUT_START_Y});
-    
-    Extend(toolbarGridData, Data {
-        TOOLBAR_START_X - 0.5f, TOOLBAR_END_Y, TOOLBAR_END_X, TOOLBAR_END_Y, TOOLBAR_START_X, TOOLBAR_START_Y, TOOLBAR_END_X, TOOLBAR_START_Y
-    });
-    
-    for (float x = TOOLBAR_START_X; x <= TOOLBAR_END_X; x += SLOT_WIDTH_X / 2) {
-        Extend(toolbarGridData, Data {x, TOOLBAR_END_Y, x, TOOLBAR_START_Y});
-    }
-    
-    Data bgData = Get_Rect(START_X - INV_PAD_X, END_X + INV_PAD_X, START_Y - INV_PAD_Y, END_Y + INV_PAD_Y);
-    Extend(bgData, Get_Rect(CRAFTING_START_X - INV_PAD_X, CRAFTING_END_X + INV_PAD_X, CRAFTING_START_Y - INV_PAD_Y, CRAFTING_END_Y + INV_PAD_Y));
-    Extend(bgData, Get_Rect(OUTPUT_START_X - INV_PAD_X, OUTPUT_END_X + INV_PAD_X, OUTPUT_START_Y - INV_PAD_Y, OUTPUT_END_Y + INV_PAD_Y));
-    
-    Data data[4] = {
-        bgData, gridData, toolbarGridData,
-        Get_Rect(TOOLBAR_START_X, TOOLBAR_END_X, TOOLBAR_START_Y, TOOLBAR_END_Y) // Toolbar background
-    };
-    
-    Shader* shaders[3] = {UIShader, UIBorderShader, UITextureShader};
-    
-    int index = 0;
-    
-    for (auto const &buffer : BufferNames) {
-        Buffers[buffer.first] = Buffer();
-        Buffers[buffer.first].Init(shaders[buffer.second]);
-        
-        std::vector<int> config = {2};
-        
-        if (index >= 6) {
-            config.push_back(2);
-        }
-        
-        if (index < 4) {
-            Buffers[buffer.first].Create(config, data[index]);
-        }
-        else {
-            Buffers[buffer.first].Create(config);
-        }
-        
-        if (buffer.first == "ToolbarGrid" || buffer.first == "Grid") {
-            Buffers[buffer.first].VertexType = GL_LINES;
-        }
-        
-        index++;
-    }
-    
-    Render_GUI_Block(2);
     Switch_Slot();
 }
 
@@ -656,10 +596,14 @@ void Inventory::Craft_Item() {
 
 void Inventory::Switch_Slot() {
     float startX = TOOLBAR_START_X + ActiveToolbarSlot * SLOT_WIDTH_X / 2.0f;
-    Buffers["ToolbarSelect"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X / 2.0f, TOOLBAR_START_Y, TOOLBAR_END_Y));
+    interface.Get_Background("selectToolbar")->Move(startX, TOOLBAR_START_Y);
 }
 
 void Inventory::Click_Handler(double x, double y, int button, int action) {
+    if (HoveringSlot == -1) {
+        return;
+    }
+    
     MouseDown = ((button == GLFW_MOUSE_BUTTON_LEFT) ? MOUSE_LEFT : MOUSE_RIGHT) * (action == GLFW_PRESS);
     
     if (HoveringSlot >= 0 && MouseDown) {
@@ -670,6 +614,10 @@ void Inventory::Click_Handler(double x, double y, int button, int action) {
             Mesh();
         }
         else {
+            if (MouseState && HoveringSlot == OUTPUT_SLOT) {
+                return;
+            }
+            
             StartSlot = HoveringSlot;
             
             if (MouseState) {
@@ -707,6 +655,8 @@ void Inventory::Click_Handler(double x, double y, int button, int action) {
 }
 
 void Inventory::Mouse_Handler(double x, double y) {
+    interface.Set_Document("inventory");
+    
     if (x == -1 || y == -1) {
         x = MousePos.x;
         y = MousePos.y;
@@ -725,8 +675,7 @@ void Inventory::Mouse_Handler(double x, double y) {
             float startY = float(floor((900 - y - START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + START_Y);
             
             HoveringSlot = int((startY - START_Y) / SLOT_WIDTH_Y) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH_X);
-            
-            Buffers["Hover"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
+            interface.Get_Background("bgHover")->Move(startX, startY, true);
         }
         
         else if (x >= CRAFTING_START_X && x <= CRAFTING_END_X) {
@@ -734,21 +683,27 @@ void Inventory::Mouse_Handler(double x, double y) {
                 float startX = float(floor((x - CRAFTING_START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + CRAFTING_START_X);
                 float startY = float(floor((mouseY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + CRAFTING_START_Y);
                 
-                HoveringSlot = INV_SIZE + int(2 - (startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
-                
-                Buffers["Hover"].Upload(Get_Rect(startX, startX + SLOT_WIDTH_X, startY, startY + SLOT_WIDTH_Y));
+                HoveringSlot = INV_SIZE + int((startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
+                interface.Get_Background("bgHover")->Move(startX, startY, true);
             }
             
             else if (mouseY >= OUTPUT_START_Y && mouseY <= OUTPUT_END_Y) {
                 if (x >= OUTPUT_START_X && x <= OUTPUT_END_X) {
                     HoveringSlot = OUTPUT_SLOT;
-                    Buffers["Hover"].Upload(Get_Rect(OUTPUT_START_X, OUTPUT_END_X, OUTPUT_START_Y, OUTPUT_END_Y));
+                    interface.Get_Background("bgHover")->Move(OUTPUT_START_X, OUTPUT_START_Y, true);
                 }
             }
         }
     }
     
-    if (HoveringSlot != LastSlot) {
+    if (HoveringSlot == -1) {
+        interface.Get_Background("bgHover")->Opacity = 0.0f;
+    }
+    else {
+        interface.Get_Background("bgHover")->Opacity = 0.5f;
+    }
+    
+    if (HoveringSlot != LastSlot && HoveringSlot != -1) {
         LastSlot = HoveringSlot;
         
         if (MouseDown == MOUSE_RIGHT && MouseState == 1) {
@@ -761,103 +716,49 @@ void Inventory::Mouse_Handler(double x, double y) {
     }
     
     if (HoldingStack.Type) {
-        Text::Set_Group(TEXT_GROUP);
-        Text::Add("holdingStack", std::to_string(HoldingStack.Size), mouseY + TEXT_PAD_Y);
-        Text::Set_X("holdingStack", mouseX + TEXT_PAD_X);
-        Text::Set_Opacity("holdingStack", 1.0f);
-        Text::Unset_Group();
+        TextElement* mouseStack = interface.Get_Text_Element("mouseStack");
+        mouseStack->Text = std::to_string(HoldingStack.Size);
+        mouseStack->Opacity = 1.0f;
+        mouseStack->X = floor(mouseX + TEXT_PAD_X);
+        mouseStack->Y = floor(mouseY + TEXT_PAD_Y);
         
-        Buffers["Mouse"].Upload(Get_Vertices(HoldingStack.Type, mouseX, mouseY, SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
+        interface.Get_3D_Element("mouseStack")->Mesh(HoldingStack.Type, mouseX, mouseY);
     }
-}
-
-void Inventory::Render_GUI_Block(unsigned int type) {
-    glm::mat4 projection = glm::ortho(100, 200, 100, 200);
-    glm::mat4 model;
-    
-    UIOrthoShader->Upload("projection", projection);
-    UIOrthoShader->Upload("model", model);
-    
-    Data data;
-    
-    glm::vec2 texPosition = textureCoords[type];
-    static float textureStepX = (1.0f / 16.0f);
-    static float textureStepY = (1.0f / 32.0f);
-    
-    float texStartX = textureStepX * (texPosition.x - 1.0f);
-    float texStartY = textureStepY * (texPosition.y - 1.0f);
-    
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (CustomVertices.count(type)) {
-                data.push_back((CustomVertices[type][i][vertices[i][j][0]].x - 0.5f) * BLOCK_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j][1]].y - 0.5f) * BLOCK_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j][2]].z - 0.5f) * BLOCK_SCALE);
-            }
-            else {
-                data.push_back((vertices[i][j][0] - 0.5f) * BLOCK_SCALE);
-                data.push_back((vertices[i][j][1] - 0.5f) * BLOCK_SCALE);
-                data.push_back((vertices[i][j][2] - 0.5f) * BLOCK_SCALE);
-            }
-            
-            if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
-            }
-            else if (MultiTextures.count(type)) {
-                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / 16.0f);
-                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / 32.0f);
-            }
-            else {
-                data.push_back(texStartX + tex_coords[i][j][0] / 16.0f);
-                data.push_back(texStartY + tex_coords[i][j][1] / 32.0f);
-            }
-        }
+    else {
+        interface.Get_3D_Element("mouseStack")->Mesh(0, mouseX, mouseY);
+        interface.Get_Text_Element("mouseStack")->Opacity = 0.0f;
     }
     
-    TestBuffer.Init(UIOrthoShader);
-    TestBuffer.Create(std::vector<int>{3, 2}, data);
+    interface.Set_Document("");
 }
 
 void Inventory::Mesh() {
-    Text::Delete_Group(TEXT_GROUP);
-    Text::Delete_Group(TOOLBAR_TEXT);
-    
-    Data data;
-    Data toolbarData;
-    
     int index = 0;
     
     for (auto const &stack : Inv) {
+        float startX, startY;
+        
+        if (Is_Open) {
+            interface.Set_Document("inventory");
+            startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
+            startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+        }
+        else {
+            interface.Set_Document("toolbar");
+            startX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH_X / 2.0f + SLOT_PAD_X / 2.0f;
+            startY = TOOLBAR_START_Y;
+        }
+        
+        std::string textName = std::to_string(index);
+        
         if (stack.Type) {
-            float startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
-			float startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH_Y + SLOT_PAD_Y;
-            
-			float toolbarStartX = TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH_X / 2.0f + SLOT_PAD_X / 2.0f;
-            
-            if (Is_Open) {
-                Extend(data, Get_Vertices(stack.Type, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
-            }
-            else {
-                Extend(toolbarData, Get_Vertices(stack.Type, toolbarStartX, TOOLBAR_START_Y + SLOT_PAD_Y / 2, SLOT_WIDTH_X / 2 - SLOT_PAD_X, SLOT_WIDTH_Y / 2 - SLOT_PAD_Y));
-            }
-            
-            std::string textName = std::to_string(index);
-            
-            if (Is_Open) {
-                Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.Size), startY + TEXT_PAD_Y);
-                Text::Set_X(textName, startX + TEXT_PAD_X);
-            }
-            
-            else {
-                Text::Set_Group(TOOLBAR_TEXT);
-                Text::Add(textName, std::to_string(stack.Size), TOOLBAR_START_Y + TEXT_PAD_Y);
-                Text::Set_X(textName, toolbarStartX + TEXT_PAD_X / 2.0f);
-            }
-            
-            Text::Set_Opacity(textName, 1.0f);
-            Text::Unset_Group();
+            interface.Get_3D_Element(textName)->Mesh(stack.Type, startX, startY + 10);
+            interface.Get_Text_Element(textName)->Text = std::to_string(stack.Size);
+            interface.Get_Text_Element(textName)->Opacity = 1.0f;
+        }
+        else {
+            interface.Get_3D_Element(textName)->Type = 0;
+            interface.Get_Text_Element(textName)->Opacity = 0.0f;
         }
         
         if (!Is_Open && index == 9) {
@@ -868,100 +769,50 @@ void Inventory::Mesh() {
     }
     
     if (Is_Open) {
+        interface.Set_Document("inventory");
+        
         index = 0;
         
         for (auto const &stack : Craft) {
+            std::string textName = std::to_string(INV_SIZE + index);
+            
             if (stack.Type) {
                 float startX = CRAFTING_START_X + (index % 3) * SLOT_WIDTH_X + SLOT_PAD_X;
-                float startY = CRAFTING_START_Y + (2 - (index / 3)) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+                float startY = CRAFTING_START_Y + ((index / 3)) * SLOT_WIDTH_Y + SLOT_PAD_Y;
                 
-                Extend(data, Get_Vertices(stack.Type, startX, startY, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
-                
-                std::string textName = std::to_string(INV_SIZE + index);
-                
-                Text::Set_Group(TEXT_GROUP);
-                Text::Add(textName, std::to_string(stack.Size), startY + TEXT_PAD_Y);
-                Text::Set_X(textName, startX + TEXT_PAD_X);
-                Text::Unset_Group();
+                interface.Get_3D_Element(textName)->Mesh(stack.Type, startX, startY + 10);
+                interface.Get_Text_Element(textName)->Text = std::to_string(stack.Size);
+                interface.Get_Text_Element(textName)->Opacity = 1.0f;
+            }
+            else {
+                interface.Get_3D_Element(textName)->Type = 0;
+                interface.Get_Text_Element(textName)->Opacity = 0.0f;
             }
             
             index++;
         }
         
-        if (CraftingOutput.Type) {
-            Extend(data, Get_Vertices(CraftingOutput.Type, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X - SLOT_PAD_X * 2.0f, SLOT_WIDTH_Y - SLOT_PAD_Y * 2.0f));
-            
-            std::string textName = std::to_string(OUTPUT_SLOT);
-            
-            Text::Set_Group(TEXT_GROUP);
-            Text::Add(textName, std::to_string(CraftingOutput.Size), OUTPUT_START_Y + SLOT_PAD_Y + TEXT_PAD_Y);
-            Text::Set_X(textName, OUTPUT_START_X + SLOT_PAD_X + TEXT_PAD_X);
-            Text::Unset_Group();
-        }
+        std::string outputName = std::to_string(OUTPUT_SLOT);
         
-        Buffers["Slots"].Upload(data);
+        if (CraftingOutput.Type) {
+            interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, OUTPUT_START_X, OUTPUT_START_Y + INV_PAD_Y);
+            interface.Get_Text_Element(outputName)->Text = std::to_string(CraftingOutput.Size);
+            interface.Get_Text_Element(outputName)->Opacity = 1.0f;
+        }
+        else {
+            interface.Get_3D_Element(outputName)->Type = 0;
+            interface.Get_Text_Element(outputName)->Opacity = 0.0f;
+        }
     }
     
-    else {
-        Buffers["Toolbar"].Upload(toolbarData);
-    }
+    interface.Set_Document("");
 }
 
 void Inventory::Draw() {
     if (Is_Open) {
-        UIShader->Upload(colorLocation, BACKGROUND_COLOR);
-        UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
-        
-        Buffers["Background"].Draw();
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        
-        UIBorderShader->Upload(borderColorLocation, BORDER_COLOR);
-        Buffers["Grid"].Draw(0, 52);
-        
-        UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
-        Buffers["Grid"].Draw(52, 34);
-        
-        Buffers["Slots"].Draw();
-        
-        if (HoldingStack.Type) {
-            glClear(GL_DEPTH_BUFFER_BIT);
-            Buffers["Mouse"].Draw();
-        }
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        Text::Draw_Group(TEXT_GROUP);
-        
-        if (HoveringSlot >= 0) {
-            glClear(GL_DEPTH_BUFFER_BIT);
-            
-            UIShader->Upload(colorLocation, glm::vec3(1));
-            UIShader->Upload(alphaLocation, 0.3f);
-            
-            Buffers["Hover"].Draw();
-        }
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        TestBuffer.Draw();
+        interface.Draw_Document("inventory");
     }
     else {
-        UIShader->Upload(alphaLocation, BACKGROUND_OPACITY);
-        UIShader->Upload(colorLocation, BACKGROUND_COLOR);
-        Buffers["ToolbarBackground"].Draw();
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        
-        UIShader->Upload(colorLocation, glm::vec3(1));
-        Buffers["ToolbarSelect"].Draw();
-        
-        UIBorderShader->Upload(borderColorLocation, TOOLBAR_COLOR);
-        Buffers["ToolbarGrid"].Draw();
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        
-        Buffers["Toolbar"].Draw();
-        
-        glClear(GL_DEPTH_BUFFER_BIT);
-        Text::Draw_Group(TOOLBAR_TEXT);
+        interface.Draw_Document("toolbar");
     }
 }

@@ -1,7 +1,5 @@
 #include "Chat.h"
 
-#include "Text.h"
-
 #include <unicode/ustream.h>
 
 const double MESSAGE_TIME = 10.0;
@@ -17,66 +15,25 @@ const float END_Y = 500.0f;
 const float MESSAGE_Y = 70.0f;
 
 const float SPACING = 22.0f;
-
-const glm::vec3 BACKGROUND_COLOR = glm::vec3(0.0f);
-
-const float BACKGROUND_OPACITY = 0.5f;
-const float MESSAGE_BOX_OPACITY = 0.7f;
-
 const float CHAT_PAD = 10.0f;
 
-const std::string TEXT_GROUP = "chat";
-
-Chat::Chat() {
-    Text::Set_X(TEXT_GROUP, START_X);
-}
-
-void Chat::Init(Shader& ui, Shader& uiBorder, unsigned int colorLoc, unsigned int alphaLoc) {
-    UIShader = &ui;
-    UIBorderShader = &uiBorder;
+void Chat::Init() {
+    interface.Set_Document("chatFocused");
+    interface.Add_Text("newMessage", "", START_X, MESSAGE_Y);
+    interface.Add_Text("cursor", "", START_X, MESSAGE_Y);
+    interface.Get_Text_Element("cursor")->Opacity = 0.0f;
     
-    ColorLocation = colorLoc;
-    AlphaLocation = alphaLoc;
-    
-    Text::Set_Group(TEXT_GROUP);
-    Text::Add("newMessage", "", MESSAGE_Y);
-    Text::Add("cursor", "|", MESSAGE_Y);
-    Text::Set_Opacity("cursor", 0);
-    Text::Unset_Group();
-    
-    Init_Chat_Background();
-}
-
-void Chat::Init_Chat_Background() {
-    std::vector<float> bgData {
-        START_X - CHAT_PAD,  START_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  START_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  END_Y   + CHAT_PAD,
-        START_X - CHAT_PAD,  START_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  END_Y   + CHAT_PAD,
-        START_X - CHAT_PAD,  END_Y   + CHAT_PAD
-    };
-    
-    std::vector<float> messageData {
-        START_X - CHAT_PAD,  MESSAGE_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  MESSAGE_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  START_Y   + CHAT_PAD,
-        START_X - CHAT_PAD,  MESSAGE_Y - CHAT_PAD,
-        END_X   + CHAT_PAD,  START_Y   + CHAT_PAD,
-        START_X - CHAT_PAD,  START_Y   + CHAT_PAD
-    };
-    
-    BackgroundBuffer.Init(UIShader);
-    MessageBuffer.Init(UIShader);
-    
-    BackgroundBuffer.Create(std::vector<int> {2}, bgData);
-    MessageBuffer.Create(std::vector<int> {2}, messageData);
+    interface.Add_Background("bgChat", START_X - CHAT_PAD, START_Y - CHAT_PAD, (END_X - START_X) + CHAT_PAD * 2, (END_Y - START_Y) + CHAT_PAD * 2);
+    interface.Add_Background("bgMessage", START_X - CHAT_PAD, MESSAGE_Y - CHAT_PAD, (END_X - START_X) + CHAT_PAD * 2, (START_Y - MESSAGE_Y) + CHAT_PAD * 2);
+    interface.Set_Document("");
 }
 
 void Chat::Write(std::string text) {
-    if (Text::Get_String_Width(text) > END_X - START_X) {
-        std::string fittedWidth = Text::Get_String_To_Width(text, END_X - START_X);
-        std::string remainder = text = text.substr(fittedWidth.length() - 1);
+    int stringPart = interface.Get_Fitting_String(text, END_X - START_X);
+    
+    if (stringPart > 0) {
+        std::string fittedWidth = text.substr(0, stringPart);
+        std::string remainder = text.substr(fittedWidth.length() - 1);
         
         Write(fittedWidth);
         Write(remainder);
@@ -93,9 +50,9 @@ void Chat::Write(std::string text) {
     
     Messages[message.ID] = message;
     
-    Text::Set_Group(TEXT_GROUP);
-    Text::Add(std::to_string(message.ID), text, START_Y);
-    Text::Unset_Group();
+    interface.Set_Document("chat");
+    interface.Add_Text(std::to_string(message.ID), text, START_X, START_Y);
+    interface.Set_Document("");
 }
 
 void Chat::Key_Handler(int key) {
@@ -199,20 +156,20 @@ void Chat::Toggle_Cursor(int opacity) {
         CursorVisible = opacity == 1;
     }
     
-    Text::Set_Group(TEXT_GROUP);
-    Text::Set_Opacity("cursor", float(opacity));
-    Text::Unset_Group();
+    interface.Set_Document("chatFocused");
+    interface.Get_Text_Element("cursor")->Opacity = float(opacity);
+    interface.Set_Document("");
 }
 
 void Chat::Update_Message() {
-    Text::Set_Group(TEXT_GROUP);
-    Text::Set_Text("newMessage", NewMessage);
-    Text::Set_X("cursor", START_X + Text::Get_String_Width(NewMessage.substr(0, CursorPos)));
-    Text::Unset_Group();
+    interface.Set_Document("chatFocused");
+    interface.Get_Text_Element("newMessage")->Text = NewMessage;
+    interface.Get_Text_Element("cursor")->X = START_X + interface.Get_String_Width(NewMessage.substr(0, CursorPos));
+    interface.Set_Document("");
 }
 
 void Chat::Move_Up() {
-    Text::Set_Group(TEXT_GROUP);
+    interface.Set_Document("chat");
     
     auto it = std::begin(Messages);
     
@@ -220,16 +177,17 @@ void Chat::Move_Up() {
         it->second.Y += SPACING;
         
         if (it->second.Y >= END_Y) {
-            Text::Remove(std::to_string(it->first));
+            interface.Delete_Text(std::to_string(it->first));
             it = Messages.erase(it);
         }
         else {
-            Text::Set_Y(std::to_string(it->first), it->second.Y);
+            interface.Get_Text_Element(std::to_string(it->first))->Y = it->second.Y;
         }
+        
         ++it;
     }
     
-    Text::Unset_Group();
+    interface.Set_Document("");
 }
 
 void Chat::Get_Prev() {
@@ -251,30 +209,19 @@ void Chat::Get_Next() {
     }
 }
 
-void Chat::Draw_Background() {
-    UIShader->Upload(ColorLocation, BACKGROUND_COLOR);
-    UIShader->Upload(AlphaLocation, BACKGROUND_OPACITY);
-    
-    BackgroundBuffer.Draw();
-    
-    UIShader->Upload(AlphaLocation, MESSAGE_BOX_OPACITY);
-    
-    MessageBuffer.Draw();
-}
-
 void Chat::Update() {
     auto it = std::begin(Messages);
     
-    Text::Set_Group(TEXT_GROUP);
+    interface.Set_Document("chat");
     
     while (it != std::end(Messages)) {
         if (FocusToggled) {
             if (Focused) {
-                it->second.RealOpacity = Text::Get_Opacity(std::to_string(it->first));
-                Text::Set_Opacity(std::to_string(it->first), 1.0f);
+                it->second.RealOpacity = interface.Get_Text_Element(std::to_string(it->first))->Opacity;
+                interface.Get_Text_Element(std::to_string(it->first))->Opacity = 1.0f;
             }
             else {
-                Text::Set_Opacity(std::to_string(it->first), it->second.RealOpacity);
+                interface.Get_Text_Element(std::to_string(it->first))->Opacity = it->second.RealOpacity;
             }
         }
         else if (!it->second.Hidden) {
@@ -285,14 +232,14 @@ void Chat::Update() {
                 it->second.RealOpacity = 0.0f;
                 
                 if (!Focused) {
-                    Text::Set_Opacity(std::to_string(it->first), 0.0f);
+                    interface.Get_Text_Element(std::to_string(it->first))->Opacity = 0.0f;
                 }
             }
             else if (it->second.TimeLeft <= FADE_TIME) {
                 it->second.RealOpacity = float(it->second.TimeLeft / FADE_TIME);
                 
                 if (!Focused) {
-                    Text::Set_Opacity(std::to_string(it->first), it->second.RealOpacity);
+                    interface.Get_Text_Element(std::to_string(it->first))->Opacity = it->second.RealOpacity;
                 }
             }
         }
@@ -300,7 +247,7 @@ void Chat::Update() {
         ++it;
     }
     
-    Text::Unset_Group();
+    interface.Set_Document("");
     
     if (FocusToggled) {
         FocusToggled = false;
@@ -311,10 +258,9 @@ void Chat::Update() {
             Toggle_Cursor();
             LastCursorToggle = glfwGetTime();
         }
-        
-        Draw_Background();
+        interface.Draw_Document("chatFocused");
     }
     
     glClear(GL_DEPTH_BUFFER_BIT);
-    Text::Draw_Group(TEXT_GROUP);
+    interface.Draw_Document("chat");
 }

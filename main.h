@@ -331,6 +331,8 @@ Player player = Player();
 Chat chat = Chat();
 Inventory inventory = Inventory();
 
+Interface interface = Interface();
+
 Shader* shader;
 Shader* outlineShader;
 Shader* modelShader;

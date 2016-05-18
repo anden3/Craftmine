@@ -2,10 +2,6 @@
 
 #include "Player.h"
 
-#include "Text.h"
-#include "Button.h"
-#include "Slider.h"
-
 extern const bool Windows;
 
 extern int VSync;
@@ -30,6 +26,7 @@ namespace UI {
     void Clean();
     
     void Click(double mouseX, double mouseY, int action, int button);
+    void Mouse_Handler(double x, double y);
     
     void Toggle_Menu();
     void Toggle_Debug();
