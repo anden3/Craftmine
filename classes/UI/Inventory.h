@@ -78,6 +78,7 @@ public:
 private:
     std::vector<Stack> Inv;
     std::vector<Stack> Craft;
+    std::vector<Stack> Toolbar;
     
     Stack CraftingOutput = Stack();
     Stack HoldingStack = Stack();

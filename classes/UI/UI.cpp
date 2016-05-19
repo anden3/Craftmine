@@ -292,7 +292,9 @@ void Toggle_Wireframe() {
 }
 
 void Change_Render_Distance() {
+    interface.Set_Document("options");
     Slider* slider = interface.Get_Slider("option_renderDistance");
+    interface.Set_Document("");
     
     int value = int(ceil(slider->Value));
     

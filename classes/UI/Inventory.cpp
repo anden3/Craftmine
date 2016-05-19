@@ -6,7 +6,7 @@
 #include <set>
 
 const int SLOTS_X = 10;
-const int SLOTS_Y = 6;
+const int SLOTS_Y = 7;
 
 const int INV_SIZE = SLOTS_X * SLOTS_Y;
 const int MAX_STACK_SIZE = 64;
@@ -16,6 +16,9 @@ float START_Y, END_Y;
 
 float TOOLBAR_START_X, TOOLBAR_END_X;
 float TOOLBAR_START_Y, TOOLBAR_END_Y;
+
+float INV_TOOLBAR_START_X, INV_TOOLBAR_END_X;
+float INV_TOOLBAR_START_Y, INV_TOOLBAR_END_Y;
 
 float CRAFTING_START_X, CRAFTING_END_X;
 float CRAFTING_START_Y, CRAFTING_END_Y;
@@ -279,6 +282,12 @@ void Inventory::Init() {
     OUTPUT_START_Y = CRAFTING_START_Y - SLOT_WIDTH_Y * 2;
     OUTPUT_END_Y = CRAFTING_START_Y - SLOT_WIDTH_Y;
     
+    INV_TOOLBAR_START_X = START_X;
+    INV_TOOLBAR_END_X = END_X;
+    
+    INV_TOOLBAR_START_Y = Y_Frac(1, 9);
+    INV_TOOLBAR_END_Y = INV_TOOLBAR_START_Y + SLOT_WIDTH_Y;
+    
     INV_PAD_X = X_Frac(1, 144);
     INV_PAD_Y = Y_Frac(1, 90);
     
@@ -304,7 +313,15 @@ void Inventory::Init() {
     
     for (int i = 0; i < INV_SIZE; i++) {
         float startX = START_X + (i % SLOTS_X) * SLOT_WIDTH_X;
-        float startY = START_Y + (i / SLOTS_X) * SLOT_WIDTH_Y;
+        float startY;
+        
+        if (i < SLOTS_X) {
+            startY = INV_TOOLBAR_START_Y;
+        }
+        else {
+            startY = START_Y + ((i / SLOTS_X) - 1) * SLOT_WIDTH_Y;
+        }
+        
         std::string name = std::to_string(i);
         
         Inv.push_back(Stack());
@@ -326,17 +343,22 @@ void Inventory::Init() {
     
     interface.Add_Text(std::to_string(INV_SIZE + 9), "0", OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y);
     interface.Get_Text_Element(std::to_string(INV_SIZE + 9))->Opacity = 0.0f;
-    interface.Add_3D_Element(std::to_string(INV_SIZE + 9), 0, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y, SLOT_WIDTH_X);
+    interface.Add_3D_Element(std::to_string(INV_SIZE + 9), 0, OUTPUT_START_X + SLOT_PAD_X, OUTPUT_START_Y + SLOT_PAD_Y * 2, SLOT_WIDTH_X);
     
-    interface.Add_Background("bgInv",
+    glm::vec2 invPad(INV_PAD_X, INV_PAD_Y);
+    
+    interface.Add_Background("invInv",
                              START_X - INV_PAD_X, START_Y - INV_PAD_Y,
-                             (END_X - START_X) + INV_PAD_X * 2.0f, (END_Y - START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y));
-    interface.Add_Background("bgCraft",
+                             (END_X - START_X) + INV_PAD_X * 2.0f, (END_Y - START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y), invPad);
+    interface.Add_Background("invCraft",
                              CRAFTING_START_X - INV_PAD_X, CRAFTING_START_Y - INV_PAD_Y,
-                             (CRAFTING_END_X - CRAFTING_START_X) + INV_PAD_X * 2.0f, (CRAFTING_END_Y - CRAFTING_START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y));
-    interface.Add_Background("bgOutput", OUTPUT_START_X - INV_PAD_X, OUTPUT_START_Y - INV_PAD_Y,
-                             SLOT_WIDTH_X + INV_PAD_X * 2.0f, SLOT_WIDTH_Y + INV_PAD_Y * 2.0f, true);
-    interface.Add_Background("bgHover", 0, 0, SLOT_WIDTH_X, SLOT_WIDTH_Y);
+                             (CRAFTING_END_X - CRAFTING_START_X) + INV_PAD_X * 2.0f, (CRAFTING_END_Y - CRAFTING_START_Y) + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y), invPad);
+    interface.Add_Background("invOutput", OUTPUT_START_X - INV_PAD_X, OUTPUT_START_Y - INV_PAD_Y,
+                             SLOT_WIDTH_X + INV_PAD_X * 2.0f, SLOT_WIDTH_Y + INV_PAD_Y * 2.0f, true, glm::vec2(0, 0), invPad);
+    interface.Add_Background("invToolbar", INV_TOOLBAR_START_X - INV_PAD_X, INV_TOOLBAR_START_Y, SLOTS_X * SLOT_WIDTH_X + INV_PAD_X * 2.0f, SLOT_WIDTH_Y + INV_PAD_Y * 2.0f, true, glm::vec2(SLOT_WIDTH_X, SLOT_WIDTH_Y), invPad);
+    
+    interface.Add_Background("invHover", 0, 0, SLOT_WIDTH_X, SLOT_WIDTH_Y);
+    interface.Get_Background("invHover")->Color = glm::vec3(0.7f);
     
     interface.Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
     interface.Get_Text_Element("mouseStack")->Opacity = 0.0f;
@@ -347,6 +369,7 @@ void Inventory::Init() {
     
     interface.Add_Background("bgToolbar", TOOLBAR_START_X, TOOLBAR_START_Y, (TOOLBAR_END_X - TOOLBAR_START_X), (TOOLBAR_END_Y - TOOLBAR_START_Y), true, glm::vec2(SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
     interface.Add_Background("selectToolbar", TOOLBAR_START_X, TOOLBAR_START_Y, SLOT_WIDTH_X / 2.0f, (TOOLBAR_END_Y - TOOLBAR_START_Y), true, glm::vec2(SLOT_WIDTH_X / 2.0f, SLOT_WIDTH_Y / 2.0f));
+    interface.Get_Background("selectToolbar")->Color = glm::vec3(0.7f);
     
     Switch_Slot();
 }
@@ -596,7 +619,9 @@ void Inventory::Craft_Item() {
 
 void Inventory::Switch_Slot() {
     float startX = TOOLBAR_START_X + ActiveToolbarSlot * SLOT_WIDTH_X / 2.0f;
-    interface.Get_Background("selectToolbar")->Move(startX, TOOLBAR_START_Y);
+    interface.Set_Document("toolbar");
+    interface.Get_Background("selectToolbar")->Move(startX, TOOLBAR_START_Y, true);
+    interface.Set_Document("");
 }
 
 void Inventory::Click_Handler(double x, double y, int button, int action) {
@@ -609,15 +634,11 @@ void Inventory::Click_Handler(double x, double y, int button, int action) {
     if (HoveringSlot >= 0 && MouseDown) {
         MouseState = (HoldingStack.Type > 0);
         
-        if (MouseDown == MOUSE_RIGHT) {
+        if (MouseDown == MOUSE_RIGHT || HoveringSlot == OUTPUT_SLOT) {
             Click_Slot(HoveringSlot, button);
             Mesh();
         }
         else {
-            if (MouseState && HoveringSlot == OUTPUT_SLOT) {
-                return;
-            }
-            
             StartSlot = HoveringSlot;
             
             if (MouseState) {
@@ -664,18 +685,17 @@ void Inventory::Mouse_Handler(double x, double y) {
     
     MousePos = glm::vec2(x, y);
     
-    float mouseX = float(x);
     float mouseY = float(900.0f - y);
     
     HoveringSlot = -1;
     
-    if (y >= START_Y && y <= END_Y) {
+    if (mouseY >= START_Y && mouseY <= END_Y) {
         if (x >= START_X && x <= END_X) {
             float startX = float(floor((x - START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + START_X);
-            float startY = float(floor((900 - y - START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + START_Y);
+            float startY = float(floor((mouseY - START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + START_Y);
             
-            HoveringSlot = int((startY - START_Y) / SLOT_WIDTH_Y) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH_X);
-            interface.Get_Background("bgHover")->Move(startX, startY, true);
+            HoveringSlot = int((startY - START_Y) / SLOT_WIDTH_Y) * SLOTS_X + int((startX - START_X) / SLOT_WIDTH_X) + SLOTS_X;
+            interface.Get_Background("invHover")->Move(startX, startY, true);
         }
         
         else if (x >= CRAFTING_START_X && x <= CRAFTING_END_X) {
@@ -684,24 +704,27 @@ void Inventory::Mouse_Handler(double x, double y) {
                 float startY = float(floor((mouseY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * SLOT_WIDTH_Y + CRAFTING_START_Y);
                 
                 HoveringSlot = INV_SIZE + int((startY - CRAFTING_START_Y) / SLOT_WIDTH_Y) * 3 + int((startX - CRAFTING_START_X) / SLOT_WIDTH_X);
-                interface.Get_Background("bgHover")->Move(startX, startY, true);
+                interface.Get_Background("invHover")->Move(startX, startY, true);
             }
             
             else if (mouseY >= OUTPUT_START_Y && mouseY <= OUTPUT_END_Y) {
                 if (x >= OUTPUT_START_X && x <= OUTPUT_END_X) {
                     HoveringSlot = OUTPUT_SLOT;
-                    interface.Get_Background("bgHover")->Move(OUTPUT_START_X, OUTPUT_START_Y, true);
+                    interface.Get_Background("invHover")->Move(OUTPUT_START_X, OUTPUT_START_Y, true);
                 }
             }
         }
     }
+    else if (mouseY >= INV_TOOLBAR_START_Y + INV_PAD_Y && mouseY <= INV_TOOLBAR_END_Y + INV_PAD_Y) {
+        if (x >= INV_TOOLBAR_START_X && x <= INV_TOOLBAR_END_X) {
+            float startX = float(floor((x - INV_TOOLBAR_START_X) / SLOT_WIDTH_X) * SLOT_WIDTH_X + INV_TOOLBAR_START_X);
+            
+            HoveringSlot = int((startX - INV_TOOLBAR_START_X) / SLOT_WIDTH_X);
+            interface.Get_Background("invHover")->Move(startX, INV_TOOLBAR_START_Y + INV_PAD_Y, true);
+        }
+    }
     
-    if (HoveringSlot == -1) {
-        interface.Get_Background("bgHover")->Opacity = 0.0f;
-    }
-    else {
-        interface.Get_Background("bgHover")->Opacity = 0.5f;
-    }
+    interface.Get_Background("invHover")->Opacity = 0.5f * (HoveringSlot != -1);
     
     if (HoveringSlot != LastSlot && HoveringSlot != -1) {
         LastSlot = HoveringSlot;
@@ -719,13 +742,13 @@ void Inventory::Mouse_Handler(double x, double y) {
         TextElement* mouseStack = interface.Get_Text_Element("mouseStack");
         mouseStack->Text = std::to_string(HoldingStack.Size);
         mouseStack->Opacity = 1.0f;
-        mouseStack->X = floor(mouseX + TEXT_PAD_X);
-        mouseStack->Y = floor(mouseY + TEXT_PAD_Y);
+        mouseStack->X = floor(x);
+        mouseStack->Y = floor(mouseY);
         
-        interface.Get_3D_Element("mouseStack")->Mesh(HoldingStack.Type, mouseX, mouseY);
+        interface.Get_3D_Element("mouseStack")->Mesh(HoldingStack.Type, x, mouseY);
     }
     else {
-        interface.Get_3D_Element("mouseStack")->Mesh(0, mouseX, mouseY);
+        interface.Get_3D_Element("mouseStack")->Mesh(0, x, mouseY);
         interface.Get_Text_Element("mouseStack")->Opacity = 0.0f;
     }
     
@@ -740,8 +763,15 @@ void Inventory::Mesh() {
         
         if (Is_Open) {
             interface.Set_Document("inventory");
-            startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
-            startY = START_Y + (index / SLOTS_X) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+            
+            if (index < SLOTS_X) {
+                startX = INV_TOOLBAR_START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
+                startY = INV_TOOLBAR_START_Y;
+            }
+            else {
+                startX = START_X + (index % SLOTS_X) * SLOT_WIDTH_X + SLOT_PAD_X;
+                startY = START_Y + ((index / SLOTS_X) - 1) * SLOT_WIDTH_Y + SLOT_PAD_Y;
+            }
         }
         else {
             interface.Set_Document("toolbar");

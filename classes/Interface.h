@@ -122,9 +122,10 @@ class Background {
 public:
     float Opacity;
     glm::vec3 Color;
+    glm::vec3 GridColor;
     
     Background() {};
-    Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth);
+    Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad);
     
     void Move(float dx = 0, float dy = 0, bool absolute = false);
     void Draw();
@@ -171,7 +172,7 @@ public:
     void Add_Text(std::string name, std::string text, float x, float y);
     void Add_Button(std::string name, std::string text, float x, float y, float w, Func &function);
     void Add_Slider(std::string name, std::string text, float x, float y, float w, float min, float max, float value, Func &function);
-    void Add_Background(std::string name, float x, float y, float w, float h, bool border = false, glm::vec2 gridWidth = glm::vec2(0, 0));
+    void Add_Background(std::string name, float x, float y, float w, float h, bool border = false, glm::vec2 gridWidth = glm::vec2(0, 0), glm::vec2 pad = glm::vec2(0, 0));
     void Add_3D_Element(std::string name, int type, float x, float y, float scale);
     
     void Delete_Text(std::string name);
@@ -192,6 +193,7 @@ public:
     void Draw_Document(std::string document);
     
 private:
+    bool Holding = false;
     std::string ActiveDocument = "";
     
     void Init_Shaders();
