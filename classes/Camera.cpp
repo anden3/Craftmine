@@ -4,10 +4,6 @@ Camera::Camera() {
     UpdateCameraVectors();
 }
 
-glm::mat4 Camera::GetViewMatrix() {
-    return glm::lookAt(Position, Position + Front, Up);
-}
-
 void Camera::UpdateCameraVectors() {
     glm::vec3 front;
 

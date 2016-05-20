@@ -60,11 +60,9 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
-    static float textureStepX = (1.0f / 16.0f);
-    static float textureStepY = (1.0f / 32.0f);
     
-    float texStartX = textureStepX * (texPosition.x - 1.0f);
-    float texStartY = textureStepY * (texPosition.y - 1.0f);
+    float texStartX = texPosition.x - 1.0f;
+    float texStartY = texPosition.y - 1.0f;
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
@@ -80,16 +78,16 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
             }
             
             if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / IMAGE_SIZE_X);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / IMAGE_SIZE_Y);
             }
             else if (MultiTextures.count(type)) {
-                data.push_back(textureStepX * (MultiTextures[type][i].x - 1.0f) + tex_coords[i][j][0] * textureStepX);
-                data.push_back(textureStepY * (MultiTextures[type][i].y - 1.0f) + tex_coords[i][j][1] * textureStepY);
+                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             else {
-                data.push_back(texStartX + tex_coords[i][j][0] * textureStepX);
-                data.push_back(texStartY + tex_coords[i][j][1] * textureStepY);
+                data.push_back((texStartX + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((texStartY + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
         }
     }

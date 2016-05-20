@@ -22,7 +22,7 @@ public:
     double Zoom = DEFAULT_FOV;
 
     Camera();
-
-    glm::mat4 GetViewMatrix();
+    
+    inline glm::mat4 GetViewMatrix() { return glm::lookAt(Position, Position + Front, Up); }
     void UpdateCameraVectors();
 };

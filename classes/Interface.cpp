@@ -49,11 +49,8 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
-    static float textureStepX = (1.0f / 16.0f);
-    static float textureStepY = (1.0f / 32.0f);
-    
-    float texStartX = textureStepX * (texPosition.x - 1.0f);
-    float texStartY = textureStepY * (texPosition.y - 1.0f);
+    float texStartX = texPosition.x - 1.0f;
+    float texStartY = texPosition.y - 1.0f;
     
     x *= 2.005f;
     y *= 2.005f;
@@ -72,16 +69,16 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
             }
             
             if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / 16.0f);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / 32.0f);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / IMAGE_SIZE_X);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / IMAGE_SIZE_Y);
             }
             else if (MultiTextures.count(type)) {
-                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / 16.0f);
-                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / 32.0f);
+                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             else {
-                data.push_back(texStartX + tex_coords[i][j][0] / 16.0f);
-                data.push_back(texStartY + tex_coords[i][j][1] / 32.0f);
+                data.push_back((texStartX + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((texStartY + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             
             if (offsets) {
@@ -193,8 +190,11 @@ float TextElement::Get_Width() {
     return width;
 }
 
-Button::Button(std::string text, float x, float y, float w, Func &function) : X(x), Y(y), Width(w), Function(function) {
-    Height = BUTTON_PADDING * 2;
+Button::Button(std::string text, float x, float y, float w, float h, Func &function) : X(x), Y(y), Width(w), Height(h), Function(function) {
+    if (Height == 0) {
+        Height = BUTTON_PADDING * 2;
+    }
+    
     Opacity = BUTTON_OPACITY;
     Color = BUTTON_COLOR;
     
@@ -229,8 +229,10 @@ void Button::Draw() {
     Text.Draw();
 }
     
-Slider::Slider(std::string text, float x, float y, float w, float min, float max, float value, Func &function) : X(x), Y(y), Width(w), Min(min), Max(max), Value(value), Function(function) {
-    Height = SLIDER_PADDING * 2;
+Slider::Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) : X(x), Y(y), Width(w), Height(h), Min(min), Max(max), Value(value), Function(function) {
+    if (Height == 0) {
+        Height = SLIDER_PADDING * 2;
+    }
     
     Opacity = SLIDER_OPACITY;
     HandleOpacity = SLIDER_HANDLE_OPACITY;
@@ -394,7 +396,10 @@ OrthoElement::OrthoElement(int type, float x, float y, float scale) {
 
 void OrthoElement::Mesh(int type, float x, float y) {
     Type = type;
-    OrthoBuffer.Upload(Get_3D_Mesh(type, x, y, true));
+    
+    if (Type != 0) {
+        OrthoBuffer.Upload(Get_3D_Mesh(Type, x, y, true));
+    }
 }
 
 void OrthoElement::Draw() {
@@ -516,15 +521,15 @@ void Interface::Init_Text() {
 
 void Interface::Add_Text(std::string name, std::string text, float x, float y) {
     TextElements[ActiveDocument][name] = TextElement();
-    TextElements[ActiveDocument][name].Create(text, x, y);
+    TextElements[ActiveDocument][name].Create(text, floor(x), floor(y));
 }
 
-void Interface::Add_Button(std::string name, std::string text, float x, float y, float w, Func &function) {
-    Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, function));
+void Interface::Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
+    Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, h, function));
 }
 
-void Interface::Add_Slider(std::string name, std::string text, float x, float y, float w, float min, float max, float value, Func &function) {
-    Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, min, max, value, function));
+void Interface::Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
+    Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, h, min, max, value, function));
 }
 
 void Interface::Add_Background(std::string name, float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {

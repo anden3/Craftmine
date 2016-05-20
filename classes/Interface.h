@@ -7,6 +7,9 @@ typedef void (Func)(void);
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 
+extern unsigned int IMAGE_SIZE_X;
+extern unsigned int IMAGE_SIZE_Y;
+
 extern float vertices[6][6][3];
 extern float tex_coords[6][6][2];
 
@@ -16,6 +19,26 @@ extern std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoor
 extern std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
 
 Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets = false);
+
+template <typename T>
+inline float X_Frac(const T a, const T b) {
+    return SCREEN_WIDTH * float(a) / float(b);
+}
+
+template <typename T>
+inline float Y_Frac(const T a, const T b) {
+    return SCREEN_HEIGHT * float(a) / float(b);
+}
+
+template <typename T>
+inline float X_Per(const T percentage) {
+    return SCREEN_WIDTH * float(percentage) / 100.0f;
+}
+
+template <typename T>
+inline float Y_Per(const T percentage) {
+    return SCREEN_HEIGHT * float(percentage) / 100.0f;
+}
 
 class TextElement {
 public:
@@ -51,7 +74,7 @@ public:
     TextElement Text;
     
     Button() {};
-    Button(std::string text, float x, float y, float w, Func &function);
+    Button(std::string text, float x, float y, float w, float h, Func &function);
     
     inline void Hover();
     inline void Stop_Hover();
@@ -87,7 +110,7 @@ public:
     TextElement Text;
     
     Slider() {};
-    Slider(std::string text, float x, float y, float w, float min, float max, float value, Func &function);
+    Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
     
     inline void Hover();
     inline void Stop_Hover();
@@ -127,6 +150,9 @@ public:
     Background() {};
     Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad);
     
+    inline void Move(glm::vec2 pos = glm::vec2(0, 0), bool absolute = false) {
+        Move(pos.x, pos.y, absolute);
+    }
     void Move(float dx = 0, float dy = 0, bool absolute = false);
     void Draw();
     
@@ -152,6 +178,7 @@ public:
     OrthoElement() {};
     OrthoElement(int type, float x, float y, float scale);
     
+    inline void Mesh(int type, glm::vec2 pos) { Mesh(type, pos.x, pos.y); }
     void Mesh(int type, float x, float y);
     void Draw();
     
@@ -169,9 +196,18 @@ public:
     float Get_String_Width(std::string string);
     int Get_Fitting_String(std::string string, int width);
     
+    inline void Add_Text(std::string name, std::string text, glm::vec2 pos) { Add_Text(name, text, pos.x, pos.y); }
+    inline void Add_Button(std::string name, std::string text, glm::vec4 dims, Func &function) { Add_Button(name, text, dims.x, dims.y, dims.z, dims.w, function); }
+    inline void Add_Slider(std::string name, std::string text, glm::vec4 dims, glm::vec3 range, Func &function) {
+        Add_Slider(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z, function); }
+    inline void Add_Background(std::string name, glm::vec4 dims, bool border = false, glm::vec2 gridWidth = glm::vec2(0), glm::vec2 pad = glm::vec2(0)) {
+        Add_Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad);
+    }
+    inline void Add_3D_Element(std::string name, int type, glm::vec2 pos, float scale) { Add_3D_Element(name, type, pos.x, pos.y, scale); }
+    
     void Add_Text(std::string name, std::string text, float x, float y);
-    void Add_Button(std::string name, std::string text, float x, float y, float w, Func &function);
-    void Add_Slider(std::string name, std::string text, float x, float y, float w, float min, float max, float value, Func &function);
+    void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function);
+    void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
     void Add_Background(std::string name, float x, float y, float w, float h, bool border = false, glm::vec2 gridWidth = glm::vec2(0, 0), glm::vec2 pad = glm::vec2(0, 0));
     void Add_3D_Element(std::string name, int type, float x, float y, float scale);
     

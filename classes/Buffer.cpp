@@ -30,8 +30,7 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
         glVertexAttribPointer(index, element, GL_FLOAT, false, VertexSize * sizeof(float), (void*)(partSum * sizeof(float)));
         
         partSum += element;
-        
-        index++;
+        ++index;
     }
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);

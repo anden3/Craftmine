@@ -224,15 +224,9 @@ void Render_Scene() {
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
 		ToggleWireframe = false;
-
-		if (Wireframe) {
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            shader->Upload("diffTex", 50);
-		}
-		else {
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            shader->Upload("diffTex", 0);
-		}
+        
+        glPolygonMode(GL_FRONT_AND_BACK, Wireframe ? GL_LINE : GL_FILL);
+        shader->Upload("diffTex", Wireframe ? 50 : 0);
 	}
     
     for (auto const &chunk : ChunkMap) {
@@ -249,10 +243,10 @@ void Render_Scene() {
     if (player.LookingAtBlock) {
         outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
         
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-50.0f, -50.0f);
+        // glEnable(GL_POLYGON_OFFSET_FILL);
+        // glPolygonOffset(-50.0f, -50.0f);
         OutlineBuffer.Draw();
-        glDisable(GL_POLYGON_OFFSET_FILL);
+        // glDisable(GL_POLYGON_OFFSET_FILL);
     }
 }
 
@@ -275,7 +269,8 @@ unsigned int Load_Texture(std::string file) {
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
     
-    IMAGE_SIZE = width / 16;
+    IMAGE_SIZE_X = width / 16;
+    IMAGE_SIZE_Y = height / 16;
 
     return texture;
 }

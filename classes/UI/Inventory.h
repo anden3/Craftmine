@@ -43,16 +43,6 @@ double Sum(const std::vector<T> &a) {
     return sum;
 }
 
-template <typename T>
-inline float X_Frac(const T a, const T b) {
-    return SCREEN_WIDTH * float(a) / float(b);
-}
-
-template <typename T>
-inline float Y_Frac(const T a, const T b) {
-    return SCREEN_HEIGHT * float(a) / float(b);
-}
-
 class Inventory {
 public:
     bool Is_Open = false;

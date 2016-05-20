@@ -47,8 +47,6 @@ void UI::Init() {
     
     Init_Menu();
     Init_Debug();
-    
-    // player.inventory.Mesh();
 }
 
 void UI::Draw() {
@@ -79,21 +77,14 @@ void UI::Click(double mouseX, double mouseY, int action, int button) {
     if (ShowMenu) {
         interface.Click(button, action);
     }
-    
-    if (ShowInventory) {
+    else if (ShowInventory) {
         player.inventory.Click_Handler(mouseX, mouseY, button, action);
     }
 }
 
 void UI::Mouse_Handler(double x, double y) {
     if (ShowMenu) {
-        if (ShowOptions) {
-            interface.Set_Document("options");
-        }
-        else {
-            interface.Set_Document("mainMenu");
-        }
-        
+        interface.Set_Document(ShowOptions ? "options" : "mainMenu");
         interface.Mouse_Handler(float(x), float(SCREEN_HEIGHT - y));
         interface.Set_Document("");
     }
@@ -119,52 +110,36 @@ void UI::Toggle_Inventory() {
 
 void Toggle_Mouse(bool enable) {
     MouseEnabled = enable;
-    
-    if (enable) {
-        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    }
-    else {
-        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    }
+    glfwSetInputMode(Window, GLFW_CURSOR, enable ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 }
 
 void Init_Menu() {
-    float buttonWidth = X_Frac(5, 36);
+    glm::vec2 buttonSize(X_Frac(5, 36), Y_Frac(2, 45));
     
-    float optionsButtonX = X_Frac(31, 72);
-    float optionsButtonY = Y_Frac(5, 9);
+    glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     
-    float exitButtonX = X_Frac(31, 72);
-    float exitButtonY = Y_Frac(2, 9);
+    glm::vec4 optionButtonDims(X_Frac(31, 72), Y_Frac(5, 9), buttonSize);
+    glm::vec4 exitButtonDims(X_Frac(31, 72), Y_Frac(2, 9), buttonSize);
+    glm::vec4 vsyncButtonDims(X_Frac(7, 24), Y_Frac(5, 9), buttonSize);
+    glm::vec4 wireframeButtonDims(X_Frac(13, 24), Y_Frac(5, 9), buttonSize);
+    glm::vec4 renderDistSliderDims(X_Frac(31, 72), Y_Frac(7, 9), buttonSize);
+    glm::vec4 backButtonDims(X_Frac(31, 72), Y_Frac(2, 9), buttonSize);
     
-    float vSyncButtonX = X_Frac(7, 24);
-    float vSyncButtonY = Y_Frac(5, 9);
-    
-    float wireframeButtonX = X_Frac(13, 24);
-    float wireframeButtonY = Y_Frac(5, 9);
-    
-    float renderDistButtonX = X_Frac(31, 72);
-    float renderDistButtonY = Y_Frac(7, 9);
-    
-    float backButtonX = X_Frac(31, 72);
-    float backButtonY = Y_Frac(2, 9);
-    
-    float w = float(SCREEN_WIDTH);
-    float h = float(SCREEN_HEIGHT);
+    glm::vec3 renderDistSliderRange(0, 10, float(RenderDistance));
     
     interface.Set_Document("mainMenu");
     
-    interface.Add_Background("menuBg", 0, 0, w, h);
-    interface.Add_Button("options", "Options", optionsButtonX, optionsButtonY, buttonWidth, Toggle_Options_Menu);
-    interface.Add_Button("exit", "Quit", exitButtonX, exitButtonY, buttonWidth, Exit);
+    interface.Add_Background("menuBg", bgDims);
+    interface.Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+    interface.Add_Button("exit", "Quit", exitButtonDims, Exit);
     
     interface.Set_Document("options");
     
-    interface.Add_Background("menuBg", 0, 0, w, h);
-    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vSyncButtonX, vSyncButtonY, buttonWidth, Toggle_VSync);
-    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonX, wireframeButtonY, buttonWidth, Toggle_Wireframe);
-    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistButtonX, renderDistButtonY, buttonWidth, 0, 10, float(RenderDistance), Change_Render_Distance);
-    interface.Add_Button("option_back", "Back", backButtonX, backButtonY, buttonWidth, Toggle_Options_Menu);
+    interface.Add_Background("menuBg", bgDims);
+    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
+    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
     
     interface.Set_Document("");
 }
@@ -174,29 +149,19 @@ void Init_Debug() {
     
     float debugX = X_Frac(1, 48);
     
-    float fpsY = Y_Frac(17, 18);
-    float cpuY = Y_Frac(41, 45);
-    float ramY = Y_Frac(5, 6);
-    float virtualY = Y_Frac(4, 5);
-    float chunkY = Y_Frac(34, 45);
-    float tileY = Y_Frac(13, 18);
-    float posY = Y_Frac(31, 45);
-    float queueY = Y_Frac(29, 45);
-    
     interface.Set_Document("debug");
     
-    interface.Add_Text("fps", "FPS: 0", debugX, fpsY);
-    interface.Add_Text("cpu", "CPU: 0%", debugX, cpuY);
-    interface.Add_Text("ram", "RAM: " + System::GetPhysicalMemoryUsage(), debugX, ramY);
-    interface.Add_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), debugX, virtualY);
-    interface.Add_Text("playerChunk", "Chunk:    ", debugX, chunkY);
-    interface.Add_Text("playerTile", "Tile:     ", debugX, tileY);
-    interface.Add_Text("playerPos", "Position: ", debugX, posY);
-    interface.Add_Text("chunkQueue", "Chunks Loaded: ", debugX, queueY);
+    interface.Add_Text("fps",           "FPS: 0",                                             debugX, Y_Frac(17, 18));
+    interface.Add_Text("cpu",           "CPU: 0%",                                            debugX, Y_Frac(41, 45));
+    interface.Add_Text("ram",           "RAM: " + System::GetPhysicalMemoryUsage(),           debugX, Y_Frac( 5,  6));
+    interface.Add_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), debugX, Y_Frac( 4,  5));
+    interface.Add_Text("playerChunk",   "Chunk:    ",                                         debugX, Y_Frac(34, 45));
+    interface.Add_Text("playerTile",    "Tile:     ",                                         debugX, Y_Frac(13, 18));
+    interface.Add_Text("playerPos",     "Position: ",                                         debugX, Y_Frac(31, 45));
+    interface.Add_Text("chunkQueue",    "Chunks Loaded: ",                                    debugX, Y_Frac(29, 45));
     
     if (Windows) {
-        float vramY = Y_Frac(13, 15);
-        interface.Add_Text("vram", "VRAM: " + System::GetVRAMUsage(), debugX, vramY);
+        interface.Add_Text("vram", "VRAM: " + System::GetVRAMUsage(), debugX, Y_Frac(13, 15));
     }
     
     interface.Set_Document("");
@@ -208,13 +173,7 @@ void Draw_UI() {
 
 void Draw_Menu() {
     interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-    
-    if (ShowOptions) {
-        interface.Draw_Document("options");
-    }
-    else {
-        interface.Draw_Document("mainMenu");
-    }
+    interface.Draw_Document(ShowOptions ? "options" : "mainMenu");
 }
 
 int Get_Loaded() {

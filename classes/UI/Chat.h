@@ -6,6 +6,8 @@
 extern Interface interface;
 
 struct Message {
+    Message(unsigned int Id, float y, std::string text, double timeLeft) : ID(Id), Y(y), Text(text), TimeLeft(timeLeft) {}
+    
     unsigned int ID;
     float Y;
     
@@ -48,9 +50,6 @@ private:
     bool CursorVisible = true;
     
     std::string NewMessage = "";
-    
-    Buffer BackgroundBuffer;
-    Buffer MessageBuffer;
     
     void Get_Prev();
     void Get_Next();

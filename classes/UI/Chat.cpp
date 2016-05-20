@@ -6,30 +6,28 @@ const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
 const double CURSOR_BLINK_SPEED = 1.0;
 
-const float START_X = 50.0f;
-const float END_X = 300.0f;
-
-const float START_Y = 100.0f;
-const float END_Y = 500.0f;
-
-const float MESSAGE_Y = 70.0f;
-
-const float SPACING = 22.0f;
-const float CHAT_PAD = 10.0f;
+glm::vec4 chatDims;
 
 void Chat::Init() {
+    chatDims = glm::vec4(X_Frac(5, 144), Y_Frac(1, 9), X_Frac(25, 144), Y_Frac(4, 9));
+    glm::vec4 messageArea(X_Frac(5, 144), Y_Frac(7, 90), X_Frac(25, 144), Y_Frac(1, 30));
+    
+    glm::vec2 messageDims(X_Frac(5, 144), Y_Frac(7, 90));
+    glm::vec2 chatPad(X_Frac(1, 144), Y_Frac(1, 90));
+    
     interface.Set_Document("chatFocused");
-    interface.Add_Text("newMessage", "", START_X, MESSAGE_Y);
-    interface.Add_Text("cursor", "", START_X, MESSAGE_Y);
+    interface.Add_Text("newMessage", "", messageDims);
+    interface.Add_Text("cursor", "|", messageDims);
     interface.Get_Text_Element("cursor")->Opacity = 0.0f;
     
-    interface.Add_Background("bgChat", START_X - CHAT_PAD, START_Y - CHAT_PAD, (END_X - START_X) + CHAT_PAD * 2, (END_Y - START_Y) + CHAT_PAD * 2);
-    interface.Add_Background("bgMessage", START_X - CHAT_PAD, MESSAGE_Y - CHAT_PAD, (END_X - START_X) + CHAT_PAD * 2, (START_Y - MESSAGE_Y) + CHAT_PAD * 2);
+    interface.Add_Background("bgChat", glm::vec4(chatDims.xy() - chatPad, chatDims.zw() + chatPad * 2.0f));
+    interface.Add_Background("bgMessage", glm::vec4(messageArea.xy() - chatPad, messageArea.zw() + chatPad * 2.0f));
+    
     interface.Set_Document("");
 }
 
 void Chat::Write(std::string text) {
-    int stringPart = interface.Get_Fitting_String(text, END_X - START_X);
+    int stringPart = interface.Get_Fitting_String(text, chatDims.z);
     
     if (stringPart > 0) {
         std::string fittedWidth = text.substr(0, stringPart);
@@ -42,16 +40,11 @@ void Chat::Write(std::string text) {
     
     Move_Up();
     
-    Message message;
-    message.ID = ++MessageCount;
-    message.Y = START_Y;
-    message.Text = text;
-    message.TimeLeft = MESSAGE_TIME;
-    
-    Messages[message.ID] = message;
+    ++MessageCount;
+    Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, text, MESSAGE_TIME));
     
     interface.Set_Document("chat");
-    interface.Add_Text(std::to_string(message.ID), text, START_X, START_Y);
+    interface.Add_Text(std::to_string(MessageCount), text, chatDims.xy());
     interface.Set_Document("");
 }
 
@@ -129,13 +122,7 @@ void Chat::Input(unsigned int key) {
 
 void Chat::Submit() {
     if (NewMessage.length() > 0) {
-        if (NewMessage.front() == '/') {
-            Write(Process_Commands(NewMessage.substr(1)));
-        }
-        else {
-            Write(NewMessage);
-        }
-        
+        Write(NewMessage.front() == '/' ? Process_Commands(NewMessage.substr(1)) : NewMessage);
         History.push_back(NewMessage);
         HistoryIndex = int(History.size());
         
@@ -148,13 +135,7 @@ void Chat::Submit() {
 
 void Chat::Toggle_Cursor(int opacity) {
     CursorVisible = !CursorVisible;
-    
-    if (opacity == -1) {
-        opacity = int(CursorVisible);
-    }
-    else {
-        CursorVisible = opacity == 1;
-    }
+    opacity = (opacity == -1) ? int(CursorVisible) : 1;
     
     interface.Set_Document("chatFocused");
     interface.Get_Text_Element("cursor")->Opacity = float(opacity);
@@ -164,11 +145,13 @@ void Chat::Toggle_Cursor(int opacity) {
 void Chat::Update_Message() {
     interface.Set_Document("chatFocused");
     interface.Get_Text_Element("newMessage")->Text = NewMessage;
-    interface.Get_Text_Element("cursor")->X = START_X + interface.Get_String_Width(NewMessage.substr(0, CursorPos));
+    interface.Get_Text_Element("cursor")->X = chatDims.x + interface.Get_String_Width(NewMessage.substr(0, CursorPos));
     interface.Set_Document("");
 }
 
 void Chat::Move_Up() {
+    static float SPACING = Y_Frac(11, 450);
+    
     interface.Set_Document("chat");
     
     auto it = std::begin(Messages);
@@ -176,7 +159,7 @@ void Chat::Move_Up() {
     while (it != std::end(Messages)) {
         it->second.Y += SPACING;
         
-        if (it->second.Y >= END_Y) {
+        if (it->second.Y >= (chatDims.y + chatDims.w)) {
             interface.Delete_Text(std::to_string(it->first));
             it = Messages.erase(it);
         }
@@ -200,13 +183,13 @@ void Chat::Get_Prev() {
 void Chat::Get_Next() {
     if (HistoryIndex < History.size() - 1 && History.size() > 0) {
         NewMessage = History[++HistoryIndex];
-        Update_Message();
     }
     else {
         HistoryIndex = int(History.size());
         NewMessage = "";
-        Update_Message();
     }
+    
+    Update_Message();
 }
 
 void Chat::Update() {
@@ -215,31 +198,28 @@ void Chat::Update() {
     interface.Set_Document("chat");
     
     while (it != std::end(Messages)) {
+        std::string name = std::to_string(it->first);
+        Message& message = it->second;
+        
         if (FocusToggled) {
             if (Focused) {
-                it->second.RealOpacity = interface.Get_Text_Element(std::to_string(it->first))->Opacity;
-                interface.Get_Text_Element(std::to_string(it->first))->Opacity = 1.0f;
+                message.RealOpacity = interface.Get_Text_Element(name)->Opacity;
             }
-            else {
-                interface.Get_Text_Element(std::to_string(it->first))->Opacity = it->second.RealOpacity;
-            }
-        }
-        else if (!it->second.Hidden) {
-            it->second.TimeLeft -= DeltaTime;
             
-            if (it->second.TimeLeft <= 0.0) {
-                it->second.Hidden = true;
-                it->second.RealOpacity = 0.0f;
-                
-                if (!Focused) {
-                    interface.Get_Text_Element(std::to_string(it->first))->Opacity = 0.0f;
+            interface.Get_Text_Element(name)->Opacity = Focused ? 1.0f : message.RealOpacity;
+        }
+        else if (!message.Hidden) {
+            message.TimeLeft -= DeltaTime;
+            
+            if (message.TimeLeft <= FADE_TIME) {
+                if (message.TimeLeft <= 0.0) {
+                    message.Hidden = true;
                 }
-            }
-            else if (it->second.TimeLeft <= FADE_TIME) {
-                it->second.RealOpacity = float(it->second.TimeLeft / FADE_TIME);
+                
+                message.RealOpacity = (message.TimeLeft <= 0.0) ? 0.0f : float(message.TimeLeft / FADE_TIME);
                 
                 if (!Focused) {
-                    interface.Get_Text_Element(std::to_string(it->first))->Opacity = it->second.RealOpacity;
+                    interface.Get_Text_Element(name)->Opacity = message.RealOpacity;
                 }
             }
         }
@@ -249,18 +229,16 @@ void Chat::Update() {
     
     interface.Set_Document("");
     
-    if (FocusToggled) {
-        FocusToggled = false;
-    }
+    FocusToggled = false;
     
     if (Focused) {
         if (glfwGetTime() - LastCursorToggle >= CURSOR_BLINK_SPEED) {
             Toggle_Cursor();
             LastCursorToggle = glfwGetTime();
         }
+        
         interface.Draw_Document("chatFocused");
     }
     
-    glClear(GL_DEPTH_BUFFER_BIT);
     interface.Draw_Document("chat");
 }

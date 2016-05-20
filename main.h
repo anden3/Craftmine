@@ -313,7 +313,8 @@ Buffer OutlineBuffer;
 
 unsigned int UBO;
 
-unsigned int IMAGE_SIZE = 0;
+unsigned int IMAGE_SIZE_X = 0;
+unsigned int IMAGE_SIZE_Y = 0;
 
 double DeltaTime = 0.0;
 double LastFrame = 0.0;

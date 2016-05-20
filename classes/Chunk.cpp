@@ -11,7 +11,6 @@ const float NOISE_DENSITY_CAVE = -0.85f;
 bool Seeded = false;
 
 noise::module::Perlin noiseModule;
-noise::module::RidgedMulti oreNoise;
 noise::module::RidgedMulti ridgedNoise;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
@@ -33,9 +32,6 @@ void Seed() {
     noiseModule.SetSeed(seed);
     noiseModule.SetPersistence(0.5);
     noiseModule.SetOctaveCount(3);
-    
-    oreNoise.SetSeed(seed);
-    oreNoise.SetFrequency(5.0);
     
     ridgedNoise.SetSeed(seed);
     ridgedNoise.SetOctaveCount(2);
@@ -111,49 +107,48 @@ void Chunk::Generate() {
                     else {
                         UpdateAir(block, inChunk);
                     }
-                    
-                    continue;
-                }
-                
-                double noiseValue;
-                float densityThreshold;
-                
-                if (Position.y >= -3) {
-                    noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
-                    densityThreshold = NOISE_DENSITY_BLOCK;
                 }
                 else {
-                    noiseValue = ridgedNoise.GetValue(nx, ny, nz);
-                    densityThreshold = NOISE_DENSITY_CAVE;
-                }
-
-                if (noiseValue >= densityThreshold) {
-                    if (inChunk.x && inChunk.y && inChunk.z) {
-                        if (!topBlocks[topPos].count(block.xz())) {
-                            topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
-                            TopBlocks.insert(block);
-                            
-                            Set_Light(block, SUN_LIGHT_LEVEL);
-                            LightQueue.emplace(Position, block);
-                            
-                            Set_Block(block, 2);
-                        }
-                        else {
-                            int depth = std::abs(topBlocks[topPos][block.xz()] - int(Position.y * CHUNK_SIZE + y));
-                            
-                            if (depth > 3) {
-                                Set_Block(block, 1);
+                    double noiseValue;
+                    float densityThreshold;
+                    
+                    if (Position.y >= -3) {
+                        noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
+                        densityThreshold = NOISE_DENSITY_BLOCK;
+                    }
+                    else {
+                        noiseValue = ridgedNoise.GetValue(nx, ny, nz);
+                        densityThreshold = NOISE_DENSITY_CAVE;
+                    }
+                    
+                    if (noiseValue >= densityThreshold) {
+                        if (inChunk.x && inChunk.y && inChunk.z) {
+                            if (!topBlocks[topPos].count(block.xz())) {
+                                topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
+                                TopBlocks.insert(block);
+                                
+                                Set_Light(block, SUN_LIGHT_LEVEL);
+                                LightQueue.emplace(Position, block);
+                                
+                                Set_Block(block, 2);
                             }
                             else {
-                                Set_Block(block, 3);
+                                int depth = std::abs(topBlocks[topPos][block.xz()] - int(Position.y * CHUNK_SIZE + y));
+                                
+                                if (depth > 3) {
+                                    Set_Block(block, 1);
+                                }
+                                else {
+                                    Set_Block(block, 3);
+                                }
                             }
+                            
+                            Blocks.insert(block);
                         }
-                        
-                        Blocks.insert(block);
                     }
-                }
-                else {
-					UpdateAir(block, inChunk);
+                    else {
+                        UpdateAir(block, inChunk);
+                    }
                 }
             }
         }
@@ -213,26 +208,26 @@ void Chunk::Light(bool flag) {
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(chunk, tile);
         
         for (auto const &neighbor : neighbors) {
-            if (!Exists(neighbor.first)) {
-                continue;
-            }
-            
-            Chunk* neighborChunk = ChunkMap[neighbor.first];
-            
-            if (!neighborChunk->Get_Block(neighbor.second)) continue;
-            if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
-            
-            int neighborLight = neighborChunk->Get_Light(neighbor.second);
-            
-            if (neighborLight != 0 && neighborLight < lightLevel) {
-                neighborChunk->Set_Light(neighbor.second, 0);
-                neighborChunk->LightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
-                neighborChunk->Meshed = false;
-            }
-            else if (neighborLight >= lightLevel) {
-                neighborChunk->Set_Light(neighbor.second, neighborLight);
-                neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
-                neighborChunk->Meshed = false;
+            if (Exists(neighbor.first)) {
+                Chunk* neighborChunk = ChunkMap[neighbor.first];
+                
+                if (!neighborChunk->Get_Block(neighbor.second)) continue;
+                if (!neighborChunk->Get_Air(neighbor.second) && underground) continue;
+                
+                int neighborLight = neighborChunk->Get_Light(neighbor.second);
+                
+                if (neighborLight != 0 || lightLevel == 0) {
+                    neighborChunk->Set_Light(neighbor.second, (neighborLight > lightLevel || neighborLight == 0) ? neighborLight : 0);
+                    
+                    if (neighborLight != 0 && neighborLight < lightLevel) {
+                        neighborChunk->LightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
+                    }
+                    else {
+                        neighborChunk->LightQueue.emplace(neighbor.first, neighbor.second);
+                    }
+                    
+                    neighborChunk->Meshed = false;
+                }
             }
         }
     }
@@ -262,7 +257,8 @@ void Chunk::Light(bool flag) {
                 }
             }
         }
-        index++;
+        
+        ++index;
     }
 }
 
@@ -315,7 +311,7 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
                 return 0;
             }
             
-			ao++;
+			++ao;
 		}
 	}
 	
@@ -326,9 +322,6 @@ void Chunk::Mesh() {
     VBOData.clear();
     
     std::set<glm::vec3>::iterator block = Blocks.begin();
-
-	float textureStepX = (1.0f / 16.0f);
-    float textureStepY = (1.0f / 32.0f);
 
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
@@ -342,8 +335,8 @@ void Chunk::Mesh() {
 			unsigned int blockType = Get_Block(*block);
 			glm::vec2 texPosition = textureCoords[blockType];
 
-			float texStartX = textureStepX * (texPosition.x - 1.0f);
-			float texStartY = textureStepY * (texPosition.y - 1.0f);
+			float texStartX = texPosition.x - 1.0f;
+			float texStartY = texPosition.y - 1.0f;
 
             while (bit < 6) {
                 if (seesAir & 1) {
@@ -360,25 +353,25 @@ void Chunk::Mesh() {
                         }
                         
                         if (CustomTexCoords.count(blockType)) {
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][0]].x / 16.0f);
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][1]].y / 32.0f);
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][0]].x / IMAGE_SIZE_X);
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][1]].y / IMAGE_SIZE_Y);
                         }
 
 						else if (MultiTextures.count(blockType)) {
-							VBOData.push_back(textureStepX * (MultiTextures[blockType][bit].x - 1.0f) + tex_coords[bit][j][0] * textureStepX);
-							VBOData.push_back(textureStepY * (MultiTextures[blockType][bit].y - 1.0f) + tex_coords[bit][j][1] * textureStepY);
+							VBOData.push_back((MultiTextures[blockType][bit].x - 1.0f + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
+							VBOData.push_back((MultiTextures[blockType][bit].y - 1.0f + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
 						}
 
 						else {
-							VBOData.push_back(texStartX + tex_coords[bit][j][0] * textureStepX);
-							VBOData.push_back(texStartY + tex_coords[bit][j][1] * textureStepY);
+							VBOData.push_back((texStartX + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
+							VBOData.push_back((texStartY + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
 						}
                         
                         VBOData.push_back(lightValue);
 						VBOData.push_back(float(GetAO(*block, bit, j)));
                     }
                 }
-                bit++;
+                ++bit;
                 seesAir = seesAir >> 1;
             }
             ++block;
@@ -386,9 +379,7 @@ void Chunk::Mesh() {
     }
 
     if (VBOData.size() > 0) {
-        if (!Meshed) {
-            Meshed = true;
-        }
+        Meshed = true;
     }
     
     DataUploaded = false;
@@ -534,10 +525,5 @@ std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
 
 bool Is_Block(glm::vec3 pos) {
     std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(pos);
-    
-    if (Exists(chunkPos[0])) {
-        return ChunkMap[chunkPos[0]]->Get_Block(chunkPos[1]) > 0;
-    }
-    
-    return false;
+    return Exists(chunkPos[0]) && ChunkMap[chunkPos[0]]->Get_Block(chunkPos[1]) > 0;
 }
