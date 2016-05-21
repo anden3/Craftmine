@@ -40,6 +40,24 @@ inline float Y_Per(const T percentage) {
     return SCREEN_HEIGHT * float(percentage) / 100.0f;
 }
 
+template <typename T>
+inline void Extend(std::vector<T> &storage, T t) {
+    storage.push_back(t);
+}
+
+template <typename T, typename... Args>
+inline void Extend(std::vector<T> &storage, T t, Args... args) {
+    storage.push_back(t);
+    Extend(storage, args...);
+}
+
+template <typename T>
+inline void Extend(std::vector<T> &storage, std::vector<T> input) {
+    for (T const &element : input) {
+        storage.push_back(element);
+    }
+}
+
 class TextElement {
 public:
     std::string Text;

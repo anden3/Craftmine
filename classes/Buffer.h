@@ -12,10 +12,14 @@ public:
     int VertexType = GL_TRIANGLES;
     Shader* BufferShader;
     
-    void Init(Shader *shader);
-    void Create(const std::vector<int> &config, const Data &data = Data {});
-    void Upload(const Data &data, int start = 0, bool sub = false);
+    inline void Create(const int &a, const Data &data = Data {}) { Create(std::vector<int> {a}, data); }
+    inline void Create(const int &a, const int &b, const Data &data = Data {}) { Create(std::vector<int> {a, b}, data); }
+    inline void Create(const int &a, const int &b, const int &c, const Data &data = Data {}) { Create(std::vector<int> {a, b, c}, data); }
+    inline void Create(const int &a, const int &b, const int &c, const int &d, const Data &data = Data {}) { Create(std::vector<int> {a, b, c, d}, data); }
+    inline void Create(const int &a, const int &b, const int &c, const int &d, const int &e, const Data &data = Data {}) {Create(std::vector<int> {a, b, c, d, e}, data);}
     
+    void Init(Shader *shader);
+    void Upload(const Data &data, int start = 0, bool sub = false);
     void Draw(int start = 0, int length = 0);
     
 private:
@@ -24,4 +28,6 @@ private:
     
     unsigned int VertexSize;
     int Vertices = 0;
+    
+    void Create(const std::vector<int> &config, const Data &data = Data {});
 };

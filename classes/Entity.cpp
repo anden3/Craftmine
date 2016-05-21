@@ -46,7 +46,7 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
     }
     
     EntityBuffer.Init(modelShader);
-    EntityBuffer.Create(std::vector<int>{3, 2}, data);
+    EntityBuffer.Create(3, 2, data);
     
     if (velocity == glm::vec3(-100)) {
         Velocity.y += 0.05;

@@ -17,7 +17,6 @@ extern float tex_coords[6][6][2];
 extern Shader* modelShader;
 
 extern void Upload_Data(const unsigned int vbo, const Data &data);
-extern void Extend(Data &storage, const Data input);
 
 class EntityInstance {
 public:

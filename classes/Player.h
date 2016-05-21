@@ -1,12 +1,10 @@
 #pragma once
 
-#include "Camera.h"
-#include "Sound.h"
 #include "Chat.h"
+#include "Sound.h"
 #include "Inventory.h"
 #include "Entity.h"
-
-#include "Buffer.h"
+#include "Camera.h"
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
@@ -95,10 +93,6 @@ private:
 
 	Listener listener;
     
-    void Init_Model();
-    void Init_Holding();
-    void Init_Damage();
-    
     void Init_Sounds();
     
     void Draw_Model();
@@ -117,8 +111,6 @@ private:
     
     void Place_Light(int lightLevel);
     void Remove_Light();
-    
-    bool Check_Top();
 };
 
 extern Player player;

@@ -104,12 +104,6 @@ Data Get_Border(float x1, float x2, float y1, float y2) {
     };
 }
 
-void Extend(Data &storage, const Data input) {
-    for (auto const &object : input) {
-        storage.push_back(object);
-    }
-}
-
 struct Character {
     unsigned int TextureID;
     glm::ivec2 Size;
@@ -207,8 +201,8 @@ Button::Button(std::string text, float x, float y, float w, float h, Func &funct
     BackgroundBuffer.Init(UIBackgroundShader);
     BorderBuffer.Init(UIBorderShader);
     
-    BackgroundBuffer.Create(std::vector<int> {2}, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
-    BorderBuffer.Create(std::vector<int> {2}, Data {X, Y, X + Width, Y, X + Width, Y + Height, X, Y + Height});
+    BackgroundBuffer.Create(2, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
+    BorderBuffer.Create(2, Data {X, Y, X + Width, Y, X + Width, Y + Height, X, Y + Height});
     
     BorderBuffer.VertexType = GL_LINE_LOOP;
 }
@@ -254,9 +248,9 @@ Slider::Slider(std::string text, float x, float y, float w, float h, float min, 
     HandleBuffer.Init(UIBackgroundShader);
     BorderBuffer.Init(UIBorderShader);
     
-    BackgroundBuffer.Create(std::vector<int> {2}, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
-    BorderBuffer.Create(std::vector<int> {2}, Data {X, Y, X + Width, Y, X + Width, Y + Height, X - 0.5f, Y + Height});
-    HandleBuffer.Create(std::vector<int> {2}, Data {sx, Y + Height, sx, Y, sx + sw, Y, sx, Y + Height, sx + sw, Y, sx + sw, Y + Height});
+    BackgroundBuffer.Create(2, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
+    BorderBuffer.Create(2, Data {X, Y, X + Width, Y, X + Width, Y + Height, X - 0.5f, Y + Height});
+    HandleBuffer.Create(2, Data {sx, Y + Height, sx, Y, sx + sw, Y, sx, Y + Height, sx + sw, Y, sx + sw, Y + Height});
     
     BorderBuffer.VertexType = GL_LINE_LOOP;
 }
@@ -309,7 +303,7 @@ Background::Background(float x, float y, float w, float h, bool border, glm::vec
     Height = h;
     
     BackgroundBuffer.Init(UIBackgroundShader);
-    BackgroundBuffer.Create(std::vector<int> {2}, Get_Rect(X, X + Width, Y, Y + Height));
+    BackgroundBuffer.Create(2, Get_Rect(X, X + Width, Y, Y + Height));
     
     if (border) {
         GridSet = true;
@@ -321,18 +315,18 @@ Background::Background(float x, float y, float w, float h, bool border, glm::vec
             GridWidth = gridWidth;
             
             for (float gx = X + pad.x; gx <= X + Width - pad.x; gx += GridWidth.x) {
-                Extend(gridData, Data {gx, Y + pad.y, gx, Y + Height - pad.y});
+                Extend(gridData, gx, Y + pad.y, gx, Y + Height - pad.y);
             }
             
             for (float gy = Y + pad.y; gy <= Y + Height - pad.y; gy += GridWidth.y) {
-                Extend(gridData, Data {X + pad.x, gy, X + Width - pad.x, gy});
+                Extend(gridData, X + pad.x, gy, X + Width - pad.x, gy);
             }
         }
         else {
             Extend(gridData, Get_Border(X + 5, X + Width - 5, Y + 5, Y + Height - 5));
         }
         
-        GridBuffer.Create(std::vector<int> {2}, gridData);
+        GridBuffer.Create(2, gridData);
         GridBuffer.VertexType = GL_LINES;
     }
 }
@@ -353,14 +347,14 @@ void Background::Move(float dx, float dy, bool absolute) {
         Data gridData;
         
         for (float gx = X; gx <= X + Width; gx += GridWidth.x) {
-            Extend(gridData, Data {gx, Y, gx, Y + Height});
+            Extend(gridData, gx, Y, gx, Y + Height);
         }
         
         for (float gy = Y; gy <= Y + Height; gy += GridWidth.y) {
-            Extend(gridData, Data {X, gy, X + Width, gy});
+            Extend(gridData, X, gy, X + Width, gy);
         }
         
-        Extend(gridData, Data {X - 0.5f, Y + Height, X + 0.5f, Y + Height});
+        Extend(gridData, X - 0.5f, Y + Height, X + 0.5f, Y + Height);
         
         GridBuffer.Upload(gridData);
     }
@@ -387,10 +381,10 @@ OrthoElement::OrthoElement(int type, float x, float y, float scale) {
     Scale = scale;
     
     if (type == 0) {
-        OrthoBuffer.Create(std::vector<int> {3, 2, 2});
+        OrthoBuffer.Create(3, 2, 2);
     }
     else {
-        OrthoBuffer.Create(std::vector<int> {3, 2, 2}, Get_3D_Mesh(type, x, y, true));
+        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(type, x, y, true));
     }
 }
 
@@ -513,7 +507,7 @@ void Interface::Init_Text() {
     data.resize(4 * 6);
     
     TextBuffer.Init(TextShader);
-    TextBuffer.Create(std::vector<int> {4}, data);
+    TextBuffer.Create(4, data);
     
     TextShader->Upload("projection", glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT));
     TextShader->Upload("text", TEXT_TEXTURE_UNIT);

@@ -178,30 +178,32 @@ void Init_Buffers() {
     
     for (float y = 0; y < 3; y++) {
         for (int i = 0; i < 4; i++) {
-            float x1 = points[i][0], x2 = x1;
-            float y1 = y, y2 = y;
-            float z1 = points[i][1], z2 = z1;
+            float x1 = points[i][0];
+            float z1 = points[i][1];
             
-            if (y == 2) y1 = 0, y2 = 1;
-            else {
-                if (i != 4) x2 = points[i + 1][0], z2 = points[i + 1][1];
-                else x2 = 0, z2 = 0;
-            }
+            float y1 = (y == 2) ? 0 : y;
+            float y2 = (y == 2) ? 1 : y;
             
-            Extend(data, std::vector<float> {x1, y1, z1});
-            Extend(data, std::vector<float> {n[int(x1)], n[int(y1)], n[int(z1)]});
+            float x2 = (y == 2) ? x1 : ((i != 4) ? points[i + 1][0] : 0);
+            float z2 = (y == 2) ? z1 : ((i != 4) ? points[i + 1][1] : 0);
             
-            Extend(data, std::vector<float> {x2, y2, z2});
-            Extend(data, std::vector<float> {n[int(x2)], n[int(y2)], n[int(z2)]});
+            Extend(data, x1, y1, z1);
+            Extend(data, n[int(x1)], n[int(y1)], n[int(z1)]);
+            
+            Extend(data, x2, y2, z2);
+            Extend(data, n[int(x2)], n[int(y2)], n[int(z2)]);
         }
     }
     
     OutlineBuffer.Init(outlineShader);
-    OutlineBuffer.Create(std::vector<int> {3, 3}, data);
+    OutlineBuffer.Create(3, 3, data);
     OutlineBuffer.VertexType = GL_LINES;
 }
 
 void Init_Rendering() {
+    glm::mat4 model;
+    
+    shader->Upload("model", model);
     shader->Upload("ambient", AMBIENT_LIGHT);
     shader->Upload("diffuse", DIFFUSE_LIGHT);
     shader->Upload("diffTex", 0);
@@ -218,8 +220,6 @@ void Render_Scene() {
     glBindBuffer(GL_UNIFORM_BUFFER, UBO);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    
-    shader->Upload("model", model);
     
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
@@ -242,11 +242,7 @@ void Render_Scene() {
     
     if (player.LookingAtBlock) {
         outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
-        
-        // glEnable(GL_POLYGON_OFFSET_FILL);
-        // glPolygonOffset(-50.0f, -50.0f);
         OutlineBuffer.Draw();
-        // glDisable(GL_POLYGON_OFFSET_FILL);
     }
 }
 

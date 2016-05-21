@@ -357,8 +357,6 @@ void Render_Scene();
 
 unsigned int Load_Texture(std::string image_path);
 
-void Extend(std::vector<float>& storage, std::vector<float> input);
-
 void BackgroundThread();
 
 void Exit();
