@@ -157,19 +157,6 @@ void Chunk::Generate() {
     Generated = true;
 }
 
-void Chunk::Generate_Empty() {
-    for (int x = 0; x < CHUNK_SIZE; x++) {
-        for (int y = 0; y < CHUNK_SIZE; y++) {
-            for (int z = 0; z < CHUNK_SIZE; z++) {
-                BlockMap[x][y][z] = 1;
-                Blocks.insert(glm::ivec3(x, y, z));
-            }
-        }
-    }
-    
-    Generated = true;
-}
-
 bool Check_If_Node(glm::vec3 chunk, glm::vec3 tile, char lightLevel, bool underground, bool down) {
     Chunk* c = ChunkMap[chunk];
     

@@ -2,12 +2,16 @@
 
 #include "Player.h"
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 extern const bool Windows;
 
 extern int VSync;
 extern bool Wireframe;
 extern bool ToggleWireframe;
 extern bool MouseEnabled;
+extern bool GamePaused;
 
 extern int RenderDistance;
 
@@ -27,8 +31,10 @@ namespace UI {
     
     void Click(double mouseX, double mouseY, int action, int button);
     void Mouse_Handler(double x, double y);
+    void Key_Handler(int key, int action);
     
-    void Toggle_Menu();
+    void Toggle_Title();
+    void Toggle_Game_Menu();
     void Toggle_Debug();
     void Toggle_Inventory();
 };

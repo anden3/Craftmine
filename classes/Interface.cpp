@@ -5,6 +5,10 @@
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
+#include <SOIL/SOIL.h>
+
+#include "Shader.h"
+
 const std::string FONT = "Roboto";
 const int FONT_SIZE = 15;
 
@@ -35,11 +39,19 @@ const float     SLIDER_WIDTH              = 10.0f;
 const float     SLIDER_OPACITY            = 1.0f;
 const float     SLIDER_HANDLE_OPACITY     = 1.0f;
 const float     SLIDER_TEXT_OPACITY       = 1.0f;
-const glm::vec3 SLIDER_COLOR              = glm::vec3(0.2f);
-const glm::vec3 SLIDER_HANDLE_COLOR       = glm::vec3(0.5f);
-const glm::vec3 SLIDER_HANDLE_HOVER_COLOR = glm::vec3(0.7f);
+const glm::vec3 SLIDER_COLOR              = glm::vec3(0.5f);
+const glm::vec3 SLIDER_HANDLE_COLOR       = glm::vec3(0.7f);
+const glm::vec3 SLIDER_HANDLE_HOVER_COLOR = glm::vec3(0.9f);
 const glm::vec3 SLIDER_HANDLE_CLICK_COLOR = glm::vec3(0.3f, 0.3f, 0.8f);
 const glm::vec3 SLIDER_TEXT_COLOR         = glm::vec3(1.0f);
+
+const float     BAR_PADDING               = 20.0f;
+const float     BAR_OPACITY               = 1.0f;
+const float     BAR_TEXT_OPACITY          = 1.0f;
+const float     BAR_BACKGROUND_OPACITY    = 1.0f;
+const glm::vec3 BAR_BACKGROUND_COLOR      = glm::vec3(0.0f, 1.0f, 0.0f);
+const glm::vec3 BAR_COLOR                 = glm::vec3(0.2f);
+const glm::vec3 BAR_TEXT_COLOR            = glm::vec3(1.0f);
 
 const float     BACKGROUND_OPACITY        = 0.7f;
 const glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
@@ -49,8 +61,6 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
-    float texStartX = texPosition.x - 1.0f;
-    float texStartY = texPosition.y - 1.0f;
     
     x *= 2.005f;
     y *= 2.005f;
@@ -77,8 +87,8 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
                 data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             else {
-                data.push_back((texStartX + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((texStartY + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                data.push_back((texPosition.x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((texPosition.y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             
             if (offsets) {
@@ -91,17 +101,26 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     return data;
 }
 
-Data Get_Rect(float x1, float x2, float y1, float y2) {
-    return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2};
-}
-
-Data Get_Border(float x1, float x2, float y1, float y2) {
-    return Data {
-        x1, y1, x2, y1,
-        x2, y1, x2, y2,
-        x2, y2, x1, y2,
-        x1, y2, x1, y1
-    };
+std::tuple<unsigned int, int, int> Load_Texture(std::string file) {
+    std::string path = "images/" + file;
+    
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
+    int width, height;
+    unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    SOIL_free_image_data(image);
+    
+    return std::make_tuple(texture, width, height);
 }
 
 struct Character {
@@ -134,7 +153,7 @@ void TextElement::Center(float x, float y, float width) {
 }
 
 void TextElement::Draw() {
-    if (Opacity == 0.0f) {
+    if (Opacity == 0.0f || Text == "") {
         return;
     }
     
@@ -184,13 +203,29 @@ float TextElement::Get_Width() {
     return width;
 }
 
-Button::Button(std::string text, float x, float y, float w, float h, Func &function) : X(x), Y(y), Width(w), Height(h), Function(function) {
-    if (Height == 0) {
-        Height = BUTTON_PADDING * 2;
-    }
+void UIElement::Draw() {
+    UIBackgroundShader->Upload(BgAlphaLoc, Opacity);
+    UIBackgroundShader->Upload(BgColorLoc, Color);
+    
+    BackgroundBuffer.Draw();
+    
+    UIBorderShader->Upload(BorderColorLoc, glm::vec3(0));
+    BorderBuffer.Draw();
+    
+    Text.Draw();
+}
+
+Button::Button(std::string text, float x, float y, float w, float h, Func &function) {
+    Height = (Height != 0) ? h : BUTTON_PADDING * 2;
+    
+    X = x;
+    Y = y;
+    Width = w;
     
     Opacity = BUTTON_OPACITY;
     Color = BUTTON_COLOR;
+    
+    Function = function;
     
     Text.Create(text, X, Y);
     Text.Center(X, Y, Width);
@@ -211,28 +246,20 @@ inline void Button::Hover() { Color = BUTTON_HOVER_COLOR; }
 inline void Button::Stop_Hover() { Color = BUTTON_COLOR; }
 inline void Button::Press() { Color = BUTTON_CLICK_COLOR; }
 inline void Button::Release() { Color = BUTTON_COLOR; Function(); }
-
-void Button::Draw() {
-    UIBackgroundShader->Upload(BgColorLoc, Color);
-    UIBackgroundShader->Upload(BgAlphaLoc, Opacity);
-    BackgroundBuffer.Draw();
     
-    UIBorderShader->Upload(BorderColorLoc, glm::vec3(0));
-    BorderBuffer.Draw();
-    
-    Text.Draw();
-}
-    
-Slider::Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) : X(x), Y(y), Width(w), Height(h), Min(min), Max(max), Value(value), Function(function) {
-    if (Height == 0) {
-        Height = SLIDER_PADDING * 2;
-    }
+Slider::Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) : Min(min), Max(max), Value(value) {
+    X = x;
+    Y = y;
+    Width = w;
+    Height = (h == 0) ? SLIDER_PADDING * 2 : h;
     
     Opacity = SLIDER_OPACITY;
     HandleOpacity = SLIDER_HANDLE_OPACITY;
     
     Color = SLIDER_COLOR;
     HandleColor = SLIDER_HANDLE_COLOR;
+    
+    Function = function;
     
     Text.Create(text, X, Y);
     Text.Center(X, Y, Width);
@@ -280,18 +307,78 @@ void Slider::Move(float position) {
 }
 
 void Slider::Draw() {
-    UIBackgroundShader->Upload(BgAlphaLoc, Opacity);
-    UIBackgroundShader->Upload(BgColorLoc, Color);
-    
-    BackgroundBuffer.Draw();
+    UIElement::Draw();
     
     UIBackgroundShader->Upload(BgAlphaLoc, HandleOpacity);
     UIBackgroundShader->Upload(BgColorLoc, HandleColor);
     
     HandleBuffer.Draw();
+}
+
+Bar::Bar(std::string text, float x, float y, float w, float h, float min, float max, float value) : Min(min), Max(max), Value(value) {
+    X = x;
+    Y = y;
+    Width = w;
+    Height = (h == 0) ? BAR_PADDING * 2 : h;
     
-    BorderBuffer.Draw();
-    Text.Draw();
+    Opacity = BAR_BACKGROUND_OPACITY;
+    Color = BAR_BACKGROUND_COLOR;
+    
+    BarOpacity = BAR_OPACITY;
+    BarColor = BAR_COLOR;
+    
+    Text.Create(text, x, y);
+    Text.Opacity = BAR_TEXT_OPACITY;
+    Text.Color = BAR_TEXT_COLOR;
+    
+    BackgroundBuffer.Init(UIBackgroundShader);
+    BarBuffer.Init(UIBackgroundShader);
+    BorderBuffer.Init(UIBorderShader);
+    
+    BackgroundBuffer.Create(2, Get_Rect(X, X + Width, Y, Y + Height));
+    BarBuffer.Create(2);
+    BorderBuffer.Create(2, Get_Border(X, X + Width, Y, Y + Height));
+    
+    BorderBuffer.VertexType = GL_LINE_LOOP;
+}
+
+void Bar::Move(float value) {
+    Value = value;
+    
+    float barEndX = X + Width * ((Value - Min) / (Max - Min));
+    BarBuffer.Upload(Get_Rect(X, barEndX, Y, Y + Height));
+}
+
+void Bar::Draw() {
+    UIElement::Draw();
+    
+    UIBackgroundShader->Upload(BgAlphaLoc, BarOpacity);
+    UIBackgroundShader->Upload(BgColorLoc, BarColor);
+    
+    BarBuffer.Draw();
+}
+
+Image::Image(std::string file, int texID, float x, float y, float scale) : X(x), Y(y), Scale(scale), TexID(texID) {
+    glActiveTexture(GL_TEXTURE0 + TexID);
+    
+    std::tie(Texture, Width, Height) = Load_Texture(file);
+    Width *= Scale;
+    Height *= Scale;
+    
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    
+    ImageBuffer.Init(UITextureShader);
+    ImageBuffer.Create(2, 2, Get_Tex_Rect(X, X + Width, Y, Y + Height));
+}
+
+void Image::Center() {
+    X = (SCREEN_WIDTH - Width) / 2;
+    ImageBuffer.Upload(Get_Tex_Rect(X, X + Width, Y, Y + Height));
+}
+
+void Image::Draw() {
+    UITextureShader->Upload("tex", TexID);
+    ImageBuffer.Draw();
 }
 
 Background::Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) : X(x), Y(y), Width(w), Height(h) {
@@ -409,12 +496,6 @@ int ActiveElement = NONE;
 Button* ActiveButton;
 Slider* ActiveSlider;
 
-std::map<std::string, std::map<std::string, Button>> Buttons;
-std::map<std::string, std::map<std::string, Slider>> Sliders;
-std::map<std::string, std::map<std::string, TextElement>> TextElements;
-std::map<std::string, std::map<std::string, Background>> Backgrounds;
-std::map<std::string, std::map<std::string, OrthoElement>> OrthoElements;
-
 void Interface::Init() {
     Init_Shaders();
     Init_Text();
@@ -476,12 +557,7 @@ void Interface::Init_Text() {
         glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
         glBindTexture(GL_TEXTURE_2D, texture);
         
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-                     face->glyph->bitmap.width,
-                     face->glyph->bitmap.rows,
-                     0, GL_RED, GL_UNSIGNED_BYTE,
-                     face->glyph->bitmap.buffer
-                     );
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, face->glyph->bitmap.width, face->glyph->bitmap.rows, 0, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
         
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -513,63 +589,6 @@ void Interface::Init_Text() {
     TextShader->Upload("text", TEXT_TEXTURE_UNIT);
 }
 
-void Interface::Add_Text(std::string name, std::string text, float x, float y) {
-    TextElements[ActiveDocument][name] = TextElement();
-    TextElements[ActiveDocument][name].Create(text, floor(x), floor(y));
-}
-
-void Interface::Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
-    Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, h, function));
-}
-
-void Interface::Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
-    Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, h, min, max, value, function));
-}
-
-void Interface::Add_Background(std::string name, float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
-    Backgrounds[ActiveDocument].emplace(name, Background(x, y, w, h, border, gridWidth, pad));
-}
-
-void Interface::Add_3D_Element(std::string name, int type, float x, float y, float scale) {
-    OrthoElements[ActiveDocument].emplace(name, OrthoElement(type, x, y, scale));
-}
-
-void Interface::Delete_Text(std::string name) {
-    TextElements[ActiveDocument].erase(name);
-}
-void Interface::Delete_Button(std::string name) {
-    Buttons[ActiveDocument].erase(name);
-}
-void Interface::Delete_Slider(std::string name) {
-    Sliders[ActiveDocument].erase(name);
-}
-void Interface::Delete_Background(std::string name) {
-    Backgrounds[ActiveDocument].erase(name);
-}
-void Interface::Delete_3D_Element(std::string name) {
-    OrthoElements[ActiveDocument].erase(name);
-}
-
-TextElement* Interface::Get_Text_Element(std::string name) {
-    return &TextElements[ActiveDocument][name];
-}
-
-Button* Interface::Get_Button(std::string name) {
-    return &Buttons[ActiveDocument][name];
-}
-
-Slider* Interface::Get_Slider(std::string name) {
-    return &Sliders[ActiveDocument][name];
-}
-
-Background* Interface::Get_Background(std::string name) {
-    return &Backgrounds[ActiveDocument][name];
-}
-
-OrthoElement* Interface::Get_3D_Element(std::string name) {
-    return &OrthoElements[ActiveDocument][name];
-}
-
 void Interface::Mouse_Handler(float x, float y) {
     if (ActiveDocument == "") {
         return;
@@ -583,12 +602,7 @@ void Interface::Mouse_Handler(float x, float y) {
     for (auto &button : Buttons[ActiveDocument]) {
         if (x >= button.second.X && x <= (button.second.X + button.second.Width)) {
             if (y >= button.second.Y && y <= (button.second.Y + button.second.Height)) {
-                if (Holding) {
-                    button.second.Press();
-                }
-                else {
-                    button.second.Hover();
-                }
+                Holding ? button.second.Press() : button.second.Hover();
                 
                 ActiveElement = BUTTON;
                 ActiveButton = &button.second;
@@ -603,12 +617,7 @@ void Interface::Mouse_Handler(float x, float y) {
     for (auto &slider : Sliders[ActiveDocument]) {
         if (x >= slider.second.HandlePosition && x <= (slider.second.HandlePosition + SLIDER_WIDTH)) {
             if (y >= slider.second.Y && y <= (slider.second.Y + slider.second.Height)) {
-                if (Holding) {
-                    slider.second.Press();
-                }
-                else {
-                    slider.second.Hover();
-                }
+                Holding ? slider.second.Press() : slider.second.Hover();
                 
                 ActiveElement = SLIDER;
                 ActiveSlider = &slider.second;
@@ -631,62 +640,40 @@ void Interface::Click(int mouseButton, int action) {
         return;
     }
     
-    else if (ActiveElement == BUTTON) {
-        if (action == GLFW_PRESS) {
-            Holding = true;
-            ActiveButton->Press();
-        }
-        else if (action == GLFW_RELEASE) {
-            Holding = false;
-            ActiveButton->Release();
-        }
+    Holding = (action == GLFW_PRESS);
+    
+    if (ActiveElement == BUTTON) {
+        Holding ? ActiveButton->Press() : ActiveButton->Release();
     }
     
     else if (ActiveElement == SLIDER) {
-        if (action == GLFW_PRESS) {
-            Holding = true;
-            ActiveSlider->Press();
-        }
-        else if (action == GLFW_RELEASE) {
-            Holding = false;
-            ActiveSlider->Release();
-        }
+        Holding ? ActiveSlider->Press() : ActiveSlider->Release();
+    }
+    
+    if (!Holding) {
+        ActiveElement = NONE;
+        ActiveSlider = nullptr;
+        ActiveButton = nullptr;
     }
 }
 
 void Interface::Draw_Document(std::string document) {
     glDisable(GL_DEPTH_TEST);
     
-    for (auto &bg : Backgrounds[document]) {
-        bg.second.Draw();
-    }
-    
-    for (auto &button : Buttons[document]) {
-        button.second.Draw();
-    }
-    
-    for (auto &slider : Sliders[document]) {
-        slider.second.Draw();
-    }
-    
-    for (auto &object : OrthoElements[document]) {
-        object.second.Draw();
-    }
-    
-    for (auto &text : TextElements[document]) {
-        text.second.Draw();
-    }
+    for (auto &bg : Backgrounds[document]) { bg.second.Draw(); }
+    for (auto &image : Images[document]) { image.second.Draw(); }
+    for (auto &button : Buttons[document]) { button.second.Draw(); }
+    for (auto &slider : Sliders[document]) { slider.second.Draw(); }
+    for (auto &bar : Bars[document]) { bar.second.Draw(); }
+    for (auto &object : OrthoElements[document]) { object.second.Draw(); }
+    for (auto &text : TextElements[document]) { text.second.Draw(); }
     
     glEnable(GL_DEPTH_TEST);
 }
 
 float Interface::Get_String_Width(std::string string) {
     float currentWidth = 0;
-    
-    for (char const &c : string) {
-        currentWidth += (Characters[c].Advance >> 6);
-    }
-    
+    for (char const &c : string) { currentWidth += (Characters[c].Advance >> 6); }
     return currentWidth;
 }
 
@@ -700,6 +687,7 @@ int Interface::Get_Fitting_String(std::string string, int width) {
         if (currentWidth > width) {
             return index;
         }
+        
         ++index;
     }
     

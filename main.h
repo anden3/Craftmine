@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Shader.h"
 #include "UI.h"
 
 #ifdef _WIN32
@@ -30,6 +29,15 @@ float vertices[6][6][3] = {
     { {0, 1, 0}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}, {0, 1, 1}, {1, 1, 1} },
     { {0, 0, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0} },
     { {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1} }
+};
+
+Vertex vecVertices[6][6] = {
+    { Vertex(0, 0, 0), Vertex(0, 1, 1), Vertex(0, 1, 0), Vertex(0, 1, 1), Vertex(0, 0, 0), Vertex(0, 0, 1) },
+    { Vertex(1, 0, 0), Vertex(1, 1, 0), Vertex(1, 1, 1), Vertex(1, 0, 0), Vertex(1, 1, 1), Vertex(1, 0, 1) },
+    { Vertex(0, 0, 0), Vertex(1, 0, 0), Vertex(1, 0, 1), Vertex(1, 0, 1), Vertex(0, 0, 1), Vertex(0, 0, 0) },
+    { Vertex(0, 1, 0), Vertex(1, 1, 1), Vertex(1, 1, 0), Vertex(0, 1, 0), Vertex(0, 1, 1), Vertex(1, 1, 1) },
+    { Vertex(0, 0, 0), Vertex(1, 1, 0), Vertex(1, 0, 0), Vertex(0, 0, 0), Vertex(0, 1, 0), Vertex(1, 1, 0) },
+    { Vertex(0, 0, 1), Vertex(1, 0, 1), Vertex(1, 1, 1), Vertex(1, 1, 1), Vertex(0, 1, 1), Vertex(0, 0, 1) },
 };
 
 float tex_coords[6][6][2] = {
@@ -295,6 +303,44 @@ std::map<std::string, std::vector<unsigned int>> BlockSounds = {
     {"wood",   std::vector<unsigned int> {5, 25, 26, 47, 49, 54, 58, 64, 65, 72}}
 };
 
+std::map<std::string, std::vector<TexArray>> PlayerTexCoords = {
+    {"head", {
+        TexArray {Coord(16, 8), Coord(24, 16)},
+        TexArray {Coord(0, 8), Coord(8, 16)},
+        TexArray {Coord(16, 0), Coord(24, 8)},
+        TexArray {Coord(8, 0), Coord(16, 8)},
+        TexArray {Coord(8, 8), Coord(16, 16)},
+        TexArray {Coord(24, 8), Coord(32, 16)},
+    }},
+    
+    {"body", {
+        TexArray {Coord(28, 20), Coord(32, 32)},
+        TexArray {Coord(16, 20), Coord(20, 32)},
+        TexArray {Coord(28, 16), Coord(36, 20)},
+        TexArray {Coord(20, 16), Coord(28, 20)},
+        TexArray {Coord(20, 20), Coord(28, 32)},
+        TexArray {Coord(32, 20), Coord(40, 32)},
+    }},
+    
+    {"leg", {
+        TexArray {Coord(8, 20), Coord(12, 32)},
+        TexArray {Coord(0, 20), Coord(4, 32)},
+        TexArray {Coord(8, 16), Coord(12, 20)},
+        TexArray {Coord(4, 16), Coord(8, 20)},
+        TexArray {Coord(4, 20), Coord(8, 32)},
+        TexArray {Coord(12, 20), Coord(16, 32)},
+    }},
+    
+    {"arm", {
+        TexArray {Coord(48, 20), Coord(52, 32)},
+        TexArray {Coord(40, 20), Coord(40, 32)},
+        TexArray {Coord(48, 16), Coord(52, 20)},
+        TexArray {Coord(44, 16), Coord(48, 20)},
+        TexArray {Coord(44, 20), Coord(48, 32)},
+        TexArray {Coord(52, 20), Coord(56, 32)},
+    }}
+};
+
 int Fullscreen;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
 int VSync;
@@ -310,11 +356,10 @@ std::map<std::string, int*> Options = {
 };
 
 Buffer OutlineBuffer;
+UniformBuffer UBO;
 
-unsigned int UBO;
-
-unsigned int IMAGE_SIZE_X = 0;
-unsigned int IMAGE_SIZE_Y = 0;
+int IMAGE_SIZE_X = 0;
+int IMAGE_SIZE_Y = 0;
 
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
@@ -322,11 +367,10 @@ double LastFrame = 0.0;
 bool Wireframe = false;
 bool ToggleWireframe = false;
 
-bool gamePaused = false;
+bool GamePaused = true;
 bool MouseEnabled = false;
 
 bool ChunkMapBusy = false;
-bool SunlightQueueBusy = false;
 
 Player player = Player();
 Chat chat = Chat();
@@ -337,9 +381,6 @@ Interface interface = Interface();
 Shader* shader;
 Shader* outlineShader;
 Shader* modelShader;
-
-int modelMatrixLocation;
-int diffuseTextureLocation;
 
 GLFWwindow* Window;
 
@@ -355,11 +396,7 @@ void Init_Rendering();
 
 void Render_Scene();
 
-unsigned int Load_Texture(std::string image_path);
-
 void BackgroundThread();
-
-void Exit();
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
 void text_proxy(GLFWwindow* window, unsigned int codepoint);

@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Buffer.h"
-#include "Interface.h"
+
+#include <string>
+
+class Interface;
 
 extern Interface interface;
 
@@ -21,7 +24,7 @@ struct Message {
 
 extern double DeltaTime;
 
-std::string Process_Commands(std::string message);
+std::vector<std::string> Process_Commands(std::string message);
 
 class Chat {
 public:

@@ -5,6 +5,8 @@
 #include <regex>
 #include <set>
 
+#include <GLFW/glfw3.h>
+
 const int SLOTS_X = 10;
 const int SLOTS_Y = 7;
 
@@ -162,7 +164,7 @@ public:
 };
 
 std::map<int, std::vector<Recipe>> Recipes = {
-    // %   == Any number of zeroes.
+    // %   == Any number (including zero) of zeroes.
     // ()  == Capture expression
     // ()x == Repeating captured expression x times.
     // []  == Repeating n times, where n is any of the numbers in the set.
@@ -198,7 +200,7 @@ std::map<int, std::vector<Recipe>> Recipes = {
     
     {7, std::vector<Recipe> {
         Recipe("265 0 (265)2 280 (265)2 0 265", Stack(66, 16)), // Rail
-        Recipe("280 0 (280)5 0 280",            Stack(65, 4)), // Ladder
+        Recipe("280 0 (280)5 0 280",            Stack(65, 4)),  // Ladder
     }},
     
     {8, std::vector<Recipe> {
@@ -218,7 +220,7 @@ Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float m
         multiplierY = multiplierX;
     }
     
-    static float vertices[6][2]  = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
+    static float vertices[6][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
     static float texCoords[6][2] = { {0, 1}, {1, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 0} };
     
     glm::vec2 texPosition = textureCoords[type];
@@ -701,14 +703,14 @@ void Inventory::Mesh() {
         
         if (Is_Open) {
             if (index < SLOTS_X) {
-                pos = invBarDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth + glm::vec2(slotPad.x, 0);
+                pos = invBarDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth + slotPad;
             }
             else {
                 pos = invDims.xy() + glm::vec2(index % SLOTS_X, index / SLOTS_X - 1) * slotWidth + slotPad;
             }
         }
         else {
-            pos = barDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth * 2.0f + glm::vec2(slotPad.x, 0) * 2.0f;
+            pos = barDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth / 2.0f + glm::vec2(slotPad.x, 0) / 2.0f;
         }
         
         std::string textName = std::to_string(index);
@@ -750,7 +752,7 @@ void Inventory::Mesh() {
         interface.Get_Text_Element(outputName)->Opacity = float(CraftingOutput.Type > 0);
         
         if (CraftingOutput.Type) {
-            interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, outputDims.xy() + glm::vec2(invDims.y, 0));
+            interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2));
             interface.Get_Text_Element(outputName)->Text = std::to_string(CraftingOutput.Size);
         }
         else {

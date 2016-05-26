@@ -3,7 +3,7 @@
 #include <sstream>
 #include <fstream>
 
-#include <SOIL/SOIL.h>
+#include "Shader.h"
 
 int main() {
     glfwInit();
@@ -18,30 +18,34 @@ int main() {
 	Init_Rendering();
     
     UI::Init();
-    
     player.Init();
     
 	std::thread chunkGeneration(BackgroundThread);
     
+    player.RenderChunks();
+    
 	while (!glfwWindowShouldClose(Window)) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
 		double currentFrame = glfwGetTime();
 		DeltaTime = currentFrame - LastFrame;
 		LastFrame = currentFrame;
 
 		glfwPollEvents();
-
-		player.PollSounds();
         
-        if (!MouseEnabled && !chat.Focused) {
-            player.Move(float(DeltaTime));
-            Entity::Update(DeltaTime);
+        if (!GamePaused) {
+            player.PollSounds();
+            
+            if (!MouseEnabled && !chat.Focused) {
+                player.Move(float(DeltaTime));
+                Entity::Update(DeltaTime);
+            }
+            
+            Render_Scene();
+            Entity::Draw();
+            player.Draw();
         }
-		
-		Render_Scene();
-        Entity::Draw();
-        player.Draw();
         
-        glClear(GL_DEPTH_BUFFER_BIT);
         UI::Draw();
         
 		glfwSwapBuffers(Window);
@@ -69,11 +73,9 @@ void Parse_Config() {
         std::getline(is_line, key, '=');
         std::getline(is_line, value);
         
-        if (key == "") {
-            continue;
+        if (key != "") {
+            *Options[key] = std::stoi(value);
         }
-        
-        *Options[key] = std::stoi(value);
     }
 }
 
@@ -125,8 +127,6 @@ void Init_GL() {
 	glfwSetMouseButtonCallback(Window, click_proxy);
     glfwSetCharCallback(Window, text_proxy);
 
-	glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
 	glEnable(GL_BLEND);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
@@ -137,11 +137,10 @@ void Init_GL() {
 }
 
 void Init_Textures() {
-	unsigned int atlas = Load_Texture("atlas.png");
-    unsigned int itemAtlas = Load_Texture("itemAtlas.png");
-    
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, itemAtlas);
+    unsigned int atlas;
+    std::tie(atlas, IMAGE_SIZE_X, IMAGE_SIZE_Y) = Load_Texture("atlas.png");
+    IMAGE_SIZE_X /= 16;
+    IMAGE_SIZE_Y /= 16;
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlas);
@@ -153,21 +152,8 @@ void Init_Shaders() {
     modelShader = new Shader("model");
     
     glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
-    
-	glGenBuffers(1, &UBO);
-	glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, "Matrices"), 0);
-    glUniformBlockBinding(outlineShader->Program, glGetUniformLocation(outlineShader->Program, "Matrices"), 0);
-    glUniformBlockBinding(modelShader->Program, glGetUniformLocation(modelShader->Program, "Matrices"), 0);
-
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, 2 * sizeof(glm::mat4));
-
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4), std::vector<Shader*> {shader, outlineShader, modelShader});
+    UBO.Upload(1, projection);
 }
 
 void Init_Buffers() {
@@ -212,14 +198,10 @@ void Init_Rendering() {
 }
 
 void Render_Scene() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
     glm::mat4 model;
     glm::mat4 view = player.Cam.GetViewMatrix();
     
-    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    UBO.Upload(0, view);
     
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
@@ -246,34 +228,11 @@ void Render_Scene() {
     }
 }
 
-unsigned int Load_Texture(std::string file) {
-	std::string path = "images/" + file;
-
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    int width, height;
-    unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    SOIL_free_image_data(image);
-    
-    IMAGE_SIZE_X = width / 16;
-    IMAGE_SIZE_Y = height / 16;
-
-    return texture;
-}
-
 void BackgroundThread() {
 	while (true) {
-        if (glfwWindowShouldClose(Window)) return;
+        if (glfwWindowShouldClose(Window)) {
+            return;
+        }
         
         bool queueEmpty = true;
         
@@ -285,11 +244,7 @@ void BackgroundThread() {
         
         for (auto const &chunk : ChunkMap) {
             if (!chunk.second->Meshed) {
-                bool inRange = pow(chunk.second->Position.x - player.CurrentChunk.x, 2) +
-                               pow(chunk.second->Position.z - player.CurrentChunk.z, 2) <=
-                               pow(RenderDistance, 2);
-                
-                if (inRange) {
+                if (glm::distance(chunk.second->Position.xz(), player.CurrentChunk.xz()) <= RenderDistance) {
                     if (!chunk.second->Generated) {
                         chunk.second->Generate();
                     }
@@ -306,60 +261,49 @@ void BackgroundThread() {
         }
         
         ChunkMapBusy = false;
-        
-        if (queueEmpty) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(queueEmpty ? 100 : 1));
 	}
 }
 
 void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (chat.Focused) {
-        player.Clear_Keys();
-    }
-    else {
-        if (action == GLFW_PRESS) {
-            switch (key) {
-                case GLFW_KEY_ESCAPE:
-                    UI::Toggle_Menu();
-                    break;
-                    
-                case GLFW_KEY_U:
-                    UI::Toggle_Debug();
-                    break;
-                
-                case GLFW_KEY_TAB:
-                    UI::Toggle_Inventory();
-                    break;
-            }
+    if (!GamePaused) {
+        if (chat.Focused) {
+            player.Clear_Keys();
+        }
+        else {
+            UI::Key_Handler(key, action);
+            player.KeyHandler(key, action);
         }
         
-        player.KeyHandler(key, action);
+        if (action == GLFW_PRESS) {
+            chat.Key_Handler(key);
+        }
     }
-    
-    if (action == GLFW_PRESS) {
-        chat.Key_Handler(key);
+    else {
+        UI::Key_Handler(key, action);
     }
 }
 void text_proxy(GLFWwindow* window, unsigned int codepoint) {
-    if (chat.Focused && !chat.FocusToggled) {
+    if (!GamePaused && chat.Focused && !chat.FocusToggled) {
         chat.Input(codepoint);
     }
 }
 void mouse_proxy(GLFWwindow* window, double posX, double posY) {
     UI::Mouse_Handler(posX, posY);
     
-    if (!chat.Focused) {
+    if (!GamePaused && !chat.Focused) {
         player.MouseHandler(posX, posY);
     }
 }
 void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
-    player.ScrollHandler(offsetY);
+    if (!GamePaused) {
+        player.ScrollHandler(offsetY);
+    }
 }
 void click_proxy(GLFWwindow* window, int button, int action, int mods) {
     UI::Click(player.LastMousePos.x, player.LastMousePos.y, action, button);
-    player.ClickHandler(button, action);
+    
+    if (!GamePaused) {
+        player.ClickHandler(button, action);
+    }
 }

@@ -17,6 +17,7 @@ extern Chat chat;
 extern Shader* shader;
 
 extern std::map<std::string, std::vector<unsigned int>> BlockSounds;
+extern std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 
@@ -24,9 +25,6 @@ void Extend(Data &storage, const Data input);
 
 void Init_3D_Textured(unsigned int &vao, unsigned int &vbo);
 Data Create_Textured_Cube(const int type, glm::vec3 offset = glm::vec3(-0.5));
-
-void Upload_Data(const unsigned int vbo, const Data &data);
-void Draw_Cube(unsigned const int vao, const glm::mat4 model, int vertices = 36);
 
 class Player {
 public:
@@ -80,8 +78,14 @@ private:
     bool ThirdPerson = false;
     
     Buffer HoldingBuffer;
-    Buffer ModelBuffer;
     Buffer DamageBuffer;
+    
+    Buffer HeadBuffer;
+    Buffer BodyBuffer;
+    Buffer LeftArmBuffer;
+    Buffer RightArmBuffer;
+    Buffer LeftLegBuffer;
+    Buffer RightLegBuffer;
     
     int LightLevel = SUN_LIGHT_LEVEL;
     
@@ -93,6 +97,7 @@ private:
 
 	Listener listener;
     
+    void Init_Model();
     void Init_Sounds();
     
     void Draw_Model();

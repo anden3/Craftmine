@@ -4,6 +4,10 @@
 #include <dirent.h>
 #include <cmath>
 
+#include "Shader.h"
+
+typedef std::vector<std::string> Messages;
+
 const float PLAYER_BASE_SPEED  = 3.0f;
 const float PLAYER_SPRINT_MODIFIER = 1.5f;
 
@@ -25,6 +29,8 @@ const int TORCH_LIGHT_LEVEL = 12;
 const float ATTRACT_RANGE = 4.0f;
 const float PICKUP_RANGE = 1.5f;
 const float ATTRACT_SPEED = 1.0f;
+
+const int MODEL_TEXTURE_UNIT = 5;
 
 std::set<Chunk*> lightMeshingList;
 
@@ -53,31 +59,18 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     return elements;
 }
 
-void Upload_Data(const unsigned int vbo, const Data &data) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
 Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     Data data;
     
     glm::vec2 texPosition = textureCoords[type];
     
-    float texStartX = texPosition.x - 1.0f;
-    float texStartY = texPosition.y - 1.0f;
-    
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
             if (CustomVertices.count(type)) {
-                data.push_back(CustomVertices[type][i][vertices[i][j][0]].x);
-                data.push_back(CustomVertices[type][i][vertices[i][j][1]].y);
-                data.push_back(CustomVertices[type][i][vertices[i][j][2]].z);
+                Extend(data, CustomVertices[type][i][vertices[i][j][0]]);
             }
             else {
-                data.push_back(vertices[i][j][0] + offset.x);
-                data.push_back(vertices[i][j][1] + offset.y);
-                data.push_back(vertices[i][j][2] + offset.z);
+                Extend(data, vecVertices[i][j] + offset);
             }
             
             if (CustomTexCoords.count(type)) {
@@ -89,8 +82,8 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
                 data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
             else {
-                data.push_back((texStartX + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((texStartY + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                data.push_back((texPosition.x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
+                data.push_back((texPosition.y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
             }
         }
     }
@@ -98,19 +91,53 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
     return data;
 }
 
-
 void Player::Init() {
+    glm::vec4 hpDims(50, 50, 200, 20);
+    glm::vec3 hpRange(0, 100, 100);
+    
+    glActiveTexture(GL_TEXTURE0 + MODEL_TEXTURE_UNIT);
+    unsigned int texture = std::get<0>(Load_Texture("skin.png"));
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
     ModelShaderModelLoc = modelShader->Get_Location("model");
     
-    ModelBuffer.Init(modelShader);
     HoldingBuffer.Init(modelShader);
     DamageBuffer.Init(modelShader);
     
-    ModelBuffer.Create(3, 2, Create_Textured_Cube(5, glm::vec3(-0.5f, -0.5f + CAMERA_HEIGHT, -0.5f)));
     HoldingBuffer.Create(3, 2);
     DamageBuffer.Create(3, 2);
     
+    interface.Set_Document("playerUI");
+    interface.Add_Bar("health", "HP", hpDims, hpRange);
+    interface.Set_Document("");
+    
+    Init_Model();
     Init_Sounds();
+}
+
+void Player::Init_Model() {
+    Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer };
+    glm::vec3 offsets[6] = {
+        glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(2.0f, 0.0f, 0.5f),
+        glm::vec3(-1.0f, 0.0f, 0.5f), glm::vec3(1.0f, 0.0f, 0.5f), glm::vec3(0.0f, 0.0f, 0.5f)
+    };
+    std::string parts[6] = { "head", "body", "arm", "arm", "leg", "leg" };
+    
+    for (int b = 0; b < 6; b++) {
+        buffers[b]->Init(modelShader);
+        
+        Data data;
+        
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
+                Extend(data, vecVertices[i][j] - offsets[b]);
+                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j][0]].x / 64);
+                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j][1]].y / 32);
+            }
+        }
+        
+        buffers[b]->Create(3, 2, data);
+    }
 }
 
 void Player::Init_Sounds() {
@@ -137,25 +164,46 @@ void Player::Init_Sounds() {
 void Player::Mesh_Holding() {
     CurrentBlock = inventory.Get_Info().Type;
     
-    if (CurrentBlock == 0) {
-        return;
+    if (CurrentBlock > 0) {
+        HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlock));
     }
-    
-    HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlock));
 }
 
 void Player::Mesh_Damage(int index) {
     DamageBuffer.Upload(Create_Textured_Cube(246 + index, glm::vec3(0.0f)));
 }
 
-
 void Player::Draw_Model() {
-    glm::mat4 model;
-    model = glm::translate(model, WorldPos);
-    model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
+    modelShader->Upload("tex", MODEL_TEXTURE_UNIT);
     
-    modelShader->Upload(ModelShaderModelLoc, model);
-    ModelBuffer.Draw();
+    float playerRotation = float(glm::radians(270.0f - Cam.Yaw));
+    
+    glm::vec3 translateOffsets[6] = {
+        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 0.75, 0),
+        glm::vec3(0, 0.75, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)
+    };
+    
+    glm::vec3 scalingFactors[6] = {
+        glm::vec3(0.5, 0.5, 0.5), glm::vec3(0.5, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25),
+        glm::vec3(0.25, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25)
+    };
+    
+    Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer};
+    
+    for (int i = 0; i < 6; i++) {
+        glm::mat4 model;
+        model = glm::translate(model, WorldPos + translateOffsets[i]);
+        model = glm::rotate(model, playerRotation, glm::vec3(0, 1, 0));
+        
+        if (i == 0) {
+            model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
+        }
+        
+        model = glm::scale(model, scalingFactors[i]);
+        
+        modelShader->Upload(ModelShaderModelLoc, model);
+        buffers[i]->Draw();
+    }
 }
 
 void Player::Draw_Holding() {
@@ -163,14 +211,13 @@ void Player::Draw_Holding() {
         return;
     }
     
-    glm::vec3 offset = WorldPos + (Cam.Front + Cam.Right) * 0.5f + glm::vec3(0, 0.5, 0);
-    
     glm::mat4 model;
-    model = glm::translate(model, offset);
+    model = glm::translate(model, WorldPos + (Cam.Front + Cam.Right) * 0.5f + glm::vec3(0, 0.5, 0));
     model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), glm::vec3(0, 1, 0));
     model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
     
     modelShader->Upload(ModelShaderModelLoc, model);
+    modelShader->Upload("tex", 0);
     HoldingBuffer.Draw();
 }
 
@@ -181,6 +228,7 @@ void Player::Draw_Damage() {
     
     glm::mat4 model;
     modelShader->Upload(ModelShaderModelLoc, glm::translate(model, Get_World_Pos(LookingChunk, LookingTile)));
+    modelShader->Upload("tex", 0);
     
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-4.0f, -4.0f);
@@ -321,6 +369,8 @@ void Player::Draw() {
     
     Draw_Model();
     Draw_Holding();
+    
+    interface.Draw_Document("playerUI");
 }
 
 void Player::Check_Pickup() {
@@ -337,33 +387,18 @@ void Player::Check_Pickup() {
         float dist = glm::distance((*it)->Position, playerCenter);
         
         if (dist < PICKUP_RANGE) {
-            int blockType = (*it)->Type;
-            
-            if (blockType == 1) {
-                blockType = 4;
-            }
-            
-            else if (blockType == 2) {
-                blockType = 3;
-            }
-            
             Play_Sound("pickup", CurrentChunk, CurrentTile);
-            
-            inventory.Add_Stack(blockType, (*it)->Size);
+            inventory.Add_Stack((*it)->Type, (*it)->Size);
             Mesh_Holding();
             
             delete *it;
-            it = Entities.erase(it);
         }
         else if (dist < ATTRACT_RANGE && (*it)->Size > 0) {
             glm::vec3 vector = glm::normalize(playerCenter - (*it)->Position) * ATTRACT_SPEED * (ATTRACT_RANGE - dist);
-
             (*it)->Velocity += glm::vec3(vector.x, 0, vector.z);
-            ++it;
         }
-        else {
-            ++it;
-        }
+        
+        it = (dist < PICKUP_RANGE) ? Entities.erase(it) : it + 1;
     }
     
     if (CurrentBlock == 0 && inventory.Get_Info().Type) {
@@ -660,6 +695,14 @@ void Player::Break_Block() {
         }
     }
     
+    if (blockType == 1) {
+        blockType = 4;
+    }
+    
+    else if (blockType == 2) {
+        blockType = 3;
+    }
+    
     lookingChunk->Remove_Block(LookingTile);
     Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType);
 }
@@ -728,18 +771,18 @@ void Player::Clear_Keys() {
     std::fill_n(keys, 1024, false);
 }
 
-std::string Process_Commands(std::string message) {
-    std::vector<std::string> parameters = Split(message, ' ');
+Messages Process_Commands(std::string message) {
+    Messages parameters = Split(message, ' ');
     
     if (parameters.size() == 0) {
-        return "/";
+        return Messages {"/"};
     }
     
     std::string command = parameters[0];
     
     if (command == "tp") {
         if (parameters.size() < 4) {
-            return "Error! Not enough parameters.";
+            return Messages {"Error! Not enough parameters."};
         }
         
         int x = std::stoi(parameters[1]);
@@ -748,12 +791,12 @@ std::string Process_Commands(std::string message) {
         
         player.Teleport(glm::vec3(x, y, z));
         
-        return "Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ").";
+        return Messages {"Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")."};
     }
     
     else if (command == "give") {
         if (parameters.size() < 2) {
-            return "Error! Not enough parameters.";
+            return Messages {"Error! Missing parameter <BlockID>."};
         }
         
         int block = std::stoi(parameters[1]);
@@ -764,27 +807,35 @@ std::string Process_Commands(std::string message) {
         }
         
         player.inventory.Add_Stack(block, size);
-        return "Given block " + parameters[1] + " to player.";
+        return Messages {"Given block " + parameters[1] + " to player."};
     }
     
     else if (command == "clear") {
         player.inventory.Clear();
         player.Mesh_Holding();
-        return "Inventory cleared!";
+        return Messages {"Inventory cleared!"};
     }
     
     else if (command == "gamemode") {
         if (parameters.size() < 2) {
-            return "Error! Not enough parameters.";
+            return Messages {"Error! Missing parameter <mode>."};
         }
         
         if (parameters[1] == "c" || parameters[1] == "s") {
             Creative = parameters[1] == "c";
-            return "Gamemode changed to " + std::string(((parameters[1] == "c") ? "Creative." : "Survival."));
+            return Messages {"Gamemode changed to " + std::string(((parameters[1] == "c") ? "Creative." : "Survival."))};
         }
         
-        return "Error! Invalid gamemode.";
+        return Messages {"Error! Invalid gamemode."};
     }
     
-    return "Error! Command not recognized.";
+    else if (command == "pos") {
+        return Messages {
+            "Position: " + Format_Vector(player.WorldPos),
+            "Chunk: " + Format_Vector(player.CurrentChunk),
+            "Tile: " + Format_Vector(player.CurrentTile)
+        };
+    }
+    
+    return Messages {"Error! Command not recognized."};
 }

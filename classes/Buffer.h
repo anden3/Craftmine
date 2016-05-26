@@ -3,13 +3,15 @@
 #include <vector>
 #include <map>
 
-#include "Shader.h"
+#define GLM_SWIZZLE
+#include <glm/glm.hpp>
 
 typedef std::vector<float> Data;
+class Shader;
 
 class Buffer {
 public:
-    int VertexType = GL_TRIANGLES;
+    int VertexType;
     Shader* BufferShader;
     
     inline void Create(const int &a, const Data &data = Data {}) { Create(std::vector<int> {a}, data); }
@@ -30,4 +32,17 @@ private:
     int Vertices = 0;
     
     void Create(const std::vector<int> &config, const Data &data = Data {});
+};
+
+class UniformBuffer {
+public:
+    void Create(std::string name, int bufferID, int size, std::vector<Shader*> shaders);
+    
+    template <typename T>
+    void Upload(int index, T t);
+    void Upload(int index, glm::mat4 matrix);
+
+private:
+    unsigned int UBO;
+    int BufferID;
 };

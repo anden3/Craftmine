@@ -12,30 +12,26 @@ double last_fps[AVG_UPDATE_RANGE];
 double last_cpu[AVG_UPDATE_RANGE];
 double lastUIUpdate;
 
+bool ShowTitle = true;
 bool ShowInventory = false;
-bool ShowMenu = false;
+bool ShowGameMenu = false;
 bool ShowDebug = false;
 bool ShowOptions = false;
 
-std::string BoolStrings[2] = {"False", "True"};
+const std::string BoolStrings[2] = {"False", "True"};
 
-void Toggle_Mouse(bool enable);
-
-void Init_UI_Shaders();
-void Init_UI();
-void Init_Background();
+void Init_Title();
 void Init_Menu();
 void Init_Debug();
 
-void Draw_UI();
-void Draw_Background();
-void Draw_Menu();
 void Draw_Debug();
+
+void Toggle_Mouse(bool enable);
+void Bind_Current_Document();
 
 void Toggle_Options_Menu();
 void Toggle_VSync();
 void Toggle_Wireframe();
-
 void Change_Render_Distance();
 
 void Exit();
@@ -45,6 +41,7 @@ void UI::Init() {
     player.inventory.Init();
     chat.Init();
     
+    Init_Title();
     Init_Menu();
     Init_Debug();
 }
@@ -54,17 +51,22 @@ void UI::Draw() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
     
-    if (ShowMenu) {
-        Draw_Menu();
+    if (ShowTitle) {
+        interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
+        interface.Draw_Document(ShowOptions ? "titleOptions" : "title");
     }
+    
+    else if (ShowGameMenu) {
+        interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
+        interface.Draw_Document(ShowOptions ? "options" : "mainMenu");
+    }
+    
     else {
-        Draw_UI();
+        chat.Update();
+        player.inventory.Draw();
         
         if (ShowDebug) {
             Draw_Debug();
-        }
-        else {
-            player.inventory.Draw();
         }
     }
     
@@ -74,38 +76,83 @@ void UI::Draw() {
 }
 
 void UI::Click(double mouseX, double mouseY, int action, int button) {
-    if (ShowMenu) {
-        interface.Click(button, action);
-    }
-    else if (ShowInventory) {
+    Bind_Current_Document();
+    
+    if (ShowInventory && !ShowGameMenu) {
         player.inventory.Click_Handler(mouseX, mouseY, button, action);
     }
+    else {
+        interface.Click(button, action);
+    }
+    
+    interface.Set_Document("");
 }
 
 void UI::Mouse_Handler(double x, double y) {
-    if (ShowMenu) {
-        interface.Set_Document(ShowOptions ? "options" : "mainMenu");
-        interface.Mouse_Handler(float(x), float(SCREEN_HEIGHT - y));
-        interface.Set_Document("");
+    Bind_Current_Document();
+    interface.Mouse_Handler(float(x), float(SCREEN_HEIGHT - y));
+    interface.Set_Document("");
+}
+
+void UI::Key_Handler(int key, int action) {
+    if (action == GLFW_PRESS) {
+        switch (key) {
+            case GLFW_KEY_ESCAPE:
+                if (ShowInventory) {
+                    player.inventory.Is_Open = false;
+                    Toggle_Inventory();
+                }
+                else {
+                    Toggle_Game_Menu();
+                }
+                break;
+                
+            case GLFW_KEY_U:
+                Toggle_Debug();
+                break;
+                
+            case GLFW_KEY_TAB:
+                Toggle_Inventory();
+                break;
+        }
     }
 }
 
-void UI::Toggle_Menu() {
-    ShowMenu = !ShowMenu;
+void UI::Toggle_Title() {
+    ShowGameMenu = false;
     ShowOptions = false;
+    ShowInventory = false;
+    ShowDebug = false;
     
-    if (!ShowInventory) {
-        Toggle_Mouse(ShowMenu);
+    player.inventory.Is_Open = false;
+    
+    ShowTitle = !ShowTitle;
+    GamePaused = ShowTitle;
+    Toggle_Mouse(ShowTitle);
+}
+
+void UI::Toggle_Game_Menu() {
+    if (!ShowTitle) {
+        ShowGameMenu = !ShowGameMenu;
+        ShowOptions = false;
+        
+        if (!ShowInventory) {
+            Toggle_Mouse(ShowGameMenu);
+        }
     }
 }
 
 void UI::Toggle_Debug() {
-    ShowDebug = !ShowDebug;
+    if (!ShowTitle) {
+        ShowDebug = !ShowDebug;
+    }
 }
 
 void UI::Toggle_Inventory() {
-    ShowInventory = !ShowInventory;
-    Toggle_Mouse(ShowInventory);
+    if (!ShowTitle) {
+        ShowInventory = !ShowInventory;
+        Toggle_Mouse(ShowInventory);
+    }
 }
 
 void Toggle_Mouse(bool enable) {
@@ -113,25 +160,79 @@ void Toggle_Mouse(bool enable) {
     glfwSetInputMode(Window, GLFW_CURSOR, enable ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 }
 
+void Bind_Current_Document() {
+    if (ShowTitle) {
+        interface.Set_Document(ShowOptions ? "titleOptions" : "title");
+    }
+    else if (ShowGameMenu) {
+        interface.Set_Document(ShowOptions ? "options" : "mainMenu");
+    }
+}
+
+void Init_Title() {
+    glm::vec2 buttonSize(Scale(200, 40));
+    
+    glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glm::vec3 logoDims(Scale(0, 700), 0.5f);
+    
+    glm::vec4 startButtonDims(Scale(620, 500), buttonSize);
+    glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
+    
+    glm::vec4 optionButtonDims(Scale(620, 400), buttonSize);
+    glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
+    glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
+    glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
+    glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
+    
+    glm::vec3 renderDistSliderRange(1, 10, float(RenderDistance));
+    
+    interface.Set_Document("title");
+    
+    interface.Add_Background("titleBg", bgDims);
+    interface.Get_Background("titleBg")->Color = glm::vec3(0.2f);
+    interface.Get_Background("titleBg")->Opacity = 1.0f;
+    
+    interface.Add_Image("titleLogo", "logo.png", 3, logoDims);
+    interface.Get_Image("titleLogo")->Center();
+    
+    interface.Add_Button("titleStart", "Start Game", startButtonDims, UI::Toggle_Title);
+    interface.Add_Button("titleExit", "Quit", exitButtonDims, Exit);
+    
+    interface.Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+    
+    interface.Set_Document("titleOptions");
+    
+    interface.Add_Background("menuBg", bgDims);
+    interface.Get_Background("menuBg")->Color = glm::vec3(0.2f);
+    interface.Get_Background("menuBg")->Opacity = 1.0f;
+    
+    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
+    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
+    
+    interface.Set_Document("");
+}
+
 void Init_Menu() {
-    glm::vec2 buttonSize(X_Frac(5, 36), Y_Frac(2, 45));
+    glm::vec2 buttonSize(Scale(200, 40));
     
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     
-    glm::vec4 optionButtonDims(X_Frac(31, 72), Y_Frac(5, 9), buttonSize);
-    glm::vec4 exitButtonDims(X_Frac(31, 72), Y_Frac(2, 9), buttonSize);
-    glm::vec4 vsyncButtonDims(X_Frac(7, 24), Y_Frac(5, 9), buttonSize);
-    glm::vec4 wireframeButtonDims(X_Frac(13, 24), Y_Frac(5, 9), buttonSize);
-    glm::vec4 renderDistSliderDims(X_Frac(31, 72), Y_Frac(7, 9), buttonSize);
-    glm::vec4 backButtonDims(X_Frac(31, 72), Y_Frac(2, 9), buttonSize);
+    glm::vec4 optionButtonDims(Scale(620, 500), buttonSize);
+    glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
+    glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
+    glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
+    glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
+    glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
     
-    glm::vec3 renderDistSliderRange(0, 10, float(RenderDistance));
+    glm::vec3 renderDistSliderRange(1, 10, float(RenderDistance));
     
     interface.Set_Document("mainMenu");
     
     interface.Add_Background("menuBg", bgDims);
     interface.Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-    interface.Add_Button("exit", "Quit", exitButtonDims, Exit);
+    interface.Add_Button("exit", "Quit to Menu", exitButtonDims, UI::Toggle_Title);
     
     interface.Set_Document("options");
     
@@ -147,33 +248,14 @@ void Init_Menu() {
 void Init_Debug() {
     lastUIUpdate = glfwGetTime();
     
-    float debugX = X_Frac(1, 48);
-    
     interface.Set_Document("debug");
     
-    interface.Add_Text("fps",           "FPS: 0",                                             debugX, Y_Frac(17, 18));
-    interface.Add_Text("cpu",           "CPU: 0%",                                            debugX, Y_Frac(41, 45));
-    interface.Add_Text("ram",           "RAM: " + System::GetPhysicalMemoryUsage(),           debugX, Y_Frac( 5,  6));
-    interface.Add_Text("virtualMemory", "Virtual Memory: " + System::GetVirtualMemoryUsage(), debugX, Y_Frac( 4,  5));
-    interface.Add_Text("playerChunk",   "Chunk:    ",                                         debugX, Y_Frac(34, 45));
-    interface.Add_Text("playerTile",    "Tile:     ",                                         debugX, Y_Frac(13, 18));
-    interface.Add_Text("playerPos",     "Position: ",                                         debugX, Y_Frac(31, 45));
-    interface.Add_Text("chunkQueue",    "Chunks Loaded: ",                                    debugX, Y_Frac(29, 45));
-    
-    if (Windows) {
-        interface.Add_Text("vram", "VRAM: " + System::GetVRAMUsage(), debugX, Y_Frac(13, 15));
-    }
+    interface.Add_Text("fps",         "FPS: 0",                                   Scale(30, 850));
+    interface.Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
+    interface.Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
+    interface.Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
     
     interface.Set_Document("");
-}
-
-void Draw_UI() {
-    chat.Update();
-}
-
-void Draw_Menu() {
-    interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-    interface.Draw_Document(ShowOptions ? "options" : "mainMenu");
 }
 
 int Get_Loaded() {
@@ -214,20 +296,10 @@ void Draw_Debug() {
         interface.Get_Text_Element("fps")->Text = "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE));
         interface.Get_Text_Element("cpu")->Text = "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%";
         interface.Get_Text_Element("ram")->Text = "RAM: " + System::GetPhysicalMemoryUsage();
-        interface.Get_Text_Element("virtualMemory")->Text = "Virtual Memory: " + System::GetVirtualMemoryUsage();
-        
-        if (Windows) {
-            interface.Get_Text_Element("vram")->Text = "VRAM: " + System::GetVRAMUsage();
-        }
     }
     
     interface.Set_Document("debug");
-    
-    interface.Get_Text_Element("playerChunk")->Text = "Chunk:      " + Format_Vector(player.CurrentChunk);
-    interface.Get_Text_Element("playerTile")->Text = "Tile:            " + Format_Vector(player.CurrentTile);
-    interface.Get_Text_Element("playerPos")->Text = "Position:  " + Format_Vector(player.WorldPos);
     interface.Get_Text_Element("chunkQueue")->Text = "Chunks Queued: " + std::to_string(int(ChunkMap.size()) - Get_Loaded());
-    
     interface.Set_Document("");
     
     interface.Draw_Document("debug");
@@ -239,7 +311,10 @@ void Toggle_Options_Menu() {
 
 void Toggle_VSync() {
     VSync = !VSync;
+    
+    Bind_Current_Document();
     interface.Get_Button("option_vsync")->Text.Text = "V-Sync: " + BoolStrings[VSync];
+    interface.Set_Document("");
     
     glfwSwapInterval(VSync);
     Write_Config();
@@ -247,11 +322,14 @@ void Toggle_VSync() {
 
 void Toggle_Wireframe() {
     ToggleWireframe = true;
+    
+    Bind_Current_Document();
     interface.Get_Button("option_wireframe")->Text.Text = "Wireframe: " + BoolStrings[!Wireframe];
+    interface.Set_Document("");
 }
 
 void Change_Render_Distance() {
-    interface.Set_Document("options");
+    Bind_Current_Document();
     Slider* slider = interface.Get_Slider("option_renderDistance");
     interface.Set_Document("");
     
@@ -268,12 +346,4 @@ void Change_Render_Distance() {
 
 void Exit() {
     glfwSetWindowShouldClose(Window, GL_TRUE);
-}
-
-std::string Format_Vector(glm::vec3 vector) {
-    std::string x = std::to_string(int(vector.x));
-    std::string y = std::to_string(int(vector.y));
-    std::string z = std::to_string(int(vector.z));
-    
-    return std::string("X: " + x + "\t\tY: " + y + "\t\tZ: " + z);
 }

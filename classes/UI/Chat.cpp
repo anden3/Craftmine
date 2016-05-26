@@ -1,6 +1,10 @@
 #include "Chat.h"
 
+#include "Interface.h"
+
 #include <unicode/ustream.h>
+
+#include <GLFW/glfw3.h>
 
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
@@ -122,7 +126,15 @@ void Chat::Input(unsigned int key) {
 
 void Chat::Submit() {
     if (NewMessage.length() > 0) {
-        Write(NewMessage.front() == '/' ? Process_Commands(NewMessage.substr(1)) : NewMessage);
+        if (NewMessage.front() == '/') {
+            for (auto const &message : Process_Commands(NewMessage.substr(1))) {
+                Write(message);
+            }
+        }
+        else {
+            Write(NewMessage);
+        }
+        
         History.push_back(NewMessage);
         HistoryIndex = int(History.size());
         

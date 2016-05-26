@@ -10,8 +10,8 @@
 const int CHUNK_SIZE = 16;
 const unsigned int SUN_LIGHT_LEVEL = 15;
 
-extern unsigned int IMAGE_SIZE_X;
-extern unsigned int IMAGE_SIZE_Y;
+extern int IMAGE_SIZE_X;
+extern int IMAGE_SIZE_Y;
 
 class Vec3Comparator {
 public:
@@ -133,9 +133,7 @@ public:
 private:
     void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
     int GetAO(glm::vec3 block, int face, int offset);
-    
-    void Generate_Empty();
-    
+        
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     std::set<glm::vec3, Vec3Comparator> TopBlocks;
 };

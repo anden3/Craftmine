@@ -4,6 +4,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Shader.h"
+
 std::vector<EntityInstance*> Entities;
 
 EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
@@ -159,6 +161,7 @@ void EntityInstance::Draw() {
     
     modelShader->Upload("lightLevel", lightLevel);
     modelShader->Upload("model", model);
+    modelShader->Upload("tex", 0);
     
     EntityBuffer.Draw();
 }
