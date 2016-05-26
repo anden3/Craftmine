@@ -1,12 +1,16 @@
 #include "Player.h"
 
+#include <cmath>
 #include <sstream>
 #include <dirent.h>
-#include <cmath>
 
+#include "Chunk.h"
+#include "Sound.h"
+#include "Camera.h"
+#include "Entity.h"
 #include "Shader.h"
-
-typedef std::vector<std::string> Messages;
+#include "Interface.h"
+#include "Inventory.h"
 
 const float PLAYER_BASE_SPEED  = 3.0f;
 const float PLAYER_SPRINT_MODIFIER = 1.5f;
@@ -32,17 +36,32 @@ const float ATTRACT_SPEED = 1.0f;
 
 const int MODEL_TEXTURE_UNIT = 5;
 
+const float MOVEMENT_ANGLE_START = -45.0f;
+const float MOVEMENT_ANGLE_END = 45.0f;
+
 std::set<Chunk*> lightMeshingList;
 
 glm::vec3 lastChunk(-5);
 
 bool keys[1024] = {0};
 bool MouseDown = false;
-bool Creative = false;
 
 int ModelShaderModelLoc;
 
 int NumKeys[10] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_3, GLFW_KEY_4, GLFW_KEY_5, GLFW_KEY_6, GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9, GLFW_KEY_0};
+
+Buffer HoldingBuffer;
+Buffer DamageBuffer;
+
+Buffer HeadBuffer;
+Buffer BodyBuffer;
+Buffer LeftArmBuffer;
+Buffer RightArmBuffer;
+Buffer LeftLegBuffer;
+Buffer RightLegBuffer;
+
+int movementAngleDirection = 5000;
+float movementAngle = 0.0f;
 
 std::vector<SoundPlayer> soundPlayers;
 std::map<std::string, std::vector<Sound>> Sounds;
@@ -118,8 +137,8 @@ void Player::Init() {
 void Player::Init_Model() {
     Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer };
     glm::vec3 offsets[6] = {
-        glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(2.0f, 0.0f, 0.5f),
-        glm::vec3(-1.0f, 0.0f, 0.5f), glm::vec3(1.0f, 0.0f, 0.5f), glm::vec3(0.0f, 0.0f, 0.5f)
+        glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(2.0f, 1.0f, 0.5f),
+        glm::vec3(-1.0f, 1.0f, 0.5f), glm::vec3(1.0f, 1.0f, 0.5f), glm::vec3(0.0f, 1.0f, 0.5f)
     };
     std::string parts[6] = { "head", "body", "arm", "arm", "leg", "leg" };
     
@@ -146,14 +165,9 @@ void Player::Init_Sounds() {
     
     while ((ent = readdir(dir)) != nullptr) {
         std::string name(ent->d_name);
-        int divPos = int(name.find('_'));
-        int dotPos = int(name.find('.'));
         
-        if (divPos != std::string::npos) {
-            std::string type = name.substr(0, divPos);
-            std::string fileName = name.substr(0, dotPos);
-            
-            Sounds[type].push_back(Sound(fileName));
+        if (name.find('_') != std::string::npos) {
+            Sounds[name.substr(0, name.find('_'))].push_back(Sound(name.substr(0, name.find('.'))));
         }
     }
     
@@ -170,30 +184,67 @@ void Player::Mesh_Holding() {
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Create_Textured_Cube(246 + index, glm::vec3(0.0f)));
+    DamageBuffer.Upload(Create_Textured_Cube(246 + index, glm::vec3(0)));
 }
 
 void Player::Draw_Model() {
+    if (!ThirdPerson && !MouseDown) {
+        return;
+    }
+    
     modelShader->Upload("tex", MODEL_TEXTURE_UNIT);
     
-    float playerRotation = float(glm::radians(270.0f - Cam.Yaw));
-    
-    glm::vec3 translateOffsets[6] = {
-        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 0.75, 0),
-        glm::vec3(0, 0.75, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)
+    static glm::vec3 translateOffsets[6] = {
+        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 1.5, 0),
+        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 0.75, 0)
     };
     
-    glm::vec3 scalingFactors[6] = {
-        glm::vec3(0.5, 0.5, 0.5), glm::vec3(0.5, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25),
+    static glm::vec3 scalingFactors[6] = {
+        glm::vec3(0.5), glm::vec3(0.5, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25),
         glm::vec3(0.25, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25), glm::vec3(0.25, 0.75, 0.25)
     };
     
-    Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer};
+    static Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer};
+    
+    if (!ThirdPerson) { // Only draw arm if holding mouse down and in first person.
+        glm::mat4 model;
+        model = glm::translate(model, WorldPos + translateOffsets[3]);
+        model = glm::rotate(model, float(glm::radians(45.0f)), Cam.Right);
+        model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
+        model = glm::scale(model, scalingFactors[3]);
+        modelShader->Upload(ModelShaderModelLoc, model);
+        buffers[3]->Draw();
+        return;
+    }
+    
+    if (movementAngle >= MOVEMENT_ANGLE_END || movementAngle <= MOVEMENT_ANGLE_START) {
+        movementAngle -= 1 * std::copysign(1, movementAngle);
+        movementAngleDirection *= -1;
+    }
     
     for (int i = 0; i < 6; i++) {
         glm::mat4 model;
         model = glm::translate(model, WorldPos + translateOffsets[i]);
-        model = glm::rotate(model, playerRotation, glm::vec3(0, 1, 0));
+        
+        if (i == 2 || i == 5) {
+            model = glm::rotate(model, float(glm::radians(movementAngle)), Cam.Right);
+        }
+        
+        else if (i == 3) {
+            if (MouseDown) {
+                model = glm::rotate(model, float(glm::radians(45.0f)), Cam.Right);
+                
+            }
+            else {
+                model = glm::rotate(model, float(glm::radians(-movementAngle)), Cam.Right);
+            }
+        }
+        
+        else if (i == 4) {
+            model = glm::rotate(model, float(glm::radians(-movementAngle)), Cam.Right);
+        }
+        
+        model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
         
         if (i == 0) {
             model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
@@ -203,6 +254,20 @@ void Player::Draw_Model() {
         
         modelShader->Upload(ModelShaderModelLoc, model);
         buffers[i]->Draw();
+    }
+    
+    if (CurrentBlock != 0) {
+        glm::vec3 offset = WorldPos + glm::vec3(0, 1.6f + glm::sin(glm::radians(movementAngle - 90)), 0) + Cam.RightDirection * 0.37f + Cam.FrontDirection * glm::cos(glm::radians(movementAngle + 90));
+        
+        glm::mat4 model;
+        model = glm::translate(model, offset);
+        model = glm::rotate(model, float(glm::radians(-movementAngle)), glm::vec3(Cam.Right));
+        model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
+        model = glm::scale(model, glm::vec3(0.2f));
+        
+        modelShader->Upload(ModelShaderModelLoc, model);
+        modelShader->Upload("tex", 0);
+        HoldingBuffer.Draw();
     }
 }
 
@@ -236,7 +301,7 @@ void Player::Draw_Damage() {
     glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
-void Player::PollSounds() {
+void Player::Poll_Sounds() {
 	if (soundPlayers.size() > 0) {
         std::vector<SoundPlayer>::iterator sound = soundPlayers.begin();
         
@@ -270,6 +335,7 @@ void Player::Move(float deltaTime, bool update) {
     glm::vec3 walkDirs[2] = {Cam.FrontDirection, Cam.RightDirection};
 
     if (Flying) {
+        movementAngle = 0.0f;
         Velocity = glm::vec3(0);
 
         for (int i = 0; i < 4; i++) {
@@ -289,8 +355,15 @@ void Player::Move(float deltaTime, bool update) {
             Jumping = false;
             Velocity.y += JUMP_HEIGHT;
         }
-
+        
         ColDetection();
+        
+        if (Velocity.xz() != glm::vec2(0)) {
+            movementAngle += deltaTime * movementAngleDirection * speed;
+        }
+        else {
+            movementAngle = 0.0f;
+        }
 	}
     
     Check_Pickup();
@@ -299,11 +372,7 @@ void Player::Move(float deltaTime, bool update) {
         MouseTimer += deltaTime;
         
         int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
-        float requiredTime = blockHardness[blockType] * 1.5f * 3.33f;
-        
-        if (!OnGround) {
-            requiredTime *= 5;
-        }
+        float requiredTime = blockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
         
         if (MouseTimer >= requiredTime) {
             Break_Block();
@@ -316,22 +385,21 @@ void Player::Move(float deltaTime, bool update) {
     }
     
     if (update || WorldPos != prevPos) {
-        std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(WorldPos);
-        CurrentChunk = chunkPos[0];
-        CurrentTile = chunkPos[1];
+        std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
         
         if (Exists(CurrentChunk) && ChunkMap[CurrentChunk]->Get_Block(CurrentTile - glm::vec3(0, 1, 0)) != 0) {
             LightLevel = ChunkMap[CurrentChunk]->Get_Light(CurrentTile - glm::vec3(0, 1, 0));
             
             if (LightLevel == 0) {
-                if (WorldPos.y >= topBlocks[glm::vec2(CurrentChunk.x, CurrentChunk.z)][glm::vec2(CurrentTile.x, CurrentTile.z)] - 1) {
+                if (WorldPos.y >= topBlocks[CurrentChunk.xz()][CurrentTile.xz()] - 1) {
                     LightLevel = SUN_LIGHT_LEVEL;
                 }
             }
+            
             modelShader->Upload("lightLevel", LightLevel);
         }
         
-        Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z);
+        Cam.Position = WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0);
         
         if (ThirdPerson) {
             Cam.Position -= Cam.Front * 2.0f;
@@ -340,7 +408,6 @@ void Player::Move(float deltaTime, bool update) {
         listener.Set_Position(Cam.Position);
         
         std::vector<glm::vec3> hit = Hitscan();
-        
         LookingAtBlock = (hit.size() == 4);
         
         if (LookingAtBlock) {
@@ -357,7 +424,7 @@ void Player::Move(float deltaTime, bool update) {
         
         if (CurrentChunk != lastChunk) {
             lastChunk = CurrentChunk;
-            RenderChunks();
+            Render_Chunks();
         }
     }
 }
@@ -365,15 +432,23 @@ void Player::Move(float deltaTime, bool update) {
 void Player::Draw() {
     Draw_Damage();
     
-    glClear(GL_DEPTH_BUFFER_BIT);
+    if (!ThirdPerson) {
+        glClear(GL_DEPTH_BUFFER_BIT);
+        Draw_Holding();
+    }
     
-    Draw_Model();
-    Draw_Holding();
+    else {
+        Draw_Model();
+    }
     
     interface.Draw_Document("playerUI");
 }
 
 void Player::Check_Pickup() {
+    if (Entities.empty()) {
+        return;
+    }
+    
     glm::vec3 playerCenter = WorldPos + glm::vec3(0, 1, 0);
     
     std::vector<EntityInstance*>::iterator it = Entities.begin();
@@ -427,7 +502,7 @@ void Player::ColDetection() {
 
 	Velocity.y -= GRAVITY;
     
-    OnGround = (Velocity.y < 0 && Is_Block(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z)));
+    OnGround = (Velocity.y <= 0 && Is_Block(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y - 0.01f, WorldPos.z)));
     
     if (OnGround) {
         Velocity.y = 0;
@@ -491,15 +566,19 @@ std::vector<glm::vec3> Player::Hitscan() {
         glm::vec3 checkingPos = Cam.Position + Cam.Front * t;
 
 		if (Is_Block(checkingPos)) {
+            std::vector<glm::vec3> result;
+            glm::vec3 chunk1, tile1;
+            
+            std::tie(chunk1, tile1) = Get_Chunk_Pos(checkingPos);
+            Extend(result, chunk1, tile1);
+            
 			if (started) {
-				std::vector<glm::vec3> result1 = Get_Chunk_Pos(checkingPos);
-				std::vector<glm::vec3> result2 = Get_Chunk_Pos(lastPos);
-
-				result1.insert(result1.end(), result2.begin(), result2.end());
-				return result1;
+                glm::vec3 chunk2, tile2;
+                std::tie(chunk2, tile2) = Get_Chunk_Pos(lastPos);
+                Extend(result, chunk2, tile2);
 			}
-
-			return Get_Chunk_Pos(checkingPos);
+            
+			return result;
 		}
 
 		lastPos = checkingPos;
@@ -509,7 +588,7 @@ std::vector<glm::vec3> Player::Hitscan() {
     return failedScan;
 }
 
-void Player::KeyHandler(int key, int action) {
+void Player::Key_Handler(int key, int action) {
     if (action == GLFW_PRESS) {
         if (key == GLFW_KEY_F) {
             Flying = !Flying;
@@ -557,7 +636,7 @@ void Player::KeyHandler(int key, int action) {
     }
 }
 
-void Player::MouseHandler(double posX, double posY) {
+void Player::Mouse_Handler(double posX, double posY) {
     if (!MovedMouse) {
         LastMousePos = glm::dvec2(posX, posY);
         MovedMouse = true;
@@ -593,6 +672,8 @@ void Player::MouseHandler(double posX, double posY) {
     
     LastMousePos = glm::dvec2(posX, posY);
     Cam.UpdateCameraVectors();
+    
+    Rotation = float(glm::radians(270.0f - Cam.Yaw));
 
 	listener.Set_Orientation(Cam.Front, Cam.Up);
 
@@ -617,7 +698,7 @@ void Player::MouseHandler(double posX, double posY) {
     }
 }
 
-void Player::ScrollHandler(double offsetY) {
+void Player::Scroll_Handler(double offsetY) {
     if (fabs(offsetY) > 0.2) {
         inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
         
@@ -634,7 +715,7 @@ void Player::ScrollHandler(double offsetY) {
     }
 }
 
-void Player::ClickHandler(int button, int action) {
+void Player::Click_Handler(int button, int action) {
     if (!MouseEnabled) {
         MouseDown = (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT);
         
@@ -676,7 +757,7 @@ void Player::ClickHandler(int button, int action) {
         }
     }
     
-    MouseHandler(LastMousePos.x, LastMousePos.y);
+    Mouse_Handler(LastMousePos.x, LastMousePos.y);
 }
 
 void Player::Break_Block() {
@@ -722,7 +803,7 @@ void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
 	soundPlayers.push_back(soundPlayer);
 }
 
-void Player::RenderChunks() {
+void Player::Render_Chunks() {
     int startY = 3;
     int endY = -10;
     
@@ -769,73 +850,4 @@ void Player::RenderChunks() {
 
 void Player::Clear_Keys() {
     std::fill_n(keys, 1024, false);
-}
-
-Messages Process_Commands(std::string message) {
-    Messages parameters = Split(message, ' ');
-    
-    if (parameters.size() == 0) {
-        return Messages {"/"};
-    }
-    
-    std::string command = parameters[0];
-    
-    if (command == "tp") {
-        if (parameters.size() < 4) {
-            return Messages {"Error! Not enough parameters."};
-        }
-        
-        int x = std::stoi(parameters[1]);
-        int y = std::stoi(parameters[2]);
-        int z = std::stoi(parameters[3]);
-        
-        player.Teleport(glm::vec3(x, y, z));
-        
-        return Messages {"Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")."};
-    }
-    
-    else if (command == "give") {
-        if (parameters.size() < 2) {
-            return Messages {"Error! Missing parameter <BlockID>."};
-        }
-        
-        int block = std::stoi(parameters[1]);
-        int size = 64;
-        
-        if (parameters.size() >= 3) {
-            size = std::stoi(parameters[2]);
-        }
-        
-        player.inventory.Add_Stack(block, size);
-        return Messages {"Given block " + parameters[1] + " to player."};
-    }
-    
-    else if (command == "clear") {
-        player.inventory.Clear();
-        player.Mesh_Holding();
-        return Messages {"Inventory cleared!"};
-    }
-    
-    else if (command == "gamemode") {
-        if (parameters.size() < 2) {
-            return Messages {"Error! Missing parameter <mode>."};
-        }
-        
-        if (parameters[1] == "c" || parameters[1] == "s") {
-            Creative = parameters[1] == "c";
-            return Messages {"Gamemode changed to " + std::string(((parameters[1] == "c") ? "Creative." : "Survival."))};
-        }
-        
-        return Messages {"Error! Invalid gamemode."};
-    }
-    
-    else if (command == "pos") {
-        return Messages {
-            "Position: " + Format_Vector(player.WorldPos),
-            "Chunk: " + Format_Vector(player.CurrentChunk),
-            "Tile: " + Format_Vector(player.CurrentTile)
-        };
-    }
-    
-    return Messages {"Error! Command not recognized."};
 }

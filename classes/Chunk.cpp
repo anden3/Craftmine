@@ -1,7 +1,6 @@
 #include "Chunk.h"
 
 #include <random>
-
 #include <noise/noise.h>
 
 const int CHUNK_ZOOM = 50;
@@ -496,21 +495,21 @@ std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm:
     };
 
     for (int i = 0; i < 6; i++) {
-        std::vector<glm::vec3> neighbor = Get_Chunk_Pos(worldPos + neighborOffsets[i]);
-        results.push_back(std::make_pair(neighbor[0], neighbor[1]));
+        results.push_back(Get_Chunk_Pos(worldPos + neighborOffsets[i]));
     }
 
     return results;
 }
 
-std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
+std::pair<glm::vec3, glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
     glm::vec3 chunk(floor(worldPos.x / CHUNK_SIZE), floor(worldPos.y / CHUNK_SIZE), floor(worldPos.z / CHUNK_SIZE));
     glm::vec3 tile(floor(worldPos.x - (chunk.x * CHUNK_SIZE)), floor(worldPos.y - (chunk.y * CHUNK_SIZE)), floor(worldPos.z - (chunk.z * CHUNK_SIZE)));
 
-    return std::vector<glm::vec3>{chunk, tile};
+    return std::make_pair(chunk, tile);
 }
 
 bool Is_Block(glm::vec3 pos) {
-    std::vector<glm::vec3> chunkPos = Get_Chunk_Pos(pos);
-    return Exists(chunkPos[0]) && ChunkMap[chunkPos[0]]->Get_Block(chunkPos[1]) > 0;
+    glm::vec3 chunk, tile;
+    std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+    return Exists(chunk) && ChunkMap[chunk]->Get_Block(tile) > 0;
 }

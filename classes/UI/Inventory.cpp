@@ -7,6 +7,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include "Interface.h"
+
 const int SLOTS_X = 10;
 const int SLOTS_Y = 7;
 
@@ -243,19 +245,18 @@ inline bool In_Range(float value, glm::vec2 bounds) {
 }
 
 void Inventory::Init() {
-    barDims = glm::vec4(X_Frac(13, 36), Y_Frac(2, 45), X_Frac(5, 18), Y_Frac(2, 45));
+    barDims = glm::vec4(Scale(520, 40), Scale(400, 40));
+    invDims = glm::vec4(Scale(220), Scale(800, 480));
+    craftDims = glm::vec4(Scale(1100, 460), Scale(240));
+    outputDims = glm::vec4(Scale(1180, 300), Scale(80));
+    invBarDims = glm::vec4(Scale(220, 100), Scale(800, 80));
     
-    invDims = glm::vec4(X_Frac(11, 72), Y_Frac(11, 45), X_Frac(5, 9), Y_Frac(8, 15));
-    craftDims = glm::vec4(X_Frac(55, 72), Y_Frac(23, 45), X_Frac(1, 6), Y_Frac(4, 15));
-    outputDims = glm::vec4(X_Frac(59, 72), Y_Frac(1, 3), X_Frac(1, 18), Y_Frac(4, 45));
-    invBarDims = glm::vec4(X_Frac(11, 72), Y_Frac(1, 9), X_Frac(5, 9), Y_Frac(4, 45));
+    slotWidth = Scale(80);
+    invPad = Scale(10);
+    slotPad = Scale(10);
+    textPad = Scale(5);
     
-    slotWidth = glm::vec2(X_Frac(1, 18), Y_Frac(4, 45));
-    invPad = glm::vec2(X_Frac(1, 144), Y_Frac(1, 90));
-    slotPad = glm::vec2(X_Frac(1, 144), Y_Frac(1, 90));
-    textPad = glm::vec2(X_Frac(1, 288), Y_Frac(1, 180));
-    
-    BLOCK_SCALE = X_Frac(1, 18);
+    BLOCK_SCALE = Scale_X(80);
     
     interface.Set_Document("toolbar");
     

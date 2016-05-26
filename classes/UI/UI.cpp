@@ -1,7 +1,11 @@
 #include "UI.h"
 
+#include "Chat.h"
+#include "Chunk.h"
+#include "Player.h"
 #include "System.h"
 #include "Interface.h"
+#include "Inventory.h"
 
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
@@ -38,7 +42,7 @@ void Exit();
 
 void UI::Init() {
     interface.Init();
-    player.inventory.Init();
+    inventory.Init();
     chat.Init();
     
     Init_Title();
@@ -63,7 +67,7 @@ void UI::Draw() {
     
     else {
         chat.Update();
-        player.inventory.Draw();
+        inventory.Draw();
         
         if (ShowDebug) {
             Draw_Debug();
@@ -79,7 +83,7 @@ void UI::Click(double mouseX, double mouseY, int action, int button) {
     Bind_Current_Document();
     
     if (ShowInventory && !ShowGameMenu) {
-        player.inventory.Click_Handler(mouseX, mouseY, button, action);
+        inventory.Click_Handler(mouseX, mouseY, button, action);
     }
     else {
         interface.Click(button, action);
@@ -99,7 +103,7 @@ void UI::Key_Handler(int key, int action) {
         switch (key) {
             case GLFW_KEY_ESCAPE:
                 if (ShowInventory) {
-                    player.inventory.Is_Open = false;
+                    inventory.Is_Open = false;
                     Toggle_Inventory();
                 }
                 else {
@@ -124,7 +128,7 @@ void UI::Toggle_Title() {
     ShowInventory = false;
     ShowDebug = false;
     
-    player.inventory.Is_Open = false;
+    inventory.Is_Open = false;
     
     ShowTitle = !ShowTitle;
     GamePaused = ShowTitle;
@@ -170,7 +174,7 @@ void Bind_Current_Document() {
 }
 
 void Init_Title() {
-    glm::vec2 buttonSize(Scale(200, 40));
+    glm::vec2 buttonSize = Scale(200, 40);
     
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glm::vec3 logoDims(Scale(0, 700), 0.5f);
@@ -340,7 +344,7 @@ void Change_Render_Distance() {
         slider->Text.Text = "Render Distance: " + std::to_string(value);
         Write_Config();
         
-        player.RenderChunks();
+        player.Render_Chunks();
     }
 }
 

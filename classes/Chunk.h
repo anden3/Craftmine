@@ -8,7 +8,7 @@
 #include "Buffer.h"
 
 const int CHUNK_SIZE = 16;
-const unsigned int SUN_LIGHT_LEVEL = 15;
+const int SUN_LIGHT_LEVEL = 15;
 
 extern int IMAGE_SIZE_X;
 extern int IMAGE_SIZE_Y;
@@ -93,16 +93,9 @@ public:
 
     Chunk(glm::vec3 position);
     
-    inline int Get_Block(glm::vec3 pos) {
-        return BlockMap[int(pos.x)][int(pos.y)][int(pos.z)];
-    }
-    inline void Set_Block(glm::ivec3 pos, char value) {
-        BlockMap[pos.x][pos.y][pos.z] = value;
-    }
-    
-    inline int Get_Air(glm::ivec3 pos) {
-        return SeesAir[pos.x][pos.y][pos.z];
-    }
+    inline int Get_Block(glm::vec3 pos) { return BlockMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
+    inline void Set_Block(glm::ivec3 pos, char value) { BlockMap[pos.x][pos.y][pos.z] = value; }
+    inline int Get_Air(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
     
     void Generate();
     void Light(bool flag = true);
@@ -111,16 +104,10 @@ public:
     void Remove_Block(glm::ivec3 position);
 	void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType);
     
-    inline int Get_Light(glm::vec3 pos) {
-        return LightMap[int(pos.x)][int(pos.y)][int(pos.z)];
-    }
-    inline void Set_Light(glm::ivec3 pos, int value) {
-        LightMap[pos.x][pos.y][pos.z] = value;
-    }
+    inline int Get_Light(glm::vec3 pos) { return LightMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
+    inline void Set_Light(glm::ivec3 pos, int value) { LightMap[pos.x][pos.y][pos.z] = value; }
     
-    inline bool Get_Top(glm::vec3 pos) {
-        return TopBlocks.count(pos) > 0;
-    }
+    inline bool Get_Top(glm::vec3 pos) { return TopBlocks.count(pos) > 0; }
     inline void Set_Top(glm::vec3 pos, bool set) {
         if (set) {
             TopBlocks.insert(pos);
@@ -139,7 +126,7 @@ private:
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);
-std::vector<glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
+std::pair<glm::vec3, glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 
 bool Is_Block(glm::vec3 pos);
 

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "Buffer.h"
-#include "Interface.h"
+#include <vector>
 
-#include <tuple>
+#define GLM_SWIZZLE
+#include <glm/glm.hpp>
 
-typedef std::vector<float> Data;
+class Interface;
+class Shader;
 
 extern Interface interface;
 

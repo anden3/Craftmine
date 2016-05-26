@@ -1,9 +1,9 @@
 #include "Entity.h"
 
 #include <random>
-
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Chunk.h"
 #include "Shader.h"
 
 std::vector<EntityInstance*> Entities;
@@ -141,16 +141,17 @@ void EntityInstance::Col_Check(float deltaTime) {
 }
 
 void EntityInstance::Draw() {
-    std::vector<glm::vec3> ChunkPos = Get_Chunk_Pos(Position);
+    glm::vec3 chunk, tile;
+    std::tie(chunk, tile) = Get_Chunk_Pos(Position);
     
-    if (!Exists(ChunkPos[0])) {
+    if (!Exists(chunk)) {
         return;
     }
     
-    int lightLevel = ChunkMap[ChunkPos[0]]->Get_Light(ChunkPos[1]);
+    int lightLevel = ChunkMap[chunk]->Get_Light(tile);
     
     if (lightLevel == 0) {
-        if (Position.y >= topBlocks[glm::vec2(ChunkPos[0].x, ChunkPos[0].z)][glm::vec2(ChunkPos[1].x, ChunkPos[1].z)]) {
+        if (Position.y >= topBlocks[chunk.xz()][tile.xz()]) {
             lightLevel = SUN_LIGHT_LEVEL;
         }
     }

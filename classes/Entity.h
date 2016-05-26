@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Chunk.h"
+#include "Buffer.h"
 
 static const float ENTITY_SCALE = 0.4f;
 static const float ROTATION_RATE = 10.0f;

@@ -1,6 +1,14 @@
 #pragma once
 
-#include "UI.h"
+#include <map>
+#include <vector>
+#include <string>
+
+#define GLM_SWIZZLE
+#include <glm/glm.hpp>
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #ifdef _WIN32
 const bool Windows = true;
@@ -355,9 +363,6 @@ std::map<std::string, int*> Options = {
     {"VSync", &VSync}
 };
 
-Buffer OutlineBuffer;
-UniformBuffer UBO;
-
 int IMAGE_SIZE_X = 0;
 int IMAGE_SIZE_Y = 0;
 
@@ -371,20 +376,6 @@ bool GamePaused = true;
 bool MouseEnabled = false;
 
 bool ChunkMapBusy = false;
-
-Player player = Player();
-Chat chat = Chat();
-Inventory inventory = Inventory();
-
-Interface interface = Interface();
-
-Shader* shader;
-Shader* outlineShader;
-Shader* modelShader;
-
-GLFWwindow* Window;
-
-std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 
 void Parse_Config();
 

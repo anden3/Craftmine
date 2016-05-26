@@ -1,9 +1,15 @@
 #pragma once
 
-#include "Player.h"
+#define GLM_SWIZZLE
+#include <glm/glm.hpp>
+
+#include <string>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+class Player;
+class Chat;
 
 extern const bool Windows;
 

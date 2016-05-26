@@ -1,12 +1,18 @@
 #pragma once
 
-#include "Buffer.h"
-
+#include <map>
 #include <string>
+#include <vector>
 
+class Player;
 class Interface;
+class Inventory;
 
+extern Player player;
 extern Interface interface;
+extern Inventory inventory;
+
+extern double DeltaTime;
 
 struct Message {
     Message(unsigned int Id, float y, std::string text, double timeLeft) : ID(Id), Y(y), Text(text), TimeLeft(timeLeft) {}
@@ -22,10 +28,6 @@ struct Message {
     bool Hidden = false;
 };
 
-extern double DeltaTime;
-
-std::vector<std::string> Process_Commands(std::string message);
-
 class Chat {
 public:
     bool Focused = false;
@@ -35,7 +37,6 @@ public:
     
     void Init();
     
-    void Write(std::string text);
     void Input(unsigned int key);
     void Key_Handler(int key);
     
@@ -43,13 +44,13 @@ public:
     
 private:
     std::map<unsigned int, Message> Messages;
-    unsigned int MessageCount = 0;
-    
     std::vector<std::string> History;
+    
+    unsigned int MessageCount = 0;
     unsigned int HistoryIndex = 0;
+    unsigned int CursorPos = 0;
     
     double LastCursorToggle = 0.0;
-    unsigned int CursorPos = 0;
     bool CursorVisible = true;
     
     std::string NewMessage = "";
@@ -62,5 +63,7 @@ private:
     void Move_Up();
     void Submit();
     
-    void Draw_Background();
+    void Write(std::string text);
+    
+    std::vector<std::string> Process_Commands(std::string message);
 };

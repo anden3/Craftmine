@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Buffer.h"
 #include <string>
 
+#include "Buffer.h"
+
 typedef void (Func)(void);
+typedef std::vector<float> Data;
 
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
@@ -31,12 +33,9 @@ inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data {
 Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets = false);
 std::tuple<unsigned int, int, int> Load_Texture(std::string file);
 
-template <typename T> inline float X_Frac(const T a, const T b) { return SCREEN_WIDTH * float(a) / float(b); }
-template <typename T> inline float Y_Frac(const T a, const T b) { return SCREEN_HEIGHT * float(a) / float(b); }
-template <typename T> inline float X_Per(const T percentage) { return SCREEN_WIDTH * float(percentage) / 100.0f; }
-template <typename T> inline float Y_Per(const T percentage) { return SCREEN_HEIGHT * float(percentage) / 100.0f; }
 template <typename T> inline float Scale_X(const T x) { return (x / 1440.0f) * SCREEN_WIDTH; }
 template <typename T> inline float Scale_Y(const T y) { return (y / 900.0f) * SCREEN_HEIGHT; }
+template <typename T> inline glm::vec2 Scale(const T t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
 template <typename X, typename Y> inline glm::vec2 Scale(const X x, const Y y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
 
 template <typename T> inline void Extend(std::vector<T> &storage, T t) { storage.push_back(t); }

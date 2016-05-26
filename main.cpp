@@ -3,7 +3,34 @@
 #include <sstream>
 #include <fstream>
 
+#include "UI.h"
+#include "Chat.h"
+#include "Sound.h"
+#include "Chunk.h"
+#include "Camera.h"
+#include "Entity.h"
+#include "Player.h"
 #include "Shader.h"
+#include "Interface.h"
+#include "Inventory.h"
+
+Player player;
+Chat chat = Chat();
+Camera Cam = Camera();
+Listener listener = Listener();
+Interface interface = Interface();
+Inventory inventory = Inventory();
+
+Shader* shader;
+Shader* modelShader;
+Shader* outlineShader;
+
+UniformBuffer UBO;
+Buffer OutlineBuffer;
+
+GLFWwindow* Window;
+
+std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 
 int main() {
     glfwInit();
@@ -22,7 +49,7 @@ int main() {
     
 	std::thread chunkGeneration(BackgroundThread);
     
-    player.RenderChunks();
+    player.Render_Chunks();
     
 	while (!glfwWindowShouldClose(Window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -34,7 +61,7 @@ int main() {
 		glfwPollEvents();
         
         if (!GamePaused) {
-            player.PollSounds();
+            player.Poll_Sounds();
             
             if (!MouseEnabled && !chat.Focused) {
                 player.Move(float(DeltaTime));
@@ -151,7 +178,7 @@ void Init_Shaders() {
     outlineShader = new Shader("outline");
     modelShader = new Shader("model");
     
-    glm::mat4 projection = glm::perspective(glm::radians((float)player.Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
+    glm::mat4 projection = glm::perspective(glm::radians((float)Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
     UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4), std::vector<Shader*> {shader, outlineShader, modelShader});
     UBO.Upload(1, projection);
 }
@@ -198,10 +225,7 @@ void Init_Rendering() {
 }
 
 void Render_Scene() {
-    glm::mat4 model;
-    glm::mat4 view = player.Cam.GetViewMatrix();
-    
-    UBO.Upload(0, view);
+    UBO.Upload(0, Cam.GetViewMatrix());
     
 	if (ToggleWireframe) {
 		Wireframe = !Wireframe;
@@ -223,6 +247,7 @@ void Render_Scene() {
 	}
     
     if (player.LookingAtBlock) {
+        glm::mat4 model;
         outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
         OutlineBuffer.Draw();
     }
@@ -272,7 +297,7 @@ void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
         }
         else {
             UI::Key_Handler(key, action);
-            player.KeyHandler(key, action);
+            player.Key_Handler(key, action);
         }
         
         if (action == GLFW_PRESS) {
@@ -292,18 +317,18 @@ void mouse_proxy(GLFWwindow* window, double posX, double posY) {
     UI::Mouse_Handler(posX, posY);
     
     if (!GamePaused && !chat.Focused) {
-        player.MouseHandler(posX, posY);
+        player.Mouse_Handler(posX, posY);
     }
 }
 void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
     if (!GamePaused) {
-        player.ScrollHandler(offsetY);
+        player.Scroll_Handler(offsetY);
     }
 }
 void click_proxy(GLFWwindow* window, int button, int action, int mods) {
     UI::Click(player.LastMousePos.x, player.LastMousePos.y, action, button);
     
     if (!GamePaused) {
-        player.ClickHandler(button, action);
+        player.Click_Handler(button, action);
     }
 }
