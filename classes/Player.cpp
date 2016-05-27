@@ -4,6 +4,7 @@
 #include <sstream>
 #include <dirent.h>
 
+#include "Chat.h"
 #include "Chunk.h"
 #include "Sound.h"
 #include "Camera.h"
@@ -34,10 +35,13 @@ const float ATTRACT_RANGE = 4.0f;
 const float PICKUP_RANGE = 1.5f;
 const float ATTRACT_SPEED = 1.0f;
 
-const int MODEL_TEXTURE_UNIT = 5;
+const int PLAYER_TEXTURE_UNIT = 5;
 
 const float MOVEMENT_ANGLE_START = -45.0f;
 const float MOVEMENT_ANGLE_END = 45.0f;
+
+float PUNCHING_ANGLE_START = 30.0f;
+float PUNCHING_ANGLE_END = 60.0f;
 
 std::set<Chunk*> lightMeshingList;
 
@@ -47,6 +51,7 @@ bool keys[1024] = {0};
 bool MouseDown = false;
 
 int ModelShaderModelLoc;
+int ModelShaderTexLoc;
 
 int NumKeys[10] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_3, GLFW_KEY_4, GLFW_KEY_5, GLFW_KEY_6, GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9, GLFW_KEY_0};
 
@@ -59,6 +64,9 @@ Buffer LeftArmBuffer;
 Buffer RightArmBuffer;
 Buffer LeftLegBuffer;
 Buffer RightLegBuffer;
+
+int punchingAngleDirection = 200;
+float punchingAngle = 0.0f;
 
 int movementAngleDirection = 5000;
 float movementAngle = 0.0f;
@@ -114,11 +122,12 @@ void Player::Init() {
     glm::vec4 hpDims(50, 50, 200, 20);
     glm::vec3 hpRange(0, 100, 100);
     
-    glActiveTexture(GL_TEXTURE0 + MODEL_TEXTURE_UNIT);
+    glActiveTexture(GL_TEXTURE0 + PLAYER_TEXTURE_UNIT);
     unsigned int texture = std::get<0>(Load_Texture("skin.png"));
     glBindTexture(GL_TEXTURE_2D, texture);
     
     ModelShaderModelLoc = modelShader->Get_Location("model");
+    ModelShaderTexLoc = modelShader->Get_Location("tex");
     
     HoldingBuffer.Init(modelShader);
     DamageBuffer.Init(modelShader);
@@ -192,10 +201,10 @@ void Player::Draw_Model() {
         return;
     }
     
-    modelShader->Upload("tex", MODEL_TEXTURE_UNIT);
+    modelShader->Upload(ModelShaderTexLoc, PLAYER_TEXTURE_UNIT);
     
     static glm::vec3 translateOffsets[6] = {
-        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 1.5, 0),
+        glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 1.50, 0),
         glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 0.75, 0)
     };
     
@@ -206,67 +215,51 @@ void Player::Draw_Model() {
     
     static Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer};
     
-    if (!ThirdPerson) { // Only draw arm if holding mouse down and in first person.
+    if (!ThirdPerson) { // Only draw right arm if holding mouse down and in first person.
         glm::mat4 model;
         model = glm::translate(model, WorldPos + translateOffsets[3]);
-        model = glm::rotate(model, float(glm::radians(45.0f)), Cam.Right);
+        model = glm::rotate(model, glm::radians(punchingAngle), Cam.Right);
         model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
         model = glm::scale(model, scalingFactors[3]);
         modelShader->Upload(ModelShaderModelLoc, model);
         buffers[3]->Draw();
-        return;
     }
-    
-    if (movementAngle >= MOVEMENT_ANGLE_END || movementAngle <= MOVEMENT_ANGLE_START) {
-        movementAngle -= 1 * std::copysign(1, movementAngle);
-        movementAngleDirection *= -1;
-    }
-    
-    for (int i = 0; i < 6; i++) {
-        glm::mat4 model;
-        model = glm::translate(model, WorldPos + translateOffsets[i]);
-        
-        if (i == 2 || i == 5) {
-            model = glm::rotate(model, float(glm::radians(movementAngle)), Cam.Right);
-        }
-        
-        else if (i == 3) {
-            if (MouseDown) {
-                model = glm::rotate(model, float(glm::radians(45.0f)), Cam.Right);
-                
+    else {
+        for (int i = 0; i < 6; i++) {
+            glm::mat4 model;
+            model = glm::translate(model, WorldPos + translateOffsets[i]);
+            
+            float angle = glm::radians((i == 3 && MouseDown) ? punchingAngle : movementAngle) * ((i == 2 || i == 5) ? -1 : 1);
+            
+            if (i > 1) {
+                model = glm::rotate(model, angle, Cam.Right);
             }
-            else {
-                model = glm::rotate(model, float(glm::radians(-movementAngle)), Cam.Right);
+            
+            model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
+            
+            if (i == 0) {
+                model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
             }
+            
+            model = glm::scale(model, scalingFactors[i]);
+            
+            modelShader->Upload(ModelShaderModelLoc, model);
+            buffers[i]->Draw();
         }
-        
-        else if (i == 4) {
-            model = glm::rotate(model, float(glm::radians(-movementAngle)), Cam.Right);
-        }
-        
-        model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
-        
-        if (i == 0) {
-            model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
-        }
-        
-        model = glm::scale(model, scalingFactors[i]);
-        
-        modelShader->Upload(ModelShaderModelLoc, model);
-        buffers[i]->Draw();
     }
     
     if (CurrentBlock != 0) {
-        glm::vec3 offset = WorldPos + glm::vec3(0, 1.6f + glm::sin(glm::radians(movementAngle - 90)), 0) + Cam.RightDirection * 0.37f + Cam.FrontDirection * glm::cos(glm::radians(movementAngle + 90));
+        float angle = glm::radians((MouseDown ? punchingAngle : movementAngle) - 90);
+        glm::vec3 offset = WorldPos + glm::vec3(0, 1.6f + glm::sin(angle), 0) + Cam.RightDirection * 0.37f + Cam.FrontDirection * glm::cos(angle);
         
         glm::mat4 model;
         model = glm::translate(model, offset);
-        model = glm::rotate(model, float(glm::radians(-movementAngle)), glm::vec3(Cam.Right));
+        model = glm::rotate(model, angle, glm::vec3(Cam.Right));
         model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
         model = glm::scale(model, glm::vec3(0.2f));
         
         modelShader->Upload(ModelShaderModelLoc, model);
-        modelShader->Upload("tex", 0);
+        modelShader->Upload(ModelShaderTexLoc, 0);
         HoldingBuffer.Draw();
     }
 }
@@ -282,7 +275,7 @@ void Player::Draw_Holding() {
     model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
     
     modelShader->Upload(ModelShaderModelLoc, model);
-    modelShader->Upload("tex", 0);
+    modelShader->Upload(ModelShaderTexLoc, 0);
     HoldingBuffer.Draw();
 }
 
@@ -293,7 +286,7 @@ void Player::Draw_Damage() {
     
     glm::mat4 model;
     modelShader->Upload(ModelShaderModelLoc, glm::translate(model, Get_World_Pos(LookingChunk, LookingTile)));
-    modelShader->Upload("tex", 0);
+    modelShader->Upload(ModelShaderTexLoc, 0);
     
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-4.0f, -4.0f);
@@ -359,12 +352,35 @@ void Player::Move(float deltaTime, bool update) {
         ColDetection();
         
         if (Velocity.xz() != glm::vec2(0)) {
+            if (movementAngle >= MOVEMENT_ANGLE_END && movementAngleDirection > 0) {
+                movementAngleDirection *= -1;
+            }
+            else if (movementAngle <= MOVEMENT_ANGLE_START && movementAngleDirection < 0) {
+                movementAngleDirection *= -1;
+            }
+            
             movementAngle += deltaTime * movementAngleDirection * speed;
         }
         else {
             movementAngle = 0.0f;
         }
 	}
+    
+    if (MouseDown) {
+        punchingAngle += deltaTime * punchingAngleDirection;
+        
+        if (punchingAngle >= PUNCHING_ANGLE_END && punchingAngleDirection > 0) {
+            punchingAngle = PUNCHING_ANGLE_END;
+            punchingAngleDirection *= -1;
+        }
+        else if (punchingAngle <= PUNCHING_ANGLE_START && punchingAngleDirection < 0) {
+            punchingAngle = PUNCHING_ANGLE_START;
+            punchingAngleDirection *= -1;
+        }
+    }
+    else {
+        punchingAngle = PUNCHING_ANGLE_START;
+    }
     
     Check_Pickup();
     
@@ -434,12 +450,13 @@ void Player::Draw() {
     
     if (!ThirdPerson) {
         glClear(GL_DEPTH_BUFFER_BIT);
-        Draw_Holding();
+        
+        if (!MouseDown && CurrentBlock > 0) {
+            Draw_Holding();
+        }
     }
     
-    else {
-        Draw_Model();
-    }
+    Draw_Model();
     
     interface.Draw_Document("playerUI");
 }
@@ -674,6 +691,9 @@ void Player::Mouse_Handler(double posX, double posY) {
     Cam.UpdateCameraVectors();
     
     Rotation = float(glm::radians(270.0f - Cam.Yaw));
+    
+    PUNCHING_ANGLE_START = Cam.Pitch + 90;
+    PUNCHING_ANGLE_END = Cam.Pitch + 120;
 
 	listener.Set_Orientation(Cam.Front, Cam.Up);
 

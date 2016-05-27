@@ -40,6 +40,7 @@ public:
     void Input(unsigned int key);
     void Key_Handler(int key);
     
+    void Write(std::string text);
     void Update();
     
 private:
@@ -62,8 +63,6 @@ private:
     void Update_Message();
     void Move_Up();
     void Submit();
-    
-    void Write(std::string text);
     
     std::vector<std::string> Process_Commands(std::string message);
 };
