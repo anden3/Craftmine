@@ -87,6 +87,7 @@ public:
     bool Generated = false;
     bool Meshed = false;
     bool DataUploaded = false;
+    bool Visible = true;
 
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
@@ -119,6 +120,7 @@ public:
     
 private:
     void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
+    void Check_Ore(glm::ivec3 pos, glm::vec3 noisePos);
     int GetAO(glm::vec3 block, int face, int offset);
         
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};

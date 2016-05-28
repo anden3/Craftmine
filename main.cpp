@@ -75,6 +75,10 @@ int main() {
         
         UI::Draw();
         
+        if (keys[GLFW_KEY_L]) {
+            Take_Screenshot();
+        }
+        
 		glfwSwapBuffers(Window);
 	}
     
@@ -242,7 +246,9 @@ void Render_Scene() {
                 chunk.second->DataUploaded = true;
             }
             
-            chunk.second->buffer.Draw();
+            if (chunk.second->Visible) {
+                chunk.second->buffer.Draw();
+            }
         }
 	}
     

@@ -122,10 +122,6 @@ void Player::Init() {
     glm::vec4 hpDims(50, 50, 200, 20);
     glm::vec3 hpRange(0, 100, 100);
     
-    glActiveTexture(GL_TEXTURE0 + PLAYER_TEXTURE_UNIT);
-    unsigned int texture = std::get<0>(Load_Texture("skin.png"));
-    glBindTexture(GL_TEXTURE_2D, texture);
-    
     ModelShaderModelLoc = modelShader->Get_Location("model");
     ModelShaderTexLoc = modelShader->Get_Location("tex");
     
@@ -144,6 +140,10 @@ void Player::Init() {
 }
 
 void Player::Init_Model() {
+    glActiveTexture(GL_TEXTURE0 + PLAYER_TEXTURE_UNIT);
+    unsigned int texture = std::get<0>(Load_Texture("skin.png"));
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
     Buffer* buffers[6] = { &HeadBuffer, &BodyBuffer, &LeftArmBuffer, &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer };
     glm::vec3 offsets[6] = {
         glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(2.0f, 1.0f, 0.5f),
@@ -228,16 +228,15 @@ void Player::Draw_Model() {
         for (int i = 0; i < 6; i++) {
             glm::mat4 model;
             model = glm::translate(model, WorldPos + translateOffsets[i]);
-            
             float angle = glm::radians((i == 3 && MouseDown) ? punchingAngle : movementAngle) * ((i == 2 || i == 5) ? -1 : 1);
             
-            if (i > 1) {
+            if (i >= 2) { // Rotate body parts
                 model = glm::rotate(model, angle, Cam.Right);
             }
             
             model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
             
-            if (i == 0) {
+            if (i == 0) { // Rotate head up/down
                 model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
             }
             
@@ -288,6 +287,7 @@ void Player::Draw_Damage() {
     modelShader->Upload(ModelShaderModelLoc, glm::translate(model, Get_World_Pos(LookingChunk, LookingTile)));
     modelShader->Upload(ModelShaderTexLoc, 0);
     
+    // "Fix" for Z-Fighting
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-4.0f, -4.0f);
     DamageBuffer.Draw();
@@ -385,18 +385,28 @@ void Player::Move(float deltaTime, bool update) {
     Check_Pickup();
     
     if (MouseDown && LookingAtBlock) {
-        MouseTimer += deltaTime;
-        
-        int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
-        float requiredTime = blockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
-        
-        if (MouseTimer >= requiredTime) {
-            Break_Block();
+        if (Creative) {
             MouseTimer = 0.0;
-            update = true;
+            Break_Block();
         }
         else {
-            Mesh_Damage(floor(MouseTimer / requiredTime * 10));
+            MouseTimer += deltaTime;
+            
+            float requiredTime = 0.0f;
+            int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
+            
+            if (blockHardness.count(blockType)) {
+                requiredTime = blockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
+            }
+            
+            if (MouseTimer >= requiredTime) {
+                Break_Block();
+                MouseTimer = 0.0;
+                update = true;
+            }
+            else {
+                Mesh_Damage(floor(MouseTimer / requiredTime * 10));
+            }
         }
     }
     
@@ -611,11 +621,11 @@ void Player::Key_Handler(int key, int action) {
             Flying = !Flying;
         }
 
-        if (key == GLFW_KEY_SPACE && OnGround) {
+        else if (key == GLFW_KEY_SPACE && OnGround) {
             Jumping = true;
         }
         
-        if (key == GLFW_KEY_TAB) {
+        else if (key == GLFW_KEY_TAB) {
             inventory.Is_Open = !inventory.Is_Open;
             inventory.Mesh();
             
@@ -626,11 +636,11 @@ void Player::Key_Handler(int key, int action) {
             Mesh_Holding();
         }
         
-        if (key == GLFW_KEY_Q) {
+        else if (key == GLFW_KEY_Q) {
             Drop_Item();
         }
         
-        if (key == GLFW_KEY_V) {
+        else if (key == GLFW_KEY_V) {
             ThirdPerson = !ThirdPerson;
             Move(0.0f, true);
         }
@@ -715,6 +725,22 @@ void Player::Mouse_Handler(double posX, double posY) {
     
     if (ThirdPerson) {
         Cam.Position = glm::vec3(WorldPos.x, WorldPos.y + CAMERA_HEIGHT, WorldPos.z) - Cam.Front * 2.0f;
+    }
+    
+    // Frustrum Culling Chunks
+    for (auto const &chunk : ChunkMap) {
+        if (glm::distance(CurrentChunk.xz(), chunk.first.xz()) <= 2) {
+            chunk.second->Visible = true;
+        }
+        else {
+            float dot = 0;
+            
+            if (chunk.first.xz() != CurrentChunk.xz()) {
+                dot = glm::dot(Cam.FrontDirection.xz(), glm::normalize(chunk.first.xz() - CurrentChunk.xz()));
+            }
+            
+            chunk.second->Visible = glm::degrees(glm::acos(dot)) <= DEFAULT_FOV;
+        }
     }
 }
 

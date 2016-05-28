@@ -32,14 +32,15 @@ inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data {
 
 Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets = false);
 std::tuple<unsigned int, int, int> Load_Texture(std::string file);
+void Take_Screenshot();
 
 template <typename T> inline float Scale_X(const T x) { return (x / 1440.0f) * SCREEN_WIDTH; }
 template <typename T> inline float Scale_Y(const T y) { return (y / 900.0f) * SCREEN_HEIGHT; }
 template <typename T> inline glm::vec2 Scale(const T t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
 template <typename X, typename Y> inline glm::vec2 Scale(const X x, const Y y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
 
-template <typename T> inline void Extend(std::vector<T> &storage, T t) { storage.push_back(t); }
-template <typename T, typename... Args> inline void Extend(std::vector<T> &storage, T t, Args... args) { storage.push_back(t); Extend(storage, args...); }
+template <typename V, typename T> inline void Extend(std::vector<V> &storage, T t) { storage.push_back(V(t)); }
+template <typename V, typename T, typename... Args> inline void Extend(std::vector<V> &storage, T t, Args... args) { storage.push_back(V(t)); Extend(storage, args...); }
 template <typename T> inline void Extend(std::vector<T> &storage, std::vector<T> input) { for (T const &element : input) { storage.push_back(element); } }
 template <typename T> inline void Extend(std::vector<T> &storage, glm::vec2 input) { Extend(storage, T(input.x), T(input.y)); }
 template <typename T> inline void Extend(std::vector<T> &storage, glm::vec3 input) { Extend(storage, T(input.x), T(input.y), T(input.z)); }
@@ -224,7 +225,7 @@ public:
     
     inline void Set_Document(std::string document) { ActiveDocument = document; }
     float Get_String_Width(std::string string);
-    int Get_Fitting_String(std::string string, int width);
+    std::vector<std::string> Get_Fitting_String(std::string string, int width);
     
     inline void Add_Text(std::string name, std::string text, glm::vec2 pos) { Add_Text(name, text, pos.x, pos.y); }
     inline void Add_Button(std::string name, std::string text, glm::vec4 dims, Func &function) { Add_Button(name, text, dims.x, dims.y, dims.z, dims.w, function); }

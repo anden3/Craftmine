@@ -61,7 +61,7 @@ private:
     
     void Toggle_Cursor(int opacity = -1);
     void Update_Message();
-    void Move_Up();
+    void Move_Up(float spacing);
     void Submit();
     
     std::vector<std::string> Process_Commands(std::string message);

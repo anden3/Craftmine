@@ -7,16 +7,21 @@ const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
 const float NOISE_DENSITY_CAVE = -0.85f;
 
+const std::map<int, glm::vec2> OreRanges = {
+    {15, glm::vec2( 1.20,  1.30)}, // Iron Ore
+    {16, glm::vec2(-0.81, -0.80)}, // Coal Ore
+};
+
 bool Seeded = false;
 
 noise::module::Perlin noiseModule;
 noise::module::RidgedMulti ridgedNoise;
+noise::module::RidgedMulti oreNoise;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
 std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
-
 std::map<glm::vec3, std::map<glm::vec3, int, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
 
 void Seed() {
@@ -35,6 +40,9 @@ void Seed() {
     ridgedNoise.SetSeed(seed);
     ridgedNoise.SetOctaveCount(2);
     ridgedNoise.SetFrequency(5.0);
+    
+    oreNoise.SetSeed(uni(rng));
+    oreNoise.SetFrequency(2.0);
 }
 
 Chunk::Chunk(glm::vec3 position) {
@@ -64,22 +72,35 @@ void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
 	}
 }
 
+void Chunk::Check_Ore(glm::ivec3 pos, glm::vec3 noisePos) {
+    double value = oreNoise.GetValue(noisePos.x, noisePos.y, noisePos.z);
+    
+    for (auto const &range : OreRanges) {
+        if (value >= range.second.x && value <= range.second.y) {
+            Set_Block(pos, range.first);
+            Set_Light(pos, SUN_LIGHT_LEVEL);
+            Blocks.insert(pos);
+            return;
+        }
+    }
+    
+    Set_Block(pos, 1);
+}
+
 void Chunk::Generate() {
     glm::vec2 topPos = Position.xz();
+    glm::vec3 positionOffset = Position * float(CHUNK_SIZE);
+    
+    bool underground = Position.y < -3;
+    float densityThreshold = underground ? NOISE_DENSITY_CAVE : NOISE_DENSITY_BLOCK;
     
     if (Position.y == 3) {
         topBlocks[topPos].clear();
     }
-
+    
     for (int x = -1; x <= CHUNK_SIZE; x++) {
-        float nx = (Position.x * CHUNK_SIZE + x) / CHUNK_ZOOM;
-
         for (int z = -1; z <= CHUNK_SIZE; z++) {
-            float nz = (Position.z * CHUNK_SIZE + z) / CHUNK_ZOOM;
-
             for (int y = CHUNK_SIZE; y >= -1; y--) {
-                float ny = (Position.y * CHUNK_SIZE + y) / CHUNK_ZOOM;
-                
                 glm::ivec3 block(x, y, z);
 
 				glm::bvec3 inChunk = glm::bvec3(
@@ -108,17 +129,8 @@ void Chunk::Generate() {
                     }
                 }
                 else {
-                    double noiseValue;
-                    float densityThreshold;
-                    
-                    if (Position.y >= -3) {
-                        noiseValue = noiseModule.GetValue(nx, ny, nz) - ny * 2;
-                        densityThreshold = NOISE_DENSITY_BLOCK;
-                    }
-                    else {
-                        noiseValue = ridgedNoise.GetValue(nx, ny, nz);
-                        densityThreshold = NOISE_DENSITY_CAVE;
-                    }
+                    glm::vec3 nPos = (positionOffset + glm::vec3(x, y, z)) / float(CHUNK_ZOOM);
+                    double noiseValue = underground ? ridgedNoise.GetValue(nPos.x, nPos.y, nPos.z) : (noiseModule.GetValue(nPos.x, nPos.y, nPos.z) - nPos.y * 2);
                     
                     if (noiseValue >= densityThreshold) {
                         if (inChunk.x && inChunk.y && inChunk.z) {
@@ -135,7 +147,7 @@ void Chunk::Generate() {
                                 int depth = std::abs(topBlocks[topPos][block.xz()] - int(Position.y * CHUNK_SIZE + y));
                                 
                                 if (depth > 3) {
-                                    Set_Block(block, 1);
+                                    underground ? Check_Ore(block, nPos) : Set_Block(block, 1);
                                 }
                                 else {
                                     Set_Block(block, 3);
@@ -308,7 +320,7 @@ void Chunk::Mesh() {
     VBOData.clear();
     
     std::set<glm::vec3>::iterator block = Blocks.begin();
-
+    
     while (block != Blocks.end()) {
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
         float lightValue = float(Get_Light(*block));
@@ -320,9 +332,6 @@ void Chunk::Mesh() {
             int bit = 0;
 			unsigned int blockType = Get_Block(*block);
 			glm::vec2 texPosition = textureCoords[blockType];
-
-			float texStartX = texPosition.x - 1.0f;
-			float texStartY = texPosition.y - 1.0f;
 
             while (bit < 6) {
                 if (seesAir & 1) {
@@ -349,8 +358,8 @@ void Chunk::Mesh() {
 						}
 
 						else {
-							VBOData.push_back((texStartX + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
-							VBOData.push_back((texStartY + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
+							VBOData.push_back((texPosition.x - 1.0f + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
+							VBOData.push_back((texPosition.y - 1.0f + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
 						}
                         
                         VBOData.push_back(lightValue);

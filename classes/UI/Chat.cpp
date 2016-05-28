@@ -17,8 +17,8 @@ void Chat::Init() {
     glm::vec2 messageDims = Scale(50, 70);
     glm::vec2 chatPad = Scale(10);
     
-    chatDims = glm::vec4(Scale(50, 100), Scale(250, 400));
-    glm::vec4 messageArea(Scale(50, 60), Scale(250, 20));
+    chatDims = glm::vec4(Scale(50, 100), Scale(400, 400));
+    glm::vec4 messageArea(Scale(50, 60), Scale(400, 20));
     
     interface.Set_Document("chatFocused");
     interface.Add_Text("newMessage", "", messageDims);
@@ -33,25 +33,19 @@ void Chat::Init() {
 }
 
 void Chat::Write(std::string text) {
-    int stringPart = interface.Get_Fitting_String(text, chatDims.z);
+    std::vector<std::string> strings = interface.Get_Fitting_String(text, chatDims.z);
+    int index = 1;
     
-    if (stringPart > 0) {
-        std::string fittedWidth = text.substr(0, stringPart);
-        std::string remainder = text.substr(fittedWidth.length() - 1);
+    for (auto const &string : strings) {
+        Move_Up((index++ == 1) ? 30 : 20);
         
-        Write(fittedWidth);
-        Write(remainder);
-        return;
+        ++MessageCount;
+        Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, string, MESSAGE_TIME));
+        
+        interface.Set_Document("chat");
+        interface.Add_Text(std::to_string(MessageCount), string, chatDims.xy());
+        interface.Set_Document("");
     }
-    
-    Move_Up();
-    
-    ++MessageCount;
-    Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, text, MESSAGE_TIME));
-    
-    interface.Set_Document("chat");
-    interface.Add_Text(std::to_string(MessageCount), text, chatDims.xy());
-    interface.Set_Document("");
 }
 
 void Chat::Key_Handler(int key) {
@@ -116,6 +110,10 @@ void Chat::Key_Handler(int key) {
 }
 
 void Chat::Input(unsigned int key) {
+    if (key == 38) { // Stops player from inputting color codes by blocking the ampersand symbol
+        return;
+    }
+    
     UnicodeString string((UChar32)key);
     std::string str;
     string.toUTF8String(str);
@@ -163,15 +161,13 @@ void Chat::Update_Message() {
     interface.Set_Document("");
 }
 
-void Chat::Move_Up() {
-    static float SPACING = Scale_Y(22);
-    
+void Chat::Move_Up(float spacing) {
     interface.Set_Document("chat");
     
     auto it = std::begin(Messages);
     
     while (it != std::end(Messages)) {
-        it->second.Y += SPACING;
+        it->second.Y += spacing;
         
         if (it->second.Y >= (chatDims.y + chatDims.w)) {
             interface.Delete_Text(std::to_string(it->first));
@@ -266,9 +262,21 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
     
     std::string command = parameters[0];
     
-    if (command == "tp") {
+    if (command == "help") {
+        return std::vector<std::string> {
+            "List of commands:",
+            "&a/help&f: Displays this list.",
+            "&a/tp&f <&2X&f> <&2Y&f> <&2Z&f>: Teleports player to specified location.",
+            "&a/give&f <&2ID&f> [&2NUM&f]: Gives &2NUM&f (or 64 if &2NUM&f is unspecified) blocks of type &2ID&f to player.",
+            "&a/clear&f: Clears the player's inventory.",
+            "&a/gamemode&f <&2MODE&f>: Sets the player's gamemode to &6Creative&f if &2MODE&f is &5'c'&f, or &6Survival&f if &2MODE&f is &5's'&f.",
+            "&a/pos&f: Displays player's position, current chunk, and current tile."
+        };
+    }
+    
+    else if (command == "tp") {
         if (parameters.size() < 4) {
-            return std::vector<std::string> {"Error! Not enough parameters."};
+            return std::vector<std::string> {"&4Error! &fNot enough parameters."};
         }
         
         int x = std::stoi(parameters[1]);
@@ -277,24 +285,19 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         
         player.Teleport(glm::vec3(x, y, z));
         
-        return std::vector<std::string> {"Player teleported to (" + parameters[1] + ", " + parameters[2] + ", " + parameters[3] + ")."};
+        return std::vector<std::string> {"Player teleported to (&3" + parameters[1] + "&f, &3" + parameters[2] + "%f, &3" + parameters[3] + "&f)."};
     }
     
     else if (command == "give") {
         if (parameters.size() < 2) {
-            return std::vector<std::string> {"Error! Missing parameter <BlockID>."};
+            return std::vector<std::string> {"&4Error! &fMissing parameter <&2ID&f>."};
         }
         
-        int block = std::stoi(parameters[1]);
-        int size = 64;
+        int size = (parameters.size() >= 3) ? std::stoi(parameters[2]) : 64;
         
-        if (parameters.size() >= 3) {
-            size = std::stoi(parameters[2]);
-        }
-        
-        inventory.Add_Stack(block, size);
+        inventory.Add_Stack(std::stoi(parameters[1]), size);
         player.Mesh_Holding();
-        return std::vector<std::string> {"Given block " + parameters[1] + " to player."};
+        return std::vector<std::string> {"Given block &2" + parameters[1] + "&f to player."};
     }
     
     else if (command == "clear") {
@@ -305,15 +308,15 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
     
     else if (command == "gamemode") {
         if (parameters.size() < 2) {
-            return std::vector<std::string> {"Error! Missing parameter <mode>."};
+            return std::vector<std::string> {"&4Error! &fMissing parameter <&2MODE&f>."};
         }
         
         if (parameters[1] == "c" || parameters[1] == "s") {
             player.Creative = parameters[1] == "c";
-            return std::vector<std::string> {"Gamemode changed to " + std::string(((parameters[1] == "c") ? "Creative." : "Survival."))};
+            return std::vector<std::string> {"Gamemode changed to &6" + std::string(((parameters[1] == "c") ? "Creative&f." : "Survival&f."))};
         }
         
-        return std::vector<std::string> {"Error! Invalid gamemode."};
+        return std::vector<std::string> {"&4Error! %fInvalid gamemode."};
     }
     
     else if (command == "pos") {
@@ -324,5 +327,5 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         };
     }
     
-    return std::vector<std::string> {"Error! Command not recognized."};
+    return std::vector<std::string> {"&4Error! &fCommand not recognized."};
 }

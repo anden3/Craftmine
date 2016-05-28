@@ -22,6 +22,7 @@ Buffer TextBuffer;
 int BgColorLoc;
 int BgAlphaLoc;
 int BorderColorLoc;
+int TextColorLoc;
 
 const int       TEXT_TEXTURE_UNIT         = 10;
 const float     TEXT_PADDING              = 20;
@@ -56,6 +57,34 @@ const glm::vec3 BAR_TEXT_COLOR            = glm::vec3(1.0f);
 const float     BACKGROUND_OPACITY        = 0.7f;
 const glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
 const glm::vec3 BACKGROUND_BORDER_COLOR   = glm::vec3(0.5f);
+
+std::map<char, glm::vec3> ColorCodes = {
+    {'0', glm::vec3(0.000, 0.000, 0.000)}, // Black
+    {'1', glm::vec3(0.000, 0.000, 0.666)}, // Dark Blue
+    {'2', glm::vec3(0.000, 0.666, 0.000)}, // Dark Green
+    {'3', glm::vec3(0.000, 0.666, 0.666)}, // Dark Aqua
+    {'4', glm::vec3(0.666, 0.000, 0.000)}, // Dark Red
+    {'5', glm::vec3(0.666, 0.000, 0.666)}, // Dark Purple
+    {'6', glm::vec3(1.000, 0.666, 0.000)}, // Gold
+    {'7', glm::vec3(0.666, 0.666, 0.666)}, // Grey
+    {'8', glm::vec3(0.333, 0.333, 0.333)}, // Dark Grey
+    {'9', glm::vec3(0.333, 0.333, 1.000)}, // Blue
+    {'a', glm::vec3(0.333, 1.000, 0.333)}, // Green
+    {'b', glm::vec3(0.333, 1.000, 1.000)}, // Aqua
+    {'c', glm::vec3(1.000, 0.333, 0.333)}, // Red
+    {'d', glm::vec3(1.000, 0.333, 1.000)}, // Light Purple
+    {'e', glm::vec3(1.000, 1.000, 0.333)}, // Yellow
+    {'f', glm::vec3(1.000, 1.000, 1.000)}, // White
+};
+
+struct Character {
+    unsigned int TextureID;
+    glm::ivec2 Size;
+    glm::ivec2 Bearing;
+    unsigned int Advance;
+};
+
+std::map<char, Character> Characters;
 
 Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     Data data;
@@ -123,14 +152,9 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file) {
     return std::make_tuple(texture, width, height);
 }
 
-struct Character {
-    unsigned int TextureID;
-    glm::ivec2 Size;
-    glm::ivec2 Bearing;
-    unsigned int Advance;
-};
-
-std::map<char, Character> Characters;
+void Take_Screenshot() {
+    SOIL_save_screenshot("/Users/mac/Desktop/screenshot.bmp", SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+}
 
 void TextElement::Create(std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
     Text = text;
@@ -157,37 +181,41 @@ void TextElement::Draw() {
         return;
     }
     
-    TextBuffer.BufferShader->Upload("textColor", glm::vec4(Color, Opacity));
+    TextBuffer.BufferShader->Upload(TextColorLoc, glm::vec4(Color, Opacity));
     
     glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
     
     float charX = X;
+    bool nextCharIsControl = false;
     
-    for (char const c : Text) {
-        Character ch = Characters[c];
+    for (auto const &c : Text) {
+        if (c == '&') {
+            nextCharIsControl = true;
+        }
         
-        float xPos = charX + ch.Bearing.x * Scale;
-        float yPos = Y - (ch.Size.y - ch.Bearing.y) * Scale;
+        else if (nextCharIsControl) {
+            nextCharIsControl = false;
+            TextBuffer.BufferShader->Upload(TextColorLoc, glm::vec4(ColorCodes[c], Opacity));
+        }
         
-        float w = ch.Size.x * Scale;
-        float h = ch.Size.y * Scale;
-        
-        Data text_vertices = {
-            xPos,     yPos + h,   0, 0,
-            xPos,     yPos,       0, 1,
-            xPos + w, yPos,       1, 1,
+        else {
+            Character ch = Characters[c];
             
-            xPos,     yPos + h,   0, 0,
-            xPos + w, yPos,       1, 1,
-            xPos + w, yPos + h,   1, 0
-        };
-        
-        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-        
-        TextBuffer.Upload(text_vertices, 0, true);
-        TextBuffer.Draw();
-        
-        charX += (ch.Advance >> 6) * Scale;
+            float xPos = charX + ch.Bearing.x * Scale;
+            float yPos = Y - (ch.Size.y - ch.Bearing.y) * Scale;
+            
+            float w = ch.Size.x * Scale;
+            float h = ch.Size.y * Scale;
+            
+            Data text_vertices = { xPos, yPos + h, 0, 0, xPos, yPos, 0, 1, xPos + w, yPos, 1, 1, xPos, yPos + h, 0, 0, xPos + w, yPos, 1, 1, xPos + w, yPos + h, 1, 0 };
+            
+            glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+            
+            TextBuffer.Upload(text_vertices, 0, true);
+            TextBuffer.Draw();
+            
+            charX += (ch.Advance >> 6) * Scale;
+        }
     }
     
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -534,6 +562,7 @@ void Interface::Init_Shaders() {
 
 void Interface::Init_Text() {
     Shader* TextShader = new Shader("text");
+    TextColorLoc = TextShader->Get_Location("textColor");
     
     FT_Library ft;
     FT_Face face;
@@ -568,7 +597,7 @@ void Interface::Init_Text() {
             texture,
             glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            (unsigned int)face->glyph->advance.x
+            (unsigned int)face->glyph->advance.x,
         };
         
         Characters.insert(std::pair<char, Character>(c, character));
@@ -583,7 +612,7 @@ void Interface::Init_Text() {
     data.resize(4 * 6);
     
     TextBuffer.Init(TextShader);
-    TextBuffer.Create(4, data);
+    TextBuffer.Create(2, 2, data);
     
     TextShader->Upload("projection", glm::ortho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT));
     TextShader->Upload("text", TEXT_TEXTURE_UNIT);
@@ -677,19 +706,55 @@ float Interface::Get_String_Width(std::string string) {
     return currentWidth;
 }
 
-int Interface::Get_Fitting_String(std::string string, int width) {
+std::vector<std::string> Interface::Get_Fitting_String(std::string string, int width) {
     float currentWidth = 0;
     int index = 0;
+    int prevIndex = 0;
+    bool addedString = false;
+    bool ignoreNext = false;
+    
+    std::vector<std::string> partStrings;
     
     for (char const &c : string) {
-        currentWidth += (Characters[c].Advance >> 6);
+        if (c == '&' || ignoreNext) {
+            ignoreNext = !ignoreNext;
+        }
         
-        if (currentWidth > width) {
-            return index;
+        else {
+            currentWidth += (Characters[c].Advance >> 6);
+            addedString = currentWidth > width;
+            
+            if (addedString) {
+                if (c != ' ') {
+                    unsigned long lastSpacePos = string.substr(prevIndex, index).rfind(' ');
+                    
+                    if (lastSpacePos != std::string::npos) {
+                        partStrings.push_back(string.substr(prevIndex, lastSpacePos));
+                        prevIndex = int(lastSpacePos) + 1;
+                        currentWidth = Get_String_Width(string.substr(prevIndex, index - prevIndex));
+                    }
+                    
+                    else {
+                        partStrings.push_back(string.substr(prevIndex, index - prevIndex));
+                        prevIndex = index;
+                        currentWidth = 0;
+                    }
+                }
+                
+                else {
+                    partStrings.push_back(string.substr(prevIndex, index - prevIndex));
+                    prevIndex = index + 1;
+                    currentWidth = 0;
+                }
+            }
         }
         
         ++index;
     }
     
-    return 0;
+    if (!addedString) {
+        partStrings.push_back(string.substr(prevIndex));
+    }
+    
+    return partStrings;
 }
