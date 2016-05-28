@@ -5,6 +5,7 @@
 
 #include "Chunk.h"
 #include "Shader.h"
+#include "Interface.h"
 
 std::vector<EntityInstance*> Entities;
 
@@ -14,35 +15,26 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
     
     Data data;
     
-    glm::vec2 texPosition = textureCoords[type];
-    
-    float texStartX = texPosition.x - 1.0f;
-    float texStartY = texPosition.y - 1.0f;
-    
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
             if (CustomVertices.count(type)) {
-                data.push_back((CustomVertices[type][i][vertices[i][j][0]].x - 0.5f) * ENTITY_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j][1]].y - 0.5f) * ENTITY_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j][2]].z - 0.5f) * ENTITY_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j].x].x - 0.5f) * ENTITY_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j].y].y - 0.5f) * ENTITY_SCALE);
+                data.push_back((CustomVertices[type][i][vertices[i][j].z].z - 0.5f) * ENTITY_SCALE);
             }
             else {
-                data.push_back((vertices[i][j][0] - 0.5f) * ENTITY_SCALE);
-                data.push_back((vertices[i][j][1] - 0.5f) * ENTITY_SCALE);
-                data.push_back((vertices[i][j][2] - 0.5f) * ENTITY_SCALE);
+                Extend(data, (vertices[i][j] - 0.5f) * ENTITY_SCALE);
             }
             
             if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / IMAGE_SIZE_X);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / IMAGE_SIZE_Y);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
             else if (MultiTextures.count(type)) {
-                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
             else {
-                data.push_back((texStartX + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((texStartY + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (textureCoords[type] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
         }
     }

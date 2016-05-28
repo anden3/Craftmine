@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <vector>
 
 #define GLM_SWIZZLE
@@ -20,6 +21,8 @@ struct Stack {
     unsigned int Type;
     unsigned int Size;
 };
+
+extern std::map<unsigned int, glm::vec2> BlockIcons;
 
 extern bool keys[1024];
 

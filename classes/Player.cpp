@@ -29,8 +29,6 @@ const float HITSCAN_STEP_SIZE = 0.1f;
 
 const float JUMP_HEIGHT = 0.1f;
 
-const int TORCH_LIGHT_LEVEL = 12;
-
 const float ATTRACT_RANGE = 4.0f;
 const float PICKUP_RANGE = 1.5f;
 const float ATTRACT_SPEED = 1.0f;
@@ -97,20 +95,18 @@ Data Create_Textured_Cube(const int type, glm::vec3 offset) {
                 Extend(data, CustomVertices[type][i][vertices[i][j][0]]);
             }
             else {
-                Extend(data, vecVertices[i][j] + offset);
+                Extend(data, vertices[i][j] + offset);
             }
             
             if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / IMAGE_SIZE_X);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / IMAGE_SIZE_Y);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
             else if (MultiTextures.count(type)) {
-                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
             else {
-                data.push_back((texPosition.x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((texPosition.y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (texPosition - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
         }
     }
@@ -158,9 +154,9 @@ void Player::Init_Model() {
         
         for (int i = 0; i < 6; i++) {
             for (int j = 0; j < 6; j++) {
-                Extend(data, vecVertices[i][j] - offsets[b]);
-                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j][0]].x / 64);
-                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j][1]].y / 32);
+                Extend(data, vertices[i][j] - offsets[b]);
+                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j].x].x / 64);
+                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j].y].y / 32);
             }
         }
         
@@ -395,8 +391,8 @@ void Player::Move(float deltaTime, bool update) {
             float requiredTime = 0.0f;
             int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
             
-            if (blockHardness.count(blockType)) {
-                requiredTime = blockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
+            if (BlockHardness.count(blockType)) {
+                requiredTime = BlockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
             }
             
             if (MouseTimer >= requiredTime) {
@@ -795,8 +791,8 @@ void Player::Click_Handler(int button, int action) {
                     inventory.Decrease_Size();
                     CurrentBlock = inventory.Get_Info().Type;
                     
-                    if (CurrentBlock == 50) {
-                        Place_Light(TORCH_LIGHT_LEVEL);
+                    if (BlockLuminosity.count(CurrentBlock)) {
+                        Place_Light(BlockLuminosity[CurrentBlock]);
                     }
                 }
             }

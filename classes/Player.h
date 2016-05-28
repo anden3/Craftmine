@@ -28,6 +28,7 @@ extern Shader* shader;
 extern Listener listener;
 extern Inventory inventory;
 
+extern std::map<unsigned int, int> BlockLuminosity;
 extern std::map<std::string, std::vector<unsigned int>> BlockSounds;
 extern std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords;
 

@@ -1,0 +1,15 @@
+{
+	"name": "Wooden Log",
+	"id": 17,
+	"hardness": 2.0,
+	"sound": "wood",
+	
+	"multiTexture": {
+		"left": [5, 2],
+		"right": [5, 2],
+		"down": [6, 2],
+		"up": [6, 2],
+		"back": [5, 2],
+		"front": [5, 2]
+	}
+}

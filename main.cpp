@@ -3,6 +3,9 @@
 #include <sstream>
 #include <fstream>
 
+#include "json.hpp"
+#include <dirent.h>
+
 #include "UI.h"
 #include "Chat.h"
 #include "Sound.h"
@@ -13,6 +16,8 @@
 #include "Shader.h"
 #include "Interface.h"
 #include "Inventory.h"
+
+using json = nlohmann::json;
 
 Player player;
 Chat chat = Chat();
@@ -36,6 +41,7 @@ int main() {
     glfwInit();
     
     Parse_Config();
+    Parse_Blocks();
     
 	Init_GL();
 	Init_Textures();
@@ -120,6 +126,104 @@ void Write_Config() {
     file.close();
 }
 
+void Parse_Blocks() {
+    DIR *dir = opendir("blockData");
+    struct dirent *ent;
+    
+    std::vector<std::string> sides = {"left", "right", "down", "up", "back", "front"};
+    
+    while ((ent = readdir(dir)) != nullptr) {
+        std::string name(ent->d_name);
+        
+        if (name.find(".json") != std::string::npos) {
+            std::stringstream file_content;
+            
+            std::ifstream file("blockData/" + name);
+            file_content << file.rdbuf();
+            file.close();
+            
+            json j;
+            j << file_content;
+            
+            unsigned int blockID = j["id"];
+            
+            for (json::iterator it = j.begin(); it != j.end(); ++it) {
+                if (it.key() == "hardness") {
+                    BlockHardness[blockID] = it.value();
+                }
+                
+                else if (it.key() == "transparent") {
+                    TransparentBlocks.insert(blockID);
+                }
+                
+                else if (it.key() == "luminosity") {
+                    BlockLuminosity[blockID] = it.value();
+                }
+                
+                else if (it.key() == "sound") {
+                    if (!BlockSounds.count(it.value())) {
+                        BlockSounds[it.value()] = std::vector<unsigned int> {blockID};
+                    }
+                    else {
+                        BlockSounds[it.value()].push_back(blockID);
+                    }
+                }
+                
+                else if (it.key() == "icon") {
+                    BlockIcons[blockID] = glm::vec2(it.value()[0], it.value()[1]);
+                }
+                
+                else if (it.key() == "texture") {
+                    textureCoords[blockID] = glm::vec2(it.value()[0], it.value()[1]);
+                }
+                
+                else if (it.key() == "multiTexture") {
+                    std::map<std::string, glm::vec2> textureBuffer;
+                    std::vector<glm::vec2> textureVector;
+                    
+                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                        textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
+                    }
+                    
+                    for (auto const &side : sides) {
+                        textureVector.push_back(textureBuffer[side]);
+                    }
+                    
+                    MultiTextures[blockID] = textureVector;
+                }
+                
+                else if (it.key() == "texCoords") {
+                    CustomTexCoords[blockID] = {};
+                    std::map<std::string, glm::vec4> textureBuffer;
+                    
+                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                        textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
+                    }
+                    
+                    for (auto const &side : sides) {
+                        CustomTexCoords[blockID].push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
+                    }
+                }
+                
+                else if (it.key() == "vertices") {
+                    CustomVertices[blockID] = {};
+                    std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
+                    
+                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                        textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
+                    }
+                    
+                    for (auto const &side : sides) {
+                        CustomVertices[blockID].push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
+                    }
+                }
+            }
+        }
+    }
+    
+    closedir(dir);
+}
+
 void Init_GL() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -168,11 +272,7 @@ void Init_GL() {
 }
 
 void Init_Textures() {
-    unsigned int atlas;
-    std::tie(atlas, IMAGE_SIZE_X, IMAGE_SIZE_Y) = Load_Texture("atlas.png");
-    IMAGE_SIZE_X /= 16;
-    IMAGE_SIZE_Y /= 16;
-    
+    unsigned int atlas = std::get<0>(Load_Texture("atlas.png"));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlas);
 }

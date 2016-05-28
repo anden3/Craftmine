@@ -21,8 +21,8 @@ Buffer TextBuffer;
 
 int BgColorLoc;
 int BgAlphaLoc;
-int BorderColorLoc;
 int TextColorLoc;
+int BorderColorLoc;
 
 const int       TEXT_TEXTURE_UNIT         = 10;
 const float     TEXT_PADDING              = 20;
@@ -89,35 +89,29 @@ std::map<char, Character> Characters;
 Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     Data data;
     
-    glm::vec2 texPosition = textureCoords[type];
-    
     x *= 2.005f;
     y *= 2.005f;
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
             if (CustomVertices.count(type)) {
-                data.push_back(CustomVertices[type][i][vertices[i][j][0]].x);
-                data.push_back(CustomVertices[type][i][vertices[i][j][1]].y);
-                data.push_back(CustomVertices[type][i][vertices[i][j][2]].z);
+                data.push_back(CustomVertices[type][i][vertices[i][j].x].x);
+                data.push_back(CustomVertices[type][i][vertices[i][j].y].y);
+                data.push_back(CustomVertices[type][i][vertices[i][j].z].z);
             }
             else {
-                data.push_back(vertices[i][j][0]);
-                data.push_back(vertices[i][j][1]);
-                data.push_back(vertices[i][j][2]);
+                Extend(data, vertices[i][j]);
             }
             
             if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][0]].x / IMAGE_SIZE_X);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j][1]].y / IMAGE_SIZE_Y);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
             else if (MultiTextures.count(type)) {
-                data.push_back((MultiTextures[type][i].x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((MultiTextures[type][i].y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
             else {
-                data.push_back((texPosition.x - 1.0f + tex_coords[i][j][0]) / IMAGE_SIZE_X);
-                data.push_back((texPosition.y - 1.0f + tex_coords[i][j][1]) / IMAGE_SIZE_Y);
+                Extend(data, (textureCoords[type] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
             
             if (offsets) {

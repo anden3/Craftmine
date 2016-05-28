@@ -10,8 +10,7 @@
 const int CHUNK_SIZE = 16;
 const int SUN_LIGHT_LEVEL = 15;
 
-extern int IMAGE_SIZE_X;
-extern int IMAGE_SIZE_Y;
+extern glm::vec2 IMAGE_SIZE;
 
 class Vec3Comparator {
 public:
@@ -34,14 +33,16 @@ public:
 
 extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 extern std::map<unsigned int, glm::vec2> textureCoords;
-extern std::map<unsigned int, float> blockHardness;
+extern std::map<unsigned int, float> BlockHardness;
 
 extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
 extern std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoords;
 extern std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
 
-extern float vertices[6][6][3];
-extern float tex_coords[6][6][2];
+extern std::set<unsigned int> TransparentBlocks;
+
+extern glm::vec3 vertices[6][6];
+extern glm::vec2 tex_coords[6][6];
 
 struct LightNode {
     glm::vec3 Chunk;

@@ -217,24 +217,15 @@ std::map<int, std::vector<Recipe>> Recipes = {
     }},
 };
 
-Data Get_Vertices(int type, float baseX, float baseY, float multiplierX, float multiplierY) {
-    if (multiplierY == -1) {
-        multiplierY = multiplierX;
-    }
-    
-    static float vertices[6][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
-    static float texCoords[6][2] = { {0, 1}, {1, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 0} };
-    
-    glm::vec2 texPosition = textureCoords[type];
+Data Get_Vertices(int type, glm::vec2 base, glm::vec2 multiplier) {
+    static glm::vec2 vertices[6] = { {0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1} };
+    static glm::vec2 texCoords[6] = { {0, 1}, {1, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 0} };
     
     Data result;
     
     for (int i = 0; i < 6; i++) {
-        result.push_back(baseX + vertices[i][0] * multiplierX);
-        result.push_back(baseY + vertices[i][1] * multiplierY);
-        
-        result.push_back((texPosition.x + texCoords[i][0] - 1.0f) / IMAGE_SIZE_X);
-        result.push_back((texPosition.y + texCoords[i][1] - 1.0f) / IMAGE_SIZE_Y);
+        Extend(result, base + vertices[i] * multiplier);
+        Extend(result, (textureCoords[type] + texCoords[i] - 1.0f) / IMAGE_SIZE);
     }
     
     return result;

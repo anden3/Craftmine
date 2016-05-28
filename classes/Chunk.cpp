@@ -3,6 +3,8 @@
 #include <random>
 #include <noise/noise.h>
 
+#include "Interface.h"
+
 const int CHUNK_ZOOM = 50;
 const float NOISE_DENSITY_BLOCK = 0.5f;
 const float NOISE_DENSITY_CAVE = -0.85f;
@@ -78,8 +80,6 @@ void Chunk::Check_Ore(glm::ivec3 pos, glm::vec3 noisePos) {
     for (auto const &range : OreRanges) {
         if (value >= range.second.x && value <= range.second.y) {
             Set_Block(pos, range.first);
-            Set_Light(pos, SUN_LIGHT_LEVEL);
-            Blocks.insert(pos);
             return;
         }
     }
@@ -112,7 +112,7 @@ void Chunk::Generate() {
                 if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
                     int type = ChangedBlocks[Position][block];
                     
-                    if (type > 0) {
+                    if (type > 0 && !TransparentBlocks.count(type)) {
                         if (!topBlocks[topPos].count(block.xz())) {
                             topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
                             TopBlocks.insert(block);
@@ -301,7 +301,7 @@ int Chunk::GetAO(glm::vec3 block, int face, int index) {
 			  { glm::vec3( 0,  1,  1), glm::vec3( 1,  0,  1), glm::vec3( 1,  1,  1) } } }
 	};
 
-	int vertexIndex[3][2] = { {int(vertices[face][index][2]), int(vertices[face][index][1])}, {int(vertices[face][index][0]), int(vertices[face][index][2])}, {int(vertices[face][index][0]), int(vertices[face][index][1])} };
+	int vertexIndex[3][2] = { {int(vertices[face][index].z), int(vertices[face][index].y)}, {int(vertices[face][index].x), int(vertices[face][index].z)}, {int(vertices[face][index].x), int(vertices[face][index].y)} };
 
 	for (int i = 0; i < 3; i++) {
 		if (Blocks.count(block + offsets[face][vertexIndex[face / 2][0]][vertexIndex[face / 2][1]][i])) {
@@ -322,6 +322,7 @@ void Chunk::Mesh() {
     std::set<glm::vec3>::iterator block = Blocks.begin();
     
     while (block != Blocks.end()) {
+        unsigned int blockType = Get_Block(*block);
         unsigned char seesAir = SeesAir[int(block->x)][int(block->y)][int(block->z)];
         float lightValue = float(Get_Light(*block));
 
@@ -330,36 +331,31 @@ void Chunk::Mesh() {
         }
         else {
             int bit = 0;
-			unsigned int blockType = Get_Block(*block);
 			glm::vec2 texPosition = textureCoords[blockType];
 
             while (bit < 6) {
                 if (seesAir & 1) {
                     for (int j = 0; j < 6; j++) {
                         if (CustomVertices.count(blockType)) {
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][0]].x + block->x + Position.x * CHUNK_SIZE);
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][1]].y + block->y + Position.y * CHUNK_SIZE);
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j][2]].z + block->z + Position.z * CHUNK_SIZE);
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].x].x + block->x + Position.x * CHUNK_SIZE);
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].y].y + block->y + Position.y * CHUNK_SIZE);
+                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].z].z + block->z + Position.z * CHUNK_SIZE);
                         }
                         else {
-                            VBOData.push_back(vertices[bit][j][0] + block->x + Position.x * CHUNK_SIZE);
-                            VBOData.push_back(vertices[bit][j][1] + block->y + Position.y * CHUNK_SIZE);
-                            VBOData.push_back(vertices[bit][j][2] + block->z + Position.z * CHUNK_SIZE);
+                            Extend(VBOData, vertices[bit][j] + (*block) + Position * float(CHUNK_SIZE));
                         }
                         
                         if (CustomTexCoords.count(blockType)) {
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][0]].x / IMAGE_SIZE_X);
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j][1]].y / IMAGE_SIZE_Y);
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j].x].x / IMAGE_SIZE.x);
+                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j].y].y / IMAGE_SIZE.y);
                         }
 
 						else if (MultiTextures.count(blockType)) {
-							VBOData.push_back((MultiTextures[blockType][bit].x - 1.0f + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
-							VBOData.push_back((MultiTextures[blockType][bit].y - 1.0f + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
+                            Extend(VBOData, (MultiTextures[blockType][bit] - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
 						}
 
 						else {
-							VBOData.push_back((texPosition.x - 1.0f + tex_coords[bit][j][0]) / IMAGE_SIZE_X);
-							VBOData.push_back((texPosition.y - 1.0f + tex_coords[bit][j][1]) / IMAGE_SIZE_Y);
+                            Extend(VBOData, (texPosition - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
 						}
                         
                         VBOData.push_back(lightValue);
@@ -458,31 +454,34 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
     }
 
 	std::vector<Chunk*> meshingList;
-	std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
-
-	for (int i = 0; i < 6; i++) {
-		glm::vec3 chunk = neighbors[i].first;
-		glm::uvec3 tile = neighbors[i].second;
-
-		if (Exists(chunk)) {
-			if (ChunkMap[chunk]->Get_Block(tile)) {
-				ChunkMap[chunk]->SeesAir[tile.x][tile.y][tile.z] &= ~(1 << i);
-
-                if (chunk != Position) {
-                    meshingList.push_back(ChunkMap[chunk]);
+    
+    if (!TransparentBlocks.count(blockType)) {
+        std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
+        
+        for (int i = 0; i < 6; i++) {
+            glm::vec3 chunk = neighbors[i].first;
+            glm::uvec3 tile = neighbors[i].second;
+            
+            if (Exists(chunk)) {
+                if (ChunkMap[chunk]->Get_Block(tile)) {
+                    ChunkMap[chunk]->SeesAir[tile.x][tile.y][tile.z] &= ~(1 << i);
+                    
+                    if (chunk != Position) {
+                        meshingList.push_back(ChunkMap[chunk]);
+                    }
                 }
-			}
-			else {
-				int direction = i + 1;
-
-				if (i % 2 != 0) {
-					direction = i - 1;
-				}
-
-				SeesAir[position.x][position.y][position.z] |= 1 << direction;
-			}
-		}
-	}
+                else {
+                    int direction = i + 1;
+                    
+                    if (i % 2 != 0) {
+                        direction = i - 1;
+                    }
+                    
+                    SeesAir[position.x][position.y][position.z] |= 1 << direction;
+                }
+            }
+        }
+    }
 	
     Light();
 	Mesh();

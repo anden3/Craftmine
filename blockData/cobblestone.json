@@ -1,0 +1,7 @@
+{
+	"name": "Cobblestone",
+	"id": 4,
+	"hardness": 2.0,
+	"sound": "stone",
+	"texture": [1, 2]
+}

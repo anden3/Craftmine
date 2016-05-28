@@ -11,8 +11,8 @@ static const float MERGING_RADIUS = 1.0f;
 
 const float GRAVITY = 0.004f;
 
-extern float vertices[6][6][3];
-extern float tex_coords[6][6][2];
+extern glm::vec3 vertices[6][6];
+extern glm::vec2 tex_coords[6][6];
 
 extern Shader* modelShader;
 

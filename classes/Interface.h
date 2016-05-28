@@ -10,12 +10,9 @@ typedef std::vector<float> Data;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 
-extern int IMAGE_SIZE_X;
-extern int IMAGE_SIZE_Y;
-
-extern glm::vec3 vecVertices[6][6];
-extern float vertices[6][6][3];
-extern float tex_coords[6][6][2];
+extern glm::vec2 IMAGE_SIZE;
+extern glm::vec3 vertices[6][6];
+extern glm::vec2 tex_coords[6][6];
 
 extern std::map<unsigned int, glm::vec2> textureCoords;
 extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
