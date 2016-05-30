@@ -1,6 +1,8 @@
 #pragma once
 
 #include <map>
+#include <set>
+#include <string>
 #include <vector>
 
 #define GLM_SWIZZLE
@@ -16,6 +18,8 @@ extern int RenderDistance;
 
 extern const int SUN_LIGHT_LEVEL;
 
+struct Block;
+
 class Chat;
 class Camera;
 class Shader;
@@ -28,12 +32,9 @@ extern Shader* shader;
 extern Listener listener;
 extern Inventory inventory;
 
-extern std::map<unsigned int, int> BlockLuminosity;
-extern std::map<std::string, std::vector<unsigned int>> BlockSounds;
 extern std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords;
 
 std::vector<std::string> Split(const std::string &s, char delim);
-Data Create_Textured_Cube(const int type, glm::vec3 offset = glm::vec3(-0.5));
 
 class Player {
 public:
@@ -81,7 +82,11 @@ private:
     bool ThirdPerson = false;
     
     int LightLevel = SUN_LIGHT_LEVEL;
-    int CurrentBlock = 0;
+    int CurrentBlock;
+    
+    Block* CurrentBlockType;
+    
+    std::string CurrentBlockData = "";
     
 	float SpeedModifier = 1.0f;
     float Rotation;

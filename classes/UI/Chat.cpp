@@ -292,10 +292,45 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         if (parameters.size() < 2) {
             return std::vector<std::string> {"&4Error! &fMissing parameter <&2ID&f>."};
         }
+        else if (parameters.size() > 4) {
+            return std::vector<std::string> {"&4Error! &fToo many parameters."};
+        }
         
-        int size = (parameters.size() >= 3) ? std::stoi(parameters[2]) : 64;
+        if (!BlockTypes.count(std::stoi(parameters[1]))) {
+            return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
+        }
         
-        inventory.Add_Stack(std::stoi(parameters[1]), size);
+        int type;
+        std::string data = "";
+        int size;
+        
+        if (parameters.size() == 4) {
+            size = std::stoi(parameters[3]);
+        }
+        else {
+            size = (parameters.size() == 3) ? std::stoi(parameters[2]) : 64;
+        }
+        
+        unsigned long delimiterPos1 = parameters[1].find(':');
+        unsigned long delimiterPos2 = parameters[1].find('.');
+        
+        if (delimiterPos1 != std::string::npos) {
+            type = std::stoi(parameters[1].substr(0, delimiterPos1));
+            data = parameters[1].substr(delimiterPos1 + 1);
+        }
+        else if (delimiterPos2 != std::string::npos) {
+            type = std::stoi(parameters[1].substr(0, delimiterPos2));
+            data = parameters[1].substr(delimiterPos2 + 1);
+        }
+        else {
+            type = std::stoi(parameters[1]);
+        }
+        
+        if (data != "" && !Get_Block_Type(type)->Types.count(data)) {
+            return std::vector<std::string> {"&4Error! &fNo block exists with that data value."};
+        }
+        
+        inventory.Add_Stack(type, data, size);
         player.Mesh_Holding();
         return std::vector<std::string> {"Given block &2" + parameters[1] + "&f to player."};
     }

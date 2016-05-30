@@ -1,13 +1,47 @@
 #pragma once
 
-#include <vector>
 #include <map>
+#include <string>
+#include <vector>
 
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
 typedef std::vector<float> Data;
 class Shader;
+
+struct Block {
+    std::string Name = "";
+    std::string Sound = "";
+    std::string Data = "";
+    
+    unsigned int ID = 0;
+    float Hardness = 0;
+    
+    bool Transparent = false;
+    bool Collision = true;
+    bool Targetable = true;
+    bool HasIcon = false;
+    bool HasTexture = false;
+    bool MultiTextures = false;
+    bool CustomTexCoords = false;
+    bool CustomVertices = false;
+    
+    int Luminosity = 0;
+    
+    glm::vec2 Icon = glm::vec2(0, 0);
+    glm::vec2 Texture = glm::vec2(0, 0);
+    
+    std::vector<glm::vec2> Textures = {};
+    std::vector<std::vector<glm::vec2>> TexCoords = {};
+    std::vector<std::vector<glm::vec3>> Vertices = {};
+    
+    std::map<std::string, Block> Types = {};
+};
+
+extern std::map<unsigned int, Block> BlockTypes;
+
+Block* Get_Block_Type(unsigned int type, std::string data = "");
 
 class Buffer {
 public:

@@ -2,6 +2,15 @@
 
 #include "Shader.h"
 
+Block* Get_Block_Type(unsigned int type, std::string data) {
+    if (data == "") {
+        return &BlockTypes[type];
+    }
+    else {
+        return &BlockTypes[type].Types[data];
+    }
+}
+
 void Buffer::Init(Shader *shader) {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);

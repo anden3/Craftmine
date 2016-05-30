@@ -1,0 +1,74 @@
+{
+	"name": "White Wool",
+	"id": 35,
+	"hardness": 0.8,
+	"sound": "cloth",
+	"texture": [1, 5],
+	
+	"types": {
+		"white": {
+			"name": "White Wool",
+			"texture": [1, 5]
+		},
+		"black": {
+			"name": "Black Wool",
+			"texture": [2, 8]
+		},
+		"red": {
+			"name": "Red Wool",
+			"texture": [2, 9]
+		},
+		"dark_green": {
+			"name": "Dark Green Wool",
+			"texture": [2, 10]
+		},
+		"brown": {
+			"name": "Brown Wool",
+			"texture": [2, 11]
+		},
+		"blue": {
+			"name": "Blue Wool",
+			"texture": [2, 12]
+		},
+		"purple": {
+			"name": "Purple Wool",
+			"texture": [2, 13]
+		},
+		"cyan": {
+			"name": "Cyan Wool",
+			"texture": [2, 14]
+		},
+		"light_gray": {
+			"name": "Light Gray Wool",
+			"texture": [2, 15]
+		},
+		"gray": {
+			"name": "Gray Wool",
+			"texture": [3, 8]
+		},
+		"pink": {
+			"name": "Pink Wool",
+			"texture": [3, 9]
+		},
+		"lime": {
+			"name": "Lime Wool",
+			"texture": [3, 10]
+		},
+		"yellow": {
+			"name": "Yellow Wool",
+			"texture": [3, 11]
+		},
+		"light_blue": {
+			"name": "Light Blue Wool",
+			"texture": [3, 12]
+		},
+		"magenta": {
+			"name": "Magenta Wool",
+			"texture": [3, 13]
+		},
+		"orange": {
+			"name": "Orange Wool",
+			"texture": [3, 14]
+		}
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"name": "Sapling",
+	"id": 6,
+	"hardness": 0,
+	"sound": "wood",
+	"transparent": true,
+	"noCollision": true,
+	"texture": [16, 1]
+}

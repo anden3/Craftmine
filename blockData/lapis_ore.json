@@ -1,0 +1,7 @@
+{
+	"name": "Lapis Lazuli Ore",
+	"id": 21,
+	"hardness": 3,
+	"sound": "stone",
+	"texture": [1, 11]
+}

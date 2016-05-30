@@ -112,17 +112,24 @@ void Chunk::Generate() {
                 if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
                     int type = ChangedBlocks[Position][block];
                     
-                    if (type > 0 && !TransparentBlocks.count(type)) {
-                        if (!topBlocks[topPos].count(block.xz())) {
-                            topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
-                            TopBlocks.insert(block);
-                            
-                            Set_Light(block, SUN_LIGHT_LEVEL);
-                            LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
-                        }
+                    if (type > 0) {
+                        Block blockInstance = BlockTypes[type];
                         
-                        Set_Block(block, type);
-                        Blocks.insert(block);
+                        if (!blockInstance.Transparent) {
+                            if (!topBlocks[topPos].count(block.xz())) {
+                                topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
+                                TopBlocks.insert(block);
+                                
+                                Set_Light(block, SUN_LIGHT_LEVEL);
+                                LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
+                            }
+                            
+                            Set_Block(block, type);
+                            Blocks.insert(block);
+                        }
+                        else {
+                            UpdateAir(block, inChunk);
+                        }
                     }
                     else {
                         UpdateAir(block, inChunk);
@@ -331,31 +338,29 @@ void Chunk::Mesh() {
         }
         else {
             int bit = 0;
-			glm::vec2 texPosition = textureCoords[blockType];
-
+            Block blockInstance = BlockTypes[blockType];
+            
             while (bit < 6) {
                 if (seesAir & 1) {
                     for (int j = 0; j < 6; j++) {
-                        if (CustomVertices.count(blockType)) {
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].x].x + block->x + Position.x * CHUNK_SIZE);
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].y].y + block->y + Position.y * CHUNK_SIZE);
-                            VBOData.push_back(CustomVertices[blockType][bit][vertices[bit][j].z].z + block->z + Position.z * CHUNK_SIZE);
+                        if (blockInstance.CustomVertices) {
+                            VBOData.push_back(blockInstance.Vertices[bit][vertices[bit][j].x].x + block->x + Position.x * CHUNK_SIZE);
+                            VBOData.push_back(blockInstance.Vertices[bit][vertices[bit][j].y].y + block->y + Position.y * CHUNK_SIZE);
+                            VBOData.push_back(blockInstance.Vertices[bit][vertices[bit][j].z].z + block->z + Position.z * CHUNK_SIZE);
                         }
                         else {
                             Extend(VBOData, vertices[bit][j] + (*block) + Position * float(CHUNK_SIZE));
                         }
                         
-                        if (CustomTexCoords.count(blockType)) {
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j].x].x / IMAGE_SIZE.x);
-                            VBOData.push_back(CustomTexCoords[blockType][bit][tex_coords[bit][j].y].y / IMAGE_SIZE.y);
+                        if (blockInstance.CustomTexCoords) {
+                            VBOData.push_back(blockInstance.TexCoords[bit][tex_coords[bit][j].x].x / IMAGE_SIZE.x);
+                            VBOData.push_back(blockInstance.TexCoords[bit][tex_coords[bit][j].y].y / IMAGE_SIZE.y);
                         }
-
-						else if (MultiTextures.count(blockType)) {
-                            Extend(VBOData, (MultiTextures[blockType][bit] - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
+						else if (blockInstance.MultiTextures) {
+                            Extend(VBOData, (blockInstance.Textures[bit] - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
 						}
-
 						else {
-                            Extend(VBOData, (texPosition - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
+                            Extend(VBOData, (blockInstance.Texture - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
 						}
                         
                         VBOData.push_back(lightValue);
@@ -437,7 +442,7 @@ void Chunk::Remove_Block(glm::ivec3 position) {
     }
 }
 
-void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
+void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, std::string blockData) {
 	Set_Block(position, blockType);
 	Blocks.insert(position);
     
@@ -455,7 +460,9 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType) {
 
 	std::vector<Chunk*> meshingList;
     
-    if (!TransparentBlocks.count(blockType)) {
+    Block* block = Get_Block_Type(blockType, blockData);
+    
+    if (!block->Transparent) {
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
         
         for (int i = 0; i < 6; i++) {

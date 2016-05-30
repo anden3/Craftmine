@@ -1,0 +1,7 @@
+{
+	"name": "Sponge",
+	"id": 19,
+	"hardness": 0.6,
+	"sound": "cloth",
+	"texture": [1, 4]
+}

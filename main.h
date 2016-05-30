@@ -20,6 +20,8 @@ const bool Windows = false;
 #endif
 
 // TODO: Add 2D icon functionality to inventory.
+// TODO: Sort rendering of transparent objects.
+// TODO: Fix water borders.
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
 const glm::vec3 AMBIENT_LIGHT = glm::vec3(0.1f);
@@ -45,29 +47,11 @@ glm::vec2 tex_coords[6][6] = {
     { {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1} }
 };
 
+struct Block;
+std::map<unsigned int, Block> BlockTypes;
+
 std::map<unsigned int, glm::vec2> textureCoords = {
-    // BLOCKS
-    {6,   {16,  1}}, // Oak Sapling
-    {8,   {14, 13}}, // Flowing Water
-    {9,   {14, 13}}, // Still Water
-    {10,  {14, 15}}, // Flowing Lava
-    {11,  {14, 15}}, // Still Lava
-    {14,  { 1,  3}}, // Gold Ore
-    {15,  { 2,  3}}, // Iron Ore
-    {16,  { 3,  3}}, // Coal Ore
-    {18,  { 5,  4}}, // Oak Leaves
-    {19,  { 1,  4}}, // Sponge
-    {20,  { 2,  4}}, // Glass
-    {21,  { 1, 11}}, // Lapis Lazuli Ore
-    {22,  { 1, 10}}, // Lapis Lazuli Block
-    {23,  {15,  3}}, // Dispenser
-    {24,  { 1, 13}}, // Sandstone
-    {25,  {11,  5}}, // Note Block
-    {27,  { 4, 12}}, // Powered Rail
-    
-    {30,  {12,  1}}, // Cobweb
-    
-    {35,  { 1,  5}}, // White Wool
+    // BLOCKS        
     {37,  {14,  1}}, // Dandelion
     {38,  {15,  1}}, // Poppy
     {39,  {15,  2}}, // Brown Mushroom
@@ -110,18 +94,6 @@ std::map<unsigned int, glm::vec2> textureCoords = {
     {81,  { 7,  5}}, // Cactus
     {82,  { 9,  3}}, // Clay
     
-    // Damage Textures
-    {246, { 1, 16}},
-    {247, { 2, 16}},
-    {248, { 3, 16}},
-    {249, { 4, 16}},
-    {250, { 5, 16}},
-    {251, { 6, 16}},
-    {252, { 7, 16}},
-    {253, { 8, 16}},
-    {254, { 9, 16}},
-    {255, {10, 16}},
-    
     // ITEMS
     {256, { 3, 22}}, // Iron Shovel
     {257, { 3, 23}}, // Iron Pickaxe
@@ -138,15 +110,8 @@ std::map<unsigned int, glm::vec2> textureCoords = {
     {280, { 6, 20}}, // Stick
 };
 
-std::set<unsigned int> TransparentBlocks;
-
-std::map<unsigned int, glm::vec2> BlockIcons;
-std::map<unsigned int, int> BlockLuminosity;
-
 std::map<unsigned int, std::vector<glm::vec2>> MultiTextures = {
     //      LEFT      RIGHT     DOWN      UP        BACK      FRONT
-    {23, {{14,  3}, {14,  3}, {15,  4}, {15,  4}, {14,  3}, {15,  3}}}, // Dispenser
-    {24, {{ 1, 13}, { 1, 13}, { 1, 12}, { 1, 12}, { 1, 13}, { 1, 13}}}, // Sandstone
     {46, {{ 9,  1}, { 9,  1}, {11,  1}, {10,  1}, { 9,  1}, { 9,  1}}}, // TNT
     {47, {{ 4,  3}, { 4,  3}, { 5,  1}, { 5,  1}, { 4,  3}, { 4,  3}}}, // Bookshelf
     {54, {{11,  2}, {11,  2}, {10,  2}, {10,  2}, {11,  2}, {12,  2}}}, // Chest
@@ -157,16 +122,11 @@ std::map<unsigned int, std::vector<glm::vec2>> MultiTextures = {
     {81, {{ 7,  5}, { 7,  5}, { 6,  5}, { 6,  5}, { 7,  5}, { 7,  5}}}, // Cactus
 };
 
-std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoords;
-std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
-std::map<unsigned int, float> BlockHardness;
-
 std::map<std::string, std::vector<unsigned int>> BlockSounds = {
-    {"cloth",  {35}},
     {"dirt",   {60}},
     {"sand",   {82}},
     {"snow",   {78, 80}},
-    {"stone",  {14, 15, 16, 21, 22, 23, 24, 41, 42, 43, 44, 45, 48, 52, 56, 57, 61, 62, 73}},
+    {"stone",  {21, 22, 23, 24, 41, 42, 43, 44, 45, 48, 52, 56, 57, 61, 62, 73}},
     {"wood",   {25, 47, 49, 54, 58, 65}}
 };
 
@@ -203,22 +163,3 @@ bool GamePaused = true;
 bool MouseEnabled = false;
 
 bool ChunkMapBusy = false;
-
-void Parse_Config();
-void Parse_Blocks();
-
-void Init_GL();
-void Init_Textures();
-void Init_Shaders();
-void Init_Buffers();
-void Init_Rendering();
-
-void Render_Scene();
-
-void BackgroundThread();
-
-void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
-void text_proxy(GLFWwindow* window, unsigned int codepoint);
-void mouse_proxy(GLFWwindow* window, double posX, double posY);
-void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
-void click_proxy(GLFWwindow* window, int button, int action, int mods);

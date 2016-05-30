@@ -66,8 +66,8 @@ std::map<char, glm::vec3> ColorCodes = {
     {'4', glm::vec3(0.666, 0.000, 0.000)}, // Dark Red
     {'5', glm::vec3(0.666, 0.000, 0.666)}, // Dark Purple
     {'6', glm::vec3(1.000, 0.666, 0.000)}, // Gold
-    {'7', glm::vec3(0.666, 0.666, 0.666)}, // Grey
-    {'8', glm::vec3(0.333, 0.333, 0.333)}, // Dark Grey
+    {'7', glm::vec3(0.666, 0.666, 0.666)}, // Gray
+    {'8', glm::vec3(0.333, 0.333, 0.333)}, // Dark Gray
     {'9', glm::vec3(0.333, 0.333, 1.000)}, // Blue
     {'a', glm::vec3(0.333, 1.000, 0.333)}, // Green
     {'b', glm::vec3(0.333, 1.000, 1.000)}, // Aqua
@@ -86,7 +86,7 @@ struct Character {
 
 std::map<char, Character> Characters;
 
-Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
+Data Get_3D_Mesh(Block* block, float x, float y, bool offsets) {
     Data data;
     
     x *= 2.005f;
@@ -94,24 +94,24 @@ Data Get_3D_Mesh(unsigned int type, float x, float y, bool offsets) {
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
-            if (CustomVertices.count(type)) {
-                data.push_back(CustomVertices[type][i][vertices[i][j].x].x);
-                data.push_back(CustomVertices[type][i][vertices[i][j].y].y);
-                data.push_back(CustomVertices[type][i][vertices[i][j].z].z);
+            if (block->CustomVertices) {
+                data.push_back(block->Vertices[i][vertices[i][j].x].x);
+                data.push_back(block->Vertices[i][vertices[i][j].y].y);
+                data.push_back(block->Vertices[i][vertices[i][j].z].z);
             }
             else {
                 Extend(data, vertices[i][j]);
             }
             
-            if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
+            if (block->CustomTexCoords) {
+                data.push_back(block->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(block->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
-            else if (MultiTextures.count(type)) {
-                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (block->MultiTextures) {
+                Extend(data, (block->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
-            else {
-                Extend(data, (textureCoords[type] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (block->HasTexture) {
+                Extend(data, (block->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
             
             if (offsets) {
@@ -483,7 +483,7 @@ void Background::Draw() {
     }
 }
 
-OrthoElement::OrthoElement(int type, float x, float y, float scale) {
+OrthoElement::OrthoElement(int type, std::string data, float x, float y, float scale) {
     OrthoBuffer.Init(UI3DShader);
     
     Type = type;
@@ -493,15 +493,15 @@ OrthoElement::OrthoElement(int type, float x, float y, float scale) {
         OrthoBuffer.Create(3, 2, 2);
     }
     else {
-        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(type, x, y, true));
+        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(Get_Block_Type(type, data), x, y, true));
     }
 }
 
-void OrthoElement::Mesh(int type, float x, float y) {
+void OrthoElement::Mesh(int type, std::string data, float x, float y) {
     Type = type;
     
     if (Type != 0) {
-        OrthoBuffer.Upload(Get_3D_Mesh(Type, x, y, true));
+        OrthoBuffer.Upload(Get_3D_Mesh(Get_Block_Type(type, data), x, y, true));
     }
 }
 

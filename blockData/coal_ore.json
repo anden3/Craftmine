@@ -1,0 +1,7 @@
+{
+	"name": "Coal Ore",
+	"id": 16,
+	"hardness": 3,
+	"sound": "stone",
+	"texture": [3, 3]
+}

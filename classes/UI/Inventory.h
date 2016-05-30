@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <vector>
 
 #define GLM_SWIZZLE
@@ -12,14 +13,27 @@ class Shader;
 extern Interface interface;
 
 struct Stack {
-    Stack(int type = 0, int size = 1) : Type(type), Size(size) {
-        if (Type == 0) {
-            Size = 0;
+    Stack() {
+        Type = 0;
+        Size = 0;
+    }
+    
+    Stack(std::string type, int size = 1) : Size(size) {
+        unsigned long delimPos = type.find(':');
+        Type = std::stoi(type.substr(0, delimPos));
+        
+        if (delimPos != std::string::npos) {
+            Data = type.substr(delimPos + 1);
         }
     }
     
-    unsigned int Type;
-    unsigned int Size;
+    Stack(int type, std::string data, int size = 1) : Type(type), Data(data), Size(size) {}
+    Stack(int type, int size = 1) : Type(type), Size(size) {}
+    
+    int Type;
+    int Size;
+    
+    std::string Data;
 };
 
 extern std::map<unsigned int, glm::vec2> BlockIcons;
@@ -55,8 +69,8 @@ public:
     void Init();
     void Clear();
     
-    inline void Add_Stack(Stack stack) { Add_Stack(stack.Type, stack.Size); }
-    void Add_Stack(unsigned int type, unsigned int size = 1);
+    inline void Add_Stack(Stack stack) { Add_Stack(stack.Type, stack.Data, stack.Size); }
+    void Add_Stack(int type, std::string typeData, int size);
     void Decrease_Size(int slot = -1);
     
     Stack Get_Info(int slot = -1);
@@ -77,7 +91,7 @@ private:
     Stack CraftingOutput = Stack();
     Stack HoldingStack = Stack();
     
-    glm::vec2 MousePos = glm::vec2(0, 0);
+    glm::vec2 MousePos = glm::vec2(0);
     
     int HoveringSlot = -1;
     

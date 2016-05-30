@@ -9,32 +9,35 @@
 
 std::vector<EntityInstance*> Entities;
 
-EntityInstance::EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity) {
+EntityInstance::EntityInstance(glm::vec3 pos, int type, std::string typeData, glm::vec3 velocity) {
     Position = pos + glm::vec3(0.5f);
     Type = type;
+    BlockData = typeData;
     
     Data data;
     
+    Block* block = Get_Block_Type(type, typeData);
+    
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
-            if (CustomVertices.count(type)) {
-                data.push_back((CustomVertices[type][i][vertices[i][j].x].x - 0.5f) * ENTITY_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j].y].y - 0.5f) * ENTITY_SCALE);
-                data.push_back((CustomVertices[type][i][vertices[i][j].z].z - 0.5f) * ENTITY_SCALE);
+            if (block->CustomVertices) {
+                data.push_back((block->Vertices[i][vertices[i][j].x].x - 0.5f) * ENTITY_SCALE);
+                data.push_back((block->Vertices[i][vertices[i][j].y].y - 0.5f) * ENTITY_SCALE);
+                data.push_back((block->Vertices[i][vertices[i][j].z].z - 0.5f) * ENTITY_SCALE);
             }
             else {
                 Extend(data, (vertices[i][j] - 0.5f) * ENTITY_SCALE);
             }
             
-            if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
+            if (block->CustomTexCoords) {
+                data.push_back(block->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(block->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
-            else if (MultiTextures.count(type)) {
-                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (block->MultiTextures) {
+                Extend(data, (block->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
-            else {
-                Extend(data, (textureCoords[type] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (block->HasTexture) {
+                Extend(data, (block->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
         }
     }
@@ -160,12 +163,12 @@ void EntityInstance::Draw() {
 }
 
 
-void Entity::Spawn(glm::vec3 pos, int type, glm::vec3 velocity) {
+void Entity::Spawn(glm::vec3 pos, int type, std::string typeData, glm::vec3 velocity) {
     if (type == 2) {
         type = 3;
     }
     
-    Entities.push_back(new EntityInstance(pos, type, velocity));
+    Entities.push_back(new EntityInstance(pos, type, typeData, velocity));
 }
 
 void Entity::Update(double deltaTime) {

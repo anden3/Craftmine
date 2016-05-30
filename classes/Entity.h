@@ -24,11 +24,12 @@ public:
     glm::vec3 Velocity;
     
     int Type;
+    std::string BlockData;
     int Size = 1;
     
     bool Can_Move = false;
     
-    EntityInstance(glm::vec3 pos, int type, glm::vec3 velocity);
+    EntityInstance(glm::vec3 pos, int type, std::string typeData, glm::vec3 velocity);
     void Update(float deltaTime);
     void Draw();
 
@@ -43,7 +44,7 @@ private:
 };
 
 namespace Entity {
-    void Spawn(glm::vec3 pos, int type, glm::vec3 velocity = glm::vec3(-100));
+    void Spawn(glm::vec3 pos, int type, std::string typeData = "", glm::vec3 velocity = glm::vec3(-100));
     void Update(double deltaTime);
     void Check_Pickup(glm::vec3 playerPos);
     void Draw();

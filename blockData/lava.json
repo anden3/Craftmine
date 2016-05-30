@@ -1,0 +1,8 @@
+{
+	"name": "Lava",
+	"id": 11,
+	"targetable": false,
+	"transparent": true,
+	"noCollision": true,
+	"texture": [14, 15]
+}

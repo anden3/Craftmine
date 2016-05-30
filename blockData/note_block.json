@@ -1,0 +1,7 @@
+{
+	"name": "Note Block",
+	"id": 25,
+	"hardness": 0.8,
+	"sound": "wood",
+	"texture": [11, 5]
+}

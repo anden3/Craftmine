@@ -1,0 +1,7 @@
+{
+	"name": "Cobweb",
+	"id": 30,
+	"hardness": 4,
+	"sound": "cloth",
+	"texture": [12, 1]
+}

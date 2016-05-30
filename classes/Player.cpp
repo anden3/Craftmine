@@ -64,9 +64,9 @@ Buffer LeftLegBuffer;
 Buffer RightLegBuffer;
 
 int punchingAngleDirection = 200;
-float punchingAngle = 0.0f;
-
 int movementAngleDirection = 5000;
+
+float punchingAngle = 0.0f;
 float movementAngle = 0.0f;
 
 std::vector<SoundPlayer> soundPlayers;
@@ -84,34 +84,42 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     return elements;
 }
 
-Data Create_Textured_Cube(const int type, glm::vec3 offset) {
+Data Create_Textured_Cube(const Block *type, glm::vec3 offset = glm::vec3(-0.5f)) {
     Data data;
-    
-    glm::vec2 texPosition = textureCoords[type];
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
-            if (CustomVertices.count(type)) {
-                Extend(data, CustomVertices[type][i][vertices[i][j][0]]);
+            if (type->CustomVertices) {
+                data.push_back(type->Vertices[i][vertices[i][j].x].x + offset.x);
+                data.push_back(type->Vertices[i][vertices[i][j].y].y + offset.y);
+                data.push_back(type->Vertices[i][vertices[i][j].z].z + offset.z);
             }
             else {
                 Extend(data, vertices[i][j] + offset);
             }
             
-            if (CustomTexCoords.count(type)) {
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(CustomTexCoords[type][i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
+            if (type->CustomTexCoords) {
+                data.push_back(type->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
+                data.push_back(type->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
             }
-            else if (MultiTextures.count(type)) {
-                Extend(data, (MultiTextures[type][i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (type->MultiTextures) {
+                Extend(data, (type->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
-            else {
-                Extend(data, (texPosition - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            else if (type->HasTexture) {
+                Extend(data, (type->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
             }
         }
     }
     
     return data;
+}
+
+bool Check_Col(glm::vec3 pos) {
+    glm::vec3 chunk, tile;
+    std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+    
+    unsigned int blockID = ChunkMap[chunk]->Get_Block(tile);
+    return Exists(chunk) && blockID != 0 && BlockTypes[blockID].Collision;
 }
 
 void Player::Init() {
@@ -182,14 +190,16 @@ void Player::Init_Sounds() {
 
 void Player::Mesh_Holding() {
     CurrentBlock = inventory.Get_Info().Type;
+    CurrentBlockData = inventory.Get_Info().Data;
+    CurrentBlockType = Get_Block_Type(CurrentBlock, CurrentBlockData);
     
     if (CurrentBlock > 0) {
-        HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlock));
+        HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlockType));
     }
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Create_Textured_Cube(246 + index, glm::vec3(0)));
+    DamageBuffer.Upload(Create_Textured_Cube(Get_Block_Type(255, std::to_string(index + 1)), glm::vec3(0)));
 }
 
 void Player::Draw_Model() {
@@ -388,12 +398,8 @@ void Player::Move(float deltaTime, bool update) {
         else {
             MouseTimer += deltaTime;
             
-            float requiredTime = 0.0f;
-            int blockType = ChunkMap[LookingChunk]->Get_Block(LookingTile);
-            
-            if (BlockHardness.count(blockType)) {
-                requiredTime = BlockHardness[blockType] * 1.5f * 3.33f * (OnGround ? 1 : 5);
-            }
+            Block block = BlockTypes[ChunkMap[LookingChunk]->Get_Block(LookingTile)];
+            float requiredTime = block.Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
             
             if (MouseTimer >= requiredTime) {
                 Break_Block();
@@ -486,7 +492,7 @@ void Player::Check_Pickup() {
         
         if (dist < PICKUP_RANGE) {
             Play_Sound("pickup", CurrentChunk, CurrentTile);
-            inventory.Add_Stack((*it)->Type, (*it)->Size);
+            inventory.Add_Stack((*it)->Type, (*it)->BlockData, (*it)->Size);
             Mesh_Holding();
             
             delete *it;
@@ -513,7 +519,7 @@ void Player::Teleport(glm::vec3 pos) {
 void Player::Drop_Item() {
     if (CurrentBlock != 0) {
         inventory.Decrease_Size();
-        Entity::Spawn(WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0) + Cam.Front, CurrentBlock, glm::vec3(Cam.Front.x, 0, Cam.Front.z) * 2.0f);
+        Entity::Spawn(WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0) + Cam.Front, CurrentBlock, CurrentBlockData, glm::vec3(Cam.Front.x, 0, Cam.Front.z) * 2.0f);
         Mesh_Holding();
     }
 }
@@ -525,14 +531,14 @@ void Player::ColDetection() {
 
 	Velocity.y -= GRAVITY;
     
-    OnGround = (Velocity.y <= 0 && Is_Block(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y - 0.01f, WorldPos.z)));
+    OnGround = (Velocity.y <= 0 && Check_Col(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y - 0.01f, WorldPos.z)));
     
     if (OnGround) {
         Velocity.y = 0;
     }
     
     else if (Velocity.y != 0) {
-        if (!Is_Block(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y + ((Velocity.y > 0) ? CAMERA_HEIGHT : 0), WorldPos.z))) {
+        if (!Check_Col(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y + ((Velocity.y > 0) ? CAMERA_HEIGHT : 0), WorldPos.z))) {
             WorldPos.y += Velocity.y;
         }
         else if (Velocity.y > 0) {
@@ -549,10 +555,10 @@ void Player::ColDetection() {
         if (Velocity[i]) {
             glm::vec3 checkingPos = WorldPos + offsets[i / 2];
             
-            if (!Is_Block(checkingPos)) {
+            if (!Check_Col(checkingPos)) {
                 checkingPos.y += CAMERA_HEIGHT;
                 
-                if (!Is_Block(checkingPos)) {
+                if (!Check_Col(checkingPos)) {
                     WorldPos[i] += Velocity[i];
                 }
             }
@@ -589,19 +595,21 @@ std::vector<glm::vec3> Player::Hitscan() {
         glm::vec3 checkingPos = Cam.Position + Cam.Front * t;
 
 		if (Is_Block(checkingPos)) {
-            std::vector<glm::vec3> result;
             glm::vec3 chunk1, tile1;
-            
             std::tie(chunk1, tile1) = Get_Chunk_Pos(checkingPos);
-            Extend(result, chunk1, tile1);
             
-			if (started) {
-                glm::vec3 chunk2, tile2;
-                std::tie(chunk2, tile2) = Get_Chunk_Pos(lastPos);
-                Extend(result, chunk2, tile2);
-			}
-            
-			return result;
+            if (BlockTypes[ChunkMap[chunk1]->Get_Block(tile1)].Targetable) {
+                std::vector<glm::vec3> result;
+                Extend(result, chunk1, tile1);
+                
+                if (started) {
+                    glm::vec3 chunk2, tile2;
+                    std::tie(chunk2, tile2) = Get_Chunk_Pos(lastPos);
+                    Extend(result, chunk2, tile2);
+                }
+                
+                return result;
+            }
 		}
 
 		lastPos = checkingPos;
@@ -770,7 +778,7 @@ void Player::Click_Handler(int button, int action) {
         }
         
         if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (LookingAtBlock && CurrentBlock && CurrentBlock < 246) {
+            if (LookingAtBlock && CurrentBlock && CurrentBlock < 255) {
                 glm::vec3 newBlockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
                 
                 if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {
@@ -786,13 +794,16 @@ void Player::Click_Handler(int button, int action) {
                 glm::vec3 diff = newBlockPos - Get_World_Pos(LookingChunk, LookingTile);
                 
                 if (ChunkMap.count(LookingAirChunk)) {
-                    ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock);
+                    ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock, CurrentBlockData);
                     
                     inventory.Decrease_Size();
-                    CurrentBlock = inventory.Get_Info().Type;
                     
-                    if (BlockLuminosity.count(CurrentBlock)) {
-                        Place_Light(BlockLuminosity[CurrentBlock]);
+                    CurrentBlock = inventory.Get_Info().Type;
+                    CurrentBlockData = inventory.Get_Info().Data;
+                    CurrentBlockType = Get_Block_Type(CurrentBlock, CurrentBlockData);
+                    
+                    if (CurrentBlockType->Luminosity > 0) {
+                        Place_Light(CurrentBlockType->Luminosity);
                     }
                 }
             }
@@ -804,18 +815,15 @@ void Player::Click_Handler(int button, int action) {
 
 void Player::Break_Block() {
     Chunk* lookingChunk = ChunkMap[LookingChunk];
-    
     int blockType = lookingChunk->Get_Block(LookingTile);
+    Block* block = Get_Block_Type(blockType);
     
     if (blockType == 50) {
         Remove_Light();
     }
     
-    for (auto const &types : BlockSounds) {
-        if (std::find(types.second.begin(), types.second.end(), blockType) != types.second.end()) {
-            Play_Sound(types.first, LookingChunk, LookingTile);
-            break;
-        }
+    if (block->Sound != "") {
+        Play_Sound(block->Sound, LookingChunk, LookingTile);
     }
     
     if (blockType == 1) {

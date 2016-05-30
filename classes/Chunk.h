@@ -31,18 +31,10 @@ public:
     }
 };
 
-extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
-extern std::map<unsigned int, glm::vec2> textureCoords;
-extern std::map<unsigned int, float> BlockHardness;
-
-extern std::map<unsigned int, std::vector<glm::vec2>> MultiTextures;
-extern std::map<unsigned int, std::vector<std::vector<glm::vec2>>> CustomTexCoords;
-extern std::map<unsigned int, std::vector<std::vector<glm::vec3>>> CustomVertices;
-
-extern std::set<unsigned int> TransparentBlocks;
-
 extern glm::vec3 vertices[6][6];
 extern glm::vec2 tex_coords[6][6];
+
+extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 
 struct LightNode {
     glm::vec3 Chunk;
@@ -104,7 +96,7 @@ public:
     void Mesh();
 
     void Remove_Block(glm::ivec3 position);
-	void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType);
+    void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, std::string blockData);
     
     inline int Get_Light(glm::vec3 pos) { return LightMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
     inline void Set_Light(glm::ivec3 pos, int value) { LightMap[pos.x][pos.y][pos.z] = value; }

@@ -17,8 +17,6 @@
 #include "Interface.h"
 #include "Inventory.h"
 
-using json = nlohmann::json;
-
 Player player;
 Chat chat = Chat();
 Camera Cam = Camera();
@@ -36,6 +34,25 @@ Buffer OutlineBuffer;
 GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
+
+void Parse_Config();
+void Parse_Blocks();
+
+void Init_GL();
+void Init_Textures();
+void Init_Shaders();
+void Init_Buffers();
+void Init_Rendering();
+
+void Render_Scene();
+
+void BackgroundThread();
+
+void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void text_proxy(GLFWwindow* window, unsigned int codepoint);
+void mouse_proxy(GLFWwindow* window, double posX, double posY);
+void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
+void click_proxy(GLFWwindow* window, int button, int action, int mods);
 
 int main() {
     glfwInit();
@@ -136,88 +153,187 @@ void Parse_Blocks() {
         std::string name(ent->d_name);
         
         if (name.find(".json") != std::string::npos) {
+            Block block;
+            
             std::stringstream file_content;
             
             std::ifstream file("blockData/" + name);
             file_content << file.rdbuf();
             file.close();
             
-            json j;
+            nlohmann::json j;
             j << file_content;
             
-            unsigned int blockID = j["id"];
-            
-            for (json::iterator it = j.begin(); it != j.end(); ++it) {
-                if (it.key() == "hardness") {
-                    BlockHardness[blockID] = it.value();
+            for (nlohmann::json::iterator it = j.begin(); it != j.end(); ++it) {
+                if (it.key() == "name") {
+                    block.Name = it.value();
                 }
                 
-                else if (it.key() == "transparent") {
-                    TransparentBlocks.insert(blockID);
+                else if (it.key() == "hardness") {
+                    block.Hardness = it.value();
+                }
+                
+                else if (it.key() == "transparent" && it.value()) {
+                    block.Transparent = true;
+                }
+                
+                else if (it.key() == "noCollision" && it.value()) {
+                    block.Collision = false;
+                }
+                
+                else if (it.key() == "targetable" && !it.value()) {
+                    block.Targetable = false;
                 }
                 
                 else if (it.key() == "luminosity") {
-                    BlockLuminosity[blockID] = it.value();
+                    block.Luminosity = it.value();
                 }
                 
                 else if (it.key() == "sound") {
-                    if (!BlockSounds.count(it.value())) {
-                        BlockSounds[it.value()] = std::vector<unsigned int> {blockID};
-                    }
-                    else {
-                        BlockSounds[it.value()].push_back(blockID);
-                    }
+                    block.Sound = it.value();
                 }
                 
                 else if (it.key() == "icon") {
-                    BlockIcons[blockID] = glm::vec2(it.value()[0], it.value()[1]);
+                    block.HasIcon = true;
+                    block.Icon = glm::vec2(it.value()[0], it.value()[1]);
                 }
                 
                 else if (it.key() == "texture") {
-                    textureCoords[blockID] = glm::vec2(it.value()[0], it.value()[1]);
+                    block.HasTexture = true;
+                    block.Texture = glm::vec2(it.value()[0], it.value()[1]);
                 }
                 
                 else if (it.key() == "multiTexture") {
-                    std::map<std::string, glm::vec2> textureBuffer;
-                    std::vector<glm::vec2> textureVector;
+                    block.MultiTextures = true;
                     
-                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                    std::map<std::string, glm::vec2> textureBuffer;
+                    
+                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
                         textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
                     }
                     
                     for (auto const &side : sides) {
-                        textureVector.push_back(textureBuffer[side]);
+                        block.Textures.push_back(textureBuffer[side]);
                     }
-                    
-                    MultiTextures[blockID] = textureVector;
                 }
                 
                 else if (it.key() == "texCoords") {
-                    CustomTexCoords[blockID] = {};
+                    block.CustomTexCoords = true;
                     std::map<std::string, glm::vec4> textureBuffer;
                     
-                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
                         textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
                     }
                     
                     for (auto const &side : sides) {
-                        CustomTexCoords[blockID].push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
+                        block.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
                     }
                 }
                 
                 else if (it.key() == "vertices") {
-                    CustomVertices[blockID] = {};
+                    block.CustomVertices = true;
                     std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
                     
-                    for (json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
                         textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
                     }
                     
                     for (auto const &side : sides) {
-                        CustomVertices[blockID].push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
+                        block.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
                     }
                 }
             }
+            
+            if (j.count("types")) {
+                for (nlohmann::json::iterator at = j["types"].begin(); at != j["types"].end(); ++at) {
+                    Block subType = block;
+                    subType.Data = at.key();
+                    
+                    for (nlohmann::json::iterator it = at.value().begin(); it != at.value().end(); ++it) {
+                        if (it.key() == "name") {
+                            subType.Name = it.value();
+                        }
+                        
+                        else if (it.key() == "hardness") {
+                            subType.Hardness = it.value();
+                        }
+                        
+                        else if (it.key() == "transparent" && it.value()) {
+                            subType.Transparent = true;
+                        }
+                        
+                        else if (it.key() == "noCollision" && it.value()) {
+                            subType.Collision = false;
+                        }
+                        
+                        else if (it.key() == "targetable" && !it.value()) {
+                            subType.Targetable = false;
+                        }
+                        
+                        else if (it.key() == "luminosity") {
+                            subType.Luminosity = it.value();
+                        }
+                        
+                        else if (it.key() == "sound") {
+                            subType.Sound = it.value();
+                        }
+                        
+                        else if (it.key() == "icon") {
+                            subType.HasIcon = true;
+                            subType.Icon = glm::vec2(it.value()[0], it.value()[1]);
+                        }
+                        
+                        else if (it.key() == "texture") {
+                            subType.HasTexture = true;
+                            subType.Texture = glm::vec2(it.value()[0], it.value()[1]);
+                        }
+                        
+                        else if (it.key() == "multiTexture") {
+                            subType.MultiTextures = true;
+                            
+                            std::map<std::string, glm::vec2> textureBuffer;
+                            
+                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                                textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
+                            }
+                            
+                            for (auto const &side : sides) {
+                                subType.Textures.push_back(textureBuffer[side]);
+                            }
+                        }
+                        
+                        else if (it.key() == "texCoords") {
+                            subType.CustomTexCoords = true;
+                            std::map<std::string, glm::vec4> textureBuffer;
+                            
+                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                                textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
+                            }
+                            
+                            for (auto const &side : sides) {
+                                subType.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
+                            }
+                        }
+                        
+                        else if (it.key() == "vertices") {
+                            subType.CustomVertices = true;
+                            std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
+                            
+                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
+                                textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
+                            }
+                            
+                            for (auto const &side : sides) {
+                                subType.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
+                            }
+                        }
+                    }
+                    
+                    block.Types[at.key()] = subType;
+                }
+            }
+            
+            BlockTypes[j["id"]] = block;
         }
     }
     
