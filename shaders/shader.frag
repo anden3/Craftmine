@@ -12,9 +12,14 @@ uniform vec3 ambient;
 uniform vec3 diffuse;
 
 uniform sampler2D diffTex;
+uniform bool RenderTransparent = false;
 
 void main() {
     vec4 tex = texture(diffTex, TexCoords);
+    
+    if ((RenderTransparent && tex.a == 1.0f) || (!RenderTransparent && tex.a < 1.0f)) {
+        discard;
+    }
     
     float lightLevel = ((LightLevel + 1) / 16.0f);
     

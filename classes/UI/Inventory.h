@@ -23,17 +23,22 @@ struct Stack {
         Type = std::stoi(type.substr(0, delimPos));
         
         if (delimPos != std::string::npos) {
-            Data = type.substr(delimPos + 1);
+            Data = std::stoi(type.substr(delimPos + 1));
         }
     }
     
-    Stack(int type, std::string data, int size = 1) : Type(type), Data(data), Size(size) {}
+    Stack(int type, int data, int size) : Type(type), Data(data), Size(size) {}
     Stack(int type, int size = 1) : Type(type), Size(size) {}
+    
+    void Clear() {
+        Type = 0;
+        Size = 0;
+        Data = 0;
+    }
     
     int Type;
     int Size;
-    
-    std::string Data;
+    int Data;
 };
 
 extern std::map<unsigned int, glm::vec2> BlockIcons;
@@ -70,7 +75,7 @@ public:
     void Clear();
     
     inline void Add_Stack(Stack stack) { Add_Stack(stack.Type, stack.Data, stack.Size); }
-    void Add_Stack(int type, std::string typeData, int size);
+    void Add_Stack(int type, int typeData, int size);
     void Decrease_Size(int slot = -1);
     
     Stack Get_Info(int slot = -1);

@@ -7,6 +7,8 @@
 typedef void (Func)(void);
 typedef std::vector<float> Data;
 
+struct Block;
+
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 
@@ -22,8 +24,8 @@ inline Data Get_Rect(float x1, float x2, float y1, float y2) { return Data {x1, 
 inline Data Get_Border(float x1, float x2, float y1, float y2) { return Data { x1, y1, x2, y1, x2, y1, x2, y2, x2, y2, x1, y2, x1, y2, x1, y1 }; }
 inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data { x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0, x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0}; }
 
-Data Get_3D_Mesh(Block* block, float x, float y, bool offsets = false);
-std::tuple<unsigned int, int, int> Load_Texture(std::string file);
+Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
+std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap = false);
 void Take_Screenshot();
 
 template <typename T> inline float Scale_X(const T x) { return (x / 1440.0f) * SCREEN_WIDTH; }
@@ -199,10 +201,10 @@ public:
     float Scale;
     
     OrthoElement() {};
-    OrthoElement(int type, std::string data, float x, float y, float scale);
+    OrthoElement(int type, int data, float x, float y, float scale);
     
-    inline void Mesh(int type, std::string data, glm::vec2 pos) { Mesh(type, data, pos.x, pos.y); }
-    void Mesh(int type, std::string data, float x, float y);
+    inline void Mesh(int type, int data, glm::vec2 pos) { Mesh(type, data, pos.x, pos.y); }
+    void Mesh(int type, int data, float x, float y);
     void Draw();
     
 private:
@@ -230,7 +232,7 @@ public:
     inline void Add_Background(std::string name, glm::vec4 dims, bool border = false, glm::vec2 gridWidth = glm::vec2(0), glm::vec2 pad = glm::vec2(0)) {
         Add_Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad);
     }
-    inline void Add_3D_Element(std::string name, int type, std::string data, glm::vec2 pos, float scale) { Add_3D_Element(name, type, data, pos.x, pos.y, scale); }
+    inline void Add_3D_Element(std::string name, int type, int data, glm::vec2 pos, float scale) { Add_3D_Element(name, type, data, pos.x, pos.y, scale); }
     
     inline void Add_Text(std::string name, std::string text, float x, float y) {
         TextElements[ActiveDocument].emplace(name, TextElement(text, floor(x), floor(y)));
@@ -250,7 +252,7 @@ public:
     inline void Add_Background(std::string name, float x, float y, float w, float h, bool border = false, glm::vec2 gridWidth = glm::vec2(0), glm::vec2 pad = glm::vec2(0)) {
         Backgrounds[ActiveDocument].emplace(name, Background(x, y, w, h, border, gridWidth, pad));
     }
-    inline void Add_3D_Element(std::string name, int type, std::string data, float x, float y, float scale) {
+    inline void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
         OrthoElements[ActiveDocument].emplace(name, OrthoElement(type, data, x, y, scale));
     }
     

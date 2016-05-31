@@ -82,11 +82,12 @@ private:
     bool ThirdPerson = false;
     
     int LightLevel = SUN_LIGHT_LEVEL;
+    
     int CurrentBlock;
+    int CurrentBlockData = 0;
     
-    Block* CurrentBlockType;
-    
-    std::string CurrentBlockData = "";
+    const Block* CurrentBlockType;
+    const Block* LookingBlockType;
     
 	float SpeedModifier = 1.0f;
     float Rotation;

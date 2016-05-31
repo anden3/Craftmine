@@ -4,19 +4,20 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Chunk.h"
+#include "Blocks.h"
 #include "Shader.h"
 #include "Interface.h"
 
 std::vector<EntityInstance*> Entities;
 
-EntityInstance::EntityInstance(glm::vec3 pos, int type, std::string typeData, glm::vec3 velocity) {
+EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 velocity) {
     Position = pos + glm::vec3(0.5f);
     Type = type;
     BlockData = typeData;
     
     Data data;
     
-    Block* block = Get_Block_Type(type, typeData);
+    const Block* block = Blocks::Get_Block(type, typeData);
     
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
@@ -163,11 +164,11 @@ void EntityInstance::Draw() {
 }
 
 
-void Entity::Spawn(glm::vec3 pos, int type, std::string typeData, glm::vec3 velocity) {
+void Entity::Spawn(glm::vec3 pos, int type, int typeData, glm::vec3 velocity) {
     if (type == 2) {
         type = 3;
     }
-    
+        
     Entities.push_back(new EntityInstance(pos, type, typeData, velocity));
 }
 

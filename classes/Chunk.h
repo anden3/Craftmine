@@ -81,22 +81,25 @@ public:
     bool Meshed = false;
     bool DataUploaded = false;
     bool Visible = true;
-
-    char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
-    unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    
+    bool ContainsTransparentBlocks = false;
 
     Chunk(glm::vec3 position);
     
     inline int Get_Block(glm::vec3 pos) { return BlockMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
     inline void Set_Block(glm::ivec3 pos, char value) { BlockMap[pos.x][pos.y][pos.z] = value; }
-    inline int Get_Air(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
+    inline unsigned char Get_Air(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
+    inline unsigned char& Get_Air_Ref(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
+    
+    inline unsigned char Get_Data(glm::vec3 pos) { return DataMap.count(pos) ? DataMap[pos] : 0; }
+    inline void Set_Data(glm::vec3 pos, int data) { DataMap[pos] = data; }
     
     void Generate();
     void Light(bool flag = true);
     void Mesh();
 
     void Remove_Block(glm::ivec3 position);
-    void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, std::string blockData);
+    void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int blockData);
     
     inline int Get_Light(glm::vec3 pos) { return LightMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
     inline void Set_Light(glm::ivec3 pos, int value) { LightMap[pos.x][pos.y][pos.z] = value; }
@@ -115,9 +118,13 @@ private:
     void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
     void Check_Ore(glm::ivec3 pos, glm::vec3 noisePos);
     int GetAO(glm::vec3 block, int face, int offset);
-        
+    
+    char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
+    
     std::set<glm::vec3, Vec3Comparator> TopBlocks;
+    std::map<glm::vec3, int, Vec3Comparator> DataMap;
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);

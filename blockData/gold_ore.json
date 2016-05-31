@@ -1,7 +1,0 @@
-{
-	"name": "Gold Ore",
-	"id": 14,
-	"hardness": 3,
-	"sound": "stone",
-	"texture": [1, 3]
-}

@@ -7,6 +7,7 @@
 #include "Chat.h"
 #include "Chunk.h"
 #include "Sound.h"
+#include "Blocks.h"
 #include "Camera.h"
 #include "Entity.h"
 #include "Shader.h"
@@ -119,7 +120,7 @@ bool Check_Col(glm::vec3 pos) {
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
     
     unsigned int blockID = ChunkMap[chunk]->Get_Block(tile);
-    return Exists(chunk) && blockID != 0 && BlockTypes[blockID].Collision;
+    return Exists(chunk) && blockID != 0 && Blocks::Get_Block(blockID)->Collision;
 }
 
 void Player::Init() {
@@ -191,7 +192,7 @@ void Player::Init_Sounds() {
 void Player::Mesh_Holding() {
     CurrentBlock = inventory.Get_Info().Type;
     CurrentBlockData = inventory.Get_Info().Data;
-    CurrentBlockType = Get_Block_Type(CurrentBlock, CurrentBlockData);
+    CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
     
     if (CurrentBlock > 0) {
         HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlockType));
@@ -199,7 +200,7 @@ void Player::Mesh_Holding() {
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Create_Textured_Cube(Get_Block_Type(255, std::to_string(index + 1)), glm::vec3(0)));
+    DamageBuffer.Upload(Create_Textured_Cube(Blocks::Get_Block(255, index + 1), glm::vec3(0)));
 }
 
 void Player::Draw_Model() {
@@ -398,8 +399,7 @@ void Player::Move(float deltaTime, bool update) {
         else {
             MouseTimer += deltaTime;
             
-            Block block = BlockTypes[ChunkMap[LookingChunk]->Get_Block(LookingTile)];
-            float requiredTime = block.Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
+            float requiredTime = LookingBlockType->Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
             
             if (MouseTimer >= requiredTime) {
                 Break_Block();
@@ -479,7 +479,6 @@ void Player::Check_Pickup() {
     }
     
     glm::vec3 playerCenter = WorldPos + glm::vec3(0, 1, 0);
-    
     std::vector<EntityInstance*>::iterator it = Entities.begin();
     
     while (it != Entities.end()) {
@@ -598,7 +597,7 @@ std::vector<glm::vec3> Player::Hitscan() {
             glm::vec3 chunk1, tile1;
             std::tie(chunk1, tile1) = Get_Chunk_Pos(checkingPos);
             
-            if (BlockTypes[ChunkMap[chunk1]->Get_Block(tile1)].Targetable) {
+            if (Blocks::Get_Block(ChunkMap[chunk1]->Get_Block(tile1))->Targetable) {
                 std::vector<glm::vec3> result;
                 Extend(result, chunk1, tile1);
                 
@@ -720,10 +719,16 @@ void Player::Mouse_Handler(double posX, double posY) {
             MouseTimer = 0.0;
         }
         
-        LookingChunk = hit[0];
-        LookingAirChunk = hit[2];
+        glm::vec3 oldTile = LookingTile;
         
+        LookingChunk = hit[0];
         LookingTile = hit[1];
+        
+        if (LookingTile != oldTile) {
+            LookingBlockType = Blocks::Get_Block(ChunkMap[LookingChunk]->Get_Block(LookingTile), ChunkMap[LookingChunk]->Get_Data(LookingTile));
+        }
+        
+        LookingAirChunk = hit[2];
 		LookingAirTile = hit[3];
     }
     
@@ -737,13 +742,7 @@ void Player::Mouse_Handler(double posX, double posY) {
             chunk.second->Visible = true;
         }
         else {
-            float dot = 0;
-            
-            if (chunk.first.xz() != CurrentChunk.xz()) {
-                dot = glm::dot(Cam.FrontDirection.xz(), glm::normalize(chunk.first.xz() - CurrentChunk.xz()));
-            }
-            
-            chunk.second->Visible = glm::degrees(glm::acos(dot)) <= DEFAULT_FOV;
+            chunk.second->Visible = glm::degrees(glm::acos(glm::dot(Cam.FrontDirection.xz(), glm::normalize(chunk.first.xz() - CurrentChunk.xz())))) <= DEFAULT_FOV;
         }
     }
 }
@@ -800,7 +799,7 @@ void Player::Click_Handler(int button, int action) {
                     
                     CurrentBlock = inventory.Get_Info().Type;
                     CurrentBlockData = inventory.Get_Info().Data;
-                    CurrentBlockType = Get_Block_Type(CurrentBlock, CurrentBlockData);
+                    CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
                     
                     if (CurrentBlockType->Luminosity > 0) {
                         Place_Light(CurrentBlockType->Luminosity);
@@ -814,16 +813,14 @@ void Player::Click_Handler(int button, int action) {
 }
 
 void Player::Break_Block() {
-    Chunk* lookingChunk = ChunkMap[LookingChunk];
-    int blockType = lookingChunk->Get_Block(LookingTile);
-    Block* block = Get_Block_Type(blockType);
+    int blockType = LookingBlockType->ID;
     
     if (blockType == 50) {
         Remove_Light();
     }
     
-    if (block->Sound != "") {
-        Play_Sound(block->Sound, LookingChunk, LookingTile);
+    if (LookingBlockType->Sound != "") {
+        Play_Sound(LookingBlockType->Sound, LookingChunk, LookingTile);
     }
     
     if (blockType == 1) {
@@ -834,8 +831,8 @@ void Player::Break_Block() {
         blockType = 3;
     }
     
-    lookingChunk->Remove_Block(LookingTile);
-    Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType);
+    ChunkMap[LookingChunk]->Remove_Block(LookingTile);
+    Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType, LookingBlockType->Data);
 }
 
 void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
@@ -844,6 +841,7 @@ void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
 	soundPlayer.Set_Position(Get_World_Pos(chunk, tile));
 	soundPlayer.Set_Volume(VOLUME);
     
+    // Get random sound
     std::vector<Sound>::iterator sound = Sounds[type].begin();
     std::advance(sound, std::rand() % Sounds[type].size());
     

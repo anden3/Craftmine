@@ -7,6 +7,7 @@
 
 #include <SOIL/SOIL.h>
 
+#include "Blocks.h"
 #include "Shader.h"
 
 const std::string FONT = "Roboto";
@@ -86,7 +87,7 @@ struct Character {
 
 std::map<char, Character> Characters;
 
-Data Get_3D_Mesh(Block* block, float x, float y, bool offsets) {
+Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
     Data data;
     
     x *= 2.005f;
@@ -124,7 +125,7 @@ Data Get_3D_Mesh(Block* block, float x, float y, bool offsets) {
     return data;
 }
 
-std::tuple<unsigned int, int, int> Load_Texture(std::string file) {
+std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     std::string path = "images/" + file;
     
     unsigned int texture;
@@ -134,11 +135,18 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    if (mipmap) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    }
+    else {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    }
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     
     int width, height;
     unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
+    
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
@@ -483,7 +491,7 @@ void Background::Draw() {
     }
 }
 
-OrthoElement::OrthoElement(int type, std::string data, float x, float y, float scale) {
+OrthoElement::OrthoElement(int type, int data, float x, float y, float scale) {
     OrthoBuffer.Init(UI3DShader);
     
     Type = type;
@@ -493,15 +501,15 @@ OrthoElement::OrthoElement(int type, std::string data, float x, float y, float s
         OrthoBuffer.Create(3, 2, 2);
     }
     else {
-        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(Get_Block_Type(type, data), x, y, true));
+        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
     }
 }
 
-void OrthoElement::Mesh(int type, std::string data, float x, float y) {
+void OrthoElement::Mesh(int type, int data, float x, float y) {
     Type = type;
     
     if (Type != 0) {
-        OrthoBuffer.Upload(Get_3D_Mesh(Get_Block_Type(type, data), x, y, true));
+        OrthoBuffer.Upload(Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
     }
 }
 

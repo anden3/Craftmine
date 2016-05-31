@@ -6,67 +6,67 @@
 	"texture": [1, 5],
 	
 	"types": {
-		"white": {
+		"1": {
 			"name": "White Wool",
 			"texture": [1, 5]
 		},
-		"black": {
+		"2": {
 			"name": "Black Wool",
 			"texture": [2, 8]
 		},
-		"red": {
+		"3": {
 			"name": "Red Wool",
 			"texture": [2, 9]
 		},
-		"dark_green": {
+		"4": {
 			"name": "Dark Green Wool",
 			"texture": [2, 10]
 		},
-		"brown": {
+		"5": {
 			"name": "Brown Wool",
 			"texture": [2, 11]
 		},
-		"blue": {
+		"6": {
 			"name": "Blue Wool",
 			"texture": [2, 12]
 		},
-		"purple": {
+		"7": {
 			"name": "Purple Wool",
 			"texture": [2, 13]
 		},
-		"cyan": {
+		"8": {
 			"name": "Cyan Wool",
 			"texture": [2, 14]
 		},
-		"light_gray": {
+		"9": {
 			"name": "Light Gray Wool",
 			"texture": [2, 15]
 		},
-		"gray": {
+		"10": {
 			"name": "Gray Wool",
 			"texture": [3, 8]
 		},
-		"pink": {
+		"11": {
 			"name": "Pink Wool",
 			"texture": [3, 9]
 		},
-		"lime": {
+		"12": {
 			"name": "Lime Wool",
 			"texture": [3, 10]
 		},
-		"yellow": {
+		"13": {
 			"name": "Yellow Wool",
 			"texture": [3, 11]
 		},
-		"light_blue": {
+		"14": {
 			"name": "Light Blue Wool",
 			"texture": [3, 12]
 		},
-		"magenta": {
+		"15": {
 			"name": "Magenta Wool",
 			"texture": [3, 13]
 		},
-		"orange": {
+		"16": {
 			"name": "Orange Wool",
 			"texture": [3, 14]
 		}

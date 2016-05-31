@@ -1,7 +1,0 @@
-{
-	"name": "Iron Ore",
-	"id": 15,
-	"hardness": 3,
-	"sound": "stone",
-	"texture": [2, 3]
-}

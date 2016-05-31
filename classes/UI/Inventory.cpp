@@ -243,7 +243,7 @@ void Inventory::Init() {
         
         interface.Add_Text(name, "0", pos + textPad / 2.0f);
         interface.Get_Text_Element(name)->Opacity = 0.0f;
-        interface.Add_3D_Element(name, 0, "", pos + glm::vec2(0, slotPad.y), BLOCK_SCALE / 2.0f);
+        interface.Add_3D_Element(name, 0, 0, pos + glm::vec2(0, slotPad.y), BLOCK_SCALE / 2.0f);
     }
     
     interface.Set_Document("inventory");
@@ -255,7 +255,7 @@ void Inventory::Init() {
         Inv.push_back(Stack());
         interface.Add_Text(name, "0", pos + slotPad);
         interface.Get_Text_Element(name)->Opacity = 0.0f;
-        interface.Add_3D_Element(name, 0, "", pos + glm::vec2(0, slotPad.y), BLOCK_SCALE);
+        interface.Add_3D_Element(name, 0, 0, pos + glm::vec2(0, slotPad.y), BLOCK_SCALE);
     }
     
     for (int i = 0; i < 9; i++) {
@@ -265,12 +265,12 @@ void Inventory::Init() {
         Craft.push_back(Stack());
         interface.Add_Text(name, "0", pos);
         interface.Get_Text_Element(name)->Opacity = 0.0f;
-        interface.Add_3D_Element(name, 0, "", pos, BLOCK_SCALE);
+        interface.Add_3D_Element(name, 0, 0, pos, BLOCK_SCALE);
     }
     
     interface.Add_Text(std::to_string(INV_SIZE + 9), "0", outputDims.xy() + slotPad);
     interface.Get_Text_Element(std::to_string(INV_SIZE + 9))->Opacity = 0.0f;
-    interface.Add_3D_Element(std::to_string(INV_SIZE + 9), 0, "", outputDims.xy() + glm::vec2(slotPad.x, slotPad.y * 2), BLOCK_SCALE);
+    interface.Add_3D_Element(std::to_string(INV_SIZE + 9), 0, 0, outputDims.xy() + glm::vec2(slotPad.x, slotPad.y * 2), BLOCK_SCALE);
     
     interface.Add_Background("invInv", glm::vec4(invDims.xy() - invPad, invDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
     interface.Add_Background("invCraft", glm::vec4(craftDims.xy() - invPad, craftDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
@@ -283,7 +283,7 @@ void Inventory::Init() {
     interface.Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
     interface.Get_Text_Element("mouseStack")->Opacity = 0.0f;
     
-    interface.Add_3D_Element("mouseStack", 0, "", 0, 0, BLOCK_SCALE);
+    interface.Add_3D_Element("mouseStack", 0, 0, 0, 0, BLOCK_SCALE);
     
     interface.Set_Document("toolbar");
     
@@ -296,16 +296,14 @@ void Inventory::Init() {
 
 void Inventory::Clear() {
     for (int i = 0; i < int(Inv.size()); i++) {
-        Inv[i] = Stack();
+        Inv[i].Clear();
     }
     
     Mesh();
 }
 
-void Inventory::Add_Stack(int type, std::string typeData, int size) {
+void Inventory::Add_Stack(int type, int typeData, int size) {
     int index = 0;
-    
-    // Block* block = Get_Block_Type(type, typeData);
     
     for (auto &stack : Inv) {
         if (stack.Type == type && stack.Data == typeData) {
@@ -352,7 +350,7 @@ void Inventory::Decrease_Size(int slot) {
     Inv[slot].Size--;
     
     if (Inv[slot].Size == 0) {
-        Inv[slot].Type = 0;
+        Inv[slot].Clear();
     }
     
     Mesh();
@@ -374,7 +372,7 @@ void Inventory::Click_Slot(int slot, int button) {
     if (slot == OUTPUT_SLOT && CraftingOutput.Type) {
         if (keys[GLFW_KEY_LEFT_SHIFT]) {
             Add_Stack(CraftingOutput);
-            CraftingOutput = Stack();
+            CraftingOutput.Clear();
             Craft_Item();
         }
         
@@ -410,11 +408,11 @@ void Inventory::Swap_Stacks(Stack &stack) {
 }
 
 bool Inventory::Left_Click_Stack(Stack &a, Stack &b, bool swap) {
-    if (a.Type != 0 && a.Type == b.Type) {
+    if (a.Type != 0 && a.Type == b.Type && a.Data == b.Data) {
         if (b.Size < MAX_STACK_SIZE) {
             if (a.Size <= MAX_STACK_SIZE - b.Size) {
                 b.Size += a.Size;
-                a = Stack();
+                a.Clear();
             }
             else {
                 int remainder = a.Size - (MAX_STACK_SIZE - b.Size);
@@ -437,12 +435,13 @@ void Inventory::Left_Drag(int slot) {
     Stack &stack = (slot >= INV_SIZE) ? Craft[slot - INV_SIZE] : Inv[slot];
     
     if (MouseState == 0) {
-        if (HoldingStack.Type == 0 || stack.Type == HoldingStack.Type) {
+        if (HoldingStack.Type == 0 || (stack.Type == HoldingStack.Type && stack.Data == HoldingStack.Data)) {
             HoldingStack.Type = stack.Type;
+            HoldingStack.Data = stack.Data;
             
             if (HoldingStack.Size <= MAX_STACK_SIZE - stack.Size) {
                 HoldingStack.Size += stack.Size;
-                stack = Stack();
+                stack.Clear();
             }
             else {
                 int remainder = stack.Size - (MAX_STACK_SIZE - HoldingStack.Size);
@@ -450,19 +449,21 @@ void Inventory::Left_Drag(int slot) {
                 stack.Size = remainder;
                 
                 if (stack.Size == 0) {
-                    stack = Stack();
+                    stack.Clear();
                 }
             }
             
             Mesh();
         }
     }
-    else if (!stack.Type || stack.Type == HoldingStack.Type) {
+    else if (!stack.Type || (stack.Type == HoldingStack.Type && stack.Data == HoldingStack.Data)) {
         if (HoldingSize <= DivideSlots.size()) {
             return;
         }
         
         stack.Type = HoldingStack.Type;
+        stack.Data = HoldingStack.Data;
+        
         DivideSlots.insert(&stack);
         
         if (DivideSlots.size() > 1) {
@@ -485,24 +486,25 @@ void Inventory::Left_Drag(int slot) {
 
 void Inventory::Right_Click_Stack(Stack &stack) {
     if (HoldingStack.Type) {
-        if (HoldingStack.Type == stack.Type && stack.Size < MAX_STACK_SIZE) {
+        if (HoldingStack.Type == stack.Type && HoldingStack.Data == stack.Data && stack.Size < MAX_STACK_SIZE) {
             stack.Size++;
         }
         else if (!stack.Type) {
-            stack = Stack(HoldingStack.Type);
+            stack = Stack(HoldingStack.Type, HoldingStack.Data);
         }
         
         if (--HoldingStack.Size == 0) {
-            HoldingStack.Type = 0;
+            HoldingStack.Clear();
         }
     }
     else if (stack.Type) {
         HoldingStack.Type = stack.Type;
+        HoldingStack.Data = stack.Data;
         HoldingStack.Size = int(ceil(stack.Size / 2.0));
         stack.Size -= HoldingStack.Size;
         
         if (stack.Size == 0) {
-            stack.Type = 0;
+            stack.Clear();
         }
     }
 }
@@ -530,10 +532,8 @@ void Inventory::Check_Crafting() {
 
 void Inventory::Craft_Item() {
     for (auto &stack : Craft) {
-        if (stack.Type) {
-            if (--stack.Size == 0) {
-                stack.Type = 0;
-            }
+        if (stack.Type && --stack.Size == 0) {
+            stack.Clear();
         }
     }
 }
@@ -581,13 +581,14 @@ void Inventory::Click_Handler(double x, double y, int button, int action) {
             
             for (auto &stack : DivideSlots) {
                 stack->Type = HoldingStack.Type;
+                stack->Data = HoldingStack.Data;
                 stack->Size += floorNum;
             }
             
             HoldingStack.Size = remainder;
             
             if (remainder == 0) {
-                HoldingStack = Stack();
+                HoldingStack.Clear();
             }
         }
         
@@ -713,23 +714,23 @@ void Inventory::Mesh() {
         
         for (auto const &stack : Craft) {
             std::string textName = std::to_string(INV_SIZE + index);
+            glm::vec2 pos = craftDims.xy() + glm::vec2(index % 3, index / 3) * slotWidth + slotPad;
+            
             interface.Get_Text_Element(textName)->Opacity = float(stack.Type > 0);
+            interface.Get_3D_Element(textName)->Mesh(stack.Type, stack.Data, pos + glm::vec2(0, 10));
             
             if (stack.Type) {
-                glm::vec2 pos = craftDims.xy() + glm::vec2(index % 3, index / 3) * slotWidth + slotPad;
-                
-                interface.Get_3D_Element(textName)->Mesh(stack.Type, stack.Data, pos + glm::vec2(0, 10));
                 interface.Get_Text_Element(textName)->Text = std::to_string(stack.Size);
             }
             
-            index++;
+            ++index;
         }
         
         std::string outputName = std::to_string(OUTPUT_SLOT);
         interface.Get_Text_Element(outputName)->Opacity = float(CraftingOutput.Type > 0);
+        interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, CraftingOutput.Data, outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2));
         
         if (CraftingOutput.Type) {
-            interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, CraftingOutput.Data, outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2));
             interface.Get_Text_Element(outputName)->Text = std::to_string(CraftingOutput.Size);
         }
     }

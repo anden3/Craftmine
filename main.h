@@ -2,8 +2,8 @@
 
 #include <map>
 #include <set>
-#include <vector>
 #include <string>
+#include <vector>
 
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
@@ -20,8 +20,8 @@ const bool Windows = false;
 #endif
 
 // TODO: Add 2D icon functionality to inventory.
-// TODO: Sort rendering of transparent objects.
-// TODO: Fix water borders.
+// TODO: Remove transparent block borders.
+// TODO: Interpolate lighting by having different values for vertices per block.
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
 const glm::vec3 AMBIENT_LIGHT = glm::vec3(0.1f);
@@ -46,9 +46,6 @@ glm::vec2 tex_coords[6][6] = {
     { {1, 1}, {0, 0}, {0, 1}, {1, 1}, {1, 0}, {0, 0} },
     { {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1} }
 };
-
-struct Block;
-std::map<unsigned int, Block> BlockTypes;
 
 std::map<unsigned int, glm::vec2> textureCoords = {
     // BLOCKS        

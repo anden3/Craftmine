@@ -2,14 +2,13 @@
 
 #include <sstream>
 #include <fstream>
-
-#include "json.hpp"
 #include <dirent.h>
 
 #include "UI.h"
 #include "Chat.h"
 #include "Sound.h"
 #include "Chunk.h"
+#include "Blocks.h"
 #include "Camera.h"
 #include "Entity.h"
 #include "Player.h"
@@ -31,12 +30,14 @@ Shader* outlineShader;
 UniformBuffer UBO;
 Buffer OutlineBuffer;
 
+int ShaderTransparencyLoc;
+int OutlineModelLoc;
+
 GLFWwindow* Window;
 
 std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 
 void Parse_Config();
-void Parse_Blocks();
 
 void Init_GL();
 void Init_Textures();
@@ -58,7 +59,7 @@ int main() {
     glfwInit();
     
     Parse_Config();
-    Parse_Blocks();
+    Blocks::Init();
     
 	Init_GL();
 	Init_Textures();
@@ -143,203 +144,6 @@ void Write_Config() {
     file.close();
 }
 
-void Parse_Blocks() {
-    DIR *dir = opendir("blockData");
-    struct dirent *ent;
-    
-    std::vector<std::string> sides = {"left", "right", "down", "up", "back", "front"};
-    
-    while ((ent = readdir(dir)) != nullptr) {
-        std::string name(ent->d_name);
-        
-        if (name.find(".json") != std::string::npos) {
-            Block block;
-            
-            std::stringstream file_content;
-            
-            std::ifstream file("blockData/" + name);
-            file_content << file.rdbuf();
-            file.close();
-            
-            nlohmann::json j;
-            j << file_content;
-            
-            for (nlohmann::json::iterator it = j.begin(); it != j.end(); ++it) {
-                if (it.key() == "name") {
-                    block.Name = it.value();
-                }
-                
-                else if (it.key() == "hardness") {
-                    block.Hardness = it.value();
-                }
-                
-                else if (it.key() == "transparent" && it.value()) {
-                    block.Transparent = true;
-                }
-                
-                else if (it.key() == "noCollision" && it.value()) {
-                    block.Collision = false;
-                }
-                
-                else if (it.key() == "targetable" && !it.value()) {
-                    block.Targetable = false;
-                }
-                
-                else if (it.key() == "luminosity") {
-                    block.Luminosity = it.value();
-                }
-                
-                else if (it.key() == "sound") {
-                    block.Sound = it.value();
-                }
-                
-                else if (it.key() == "icon") {
-                    block.HasIcon = true;
-                    block.Icon = glm::vec2(it.value()[0], it.value()[1]);
-                }
-                
-                else if (it.key() == "texture") {
-                    block.HasTexture = true;
-                    block.Texture = glm::vec2(it.value()[0], it.value()[1]);
-                }
-                
-                else if (it.key() == "multiTexture") {
-                    block.MultiTextures = true;
-                    
-                    std::map<std::string, glm::vec2> textureBuffer;
-                    
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.Textures.push_back(textureBuffer[side]);
-                    }
-                }
-                
-                else if (it.key() == "texCoords") {
-                    block.CustomTexCoords = true;
-                    std::map<std::string, glm::vec4> textureBuffer;
-                    
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
-                    }
-                }
-                
-                else if (it.key() == "vertices") {
-                    block.CustomVertices = true;
-                    std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
-                    
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
-                    }
-                }
-            }
-            
-            if (j.count("types")) {
-                for (nlohmann::json::iterator at = j["types"].begin(); at != j["types"].end(); ++at) {
-                    Block subType = block;
-                    subType.Data = at.key();
-                    
-                    for (nlohmann::json::iterator it = at.value().begin(); it != at.value().end(); ++it) {
-                        if (it.key() == "name") {
-                            subType.Name = it.value();
-                        }
-                        
-                        else if (it.key() == "hardness") {
-                            subType.Hardness = it.value();
-                        }
-                        
-                        else if (it.key() == "transparent" && it.value()) {
-                            subType.Transparent = true;
-                        }
-                        
-                        else if (it.key() == "noCollision" && it.value()) {
-                            subType.Collision = false;
-                        }
-                        
-                        else if (it.key() == "targetable" && !it.value()) {
-                            subType.Targetable = false;
-                        }
-                        
-                        else if (it.key() == "luminosity") {
-                            subType.Luminosity = it.value();
-                        }
-                        
-                        else if (it.key() == "sound") {
-                            subType.Sound = it.value();
-                        }
-                        
-                        else if (it.key() == "icon") {
-                            subType.HasIcon = true;
-                            subType.Icon = glm::vec2(it.value()[0], it.value()[1]);
-                        }
-                        
-                        else if (it.key() == "texture") {
-                            subType.HasTexture = true;
-                            subType.Texture = glm::vec2(it.value()[0], it.value()[1]);
-                        }
-                        
-                        else if (it.key() == "multiTexture") {
-                            subType.MultiTextures = true;
-                            
-                            std::map<std::string, glm::vec2> textureBuffer;
-                            
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.Textures.push_back(textureBuffer[side]);
-                            }
-                        }
-                        
-                        else if (it.key() == "texCoords") {
-                            subType.CustomTexCoords = true;
-                            std::map<std::string, glm::vec4> textureBuffer;
-                            
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
-                            }
-                        }
-                        
-                        else if (it.key() == "vertices") {
-                            subType.CustomVertices = true;
-                            std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
-                            
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
-                            }
-                        }
-                    }
-                    
-                    block.Types[at.key()] = subType;
-                }
-            }
-            
-            BlockTypes[j["id"]] = block;
-        }
-    }
-    
-    closedir(dir);
-}
-
 void Init_GL() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -388,9 +192,10 @@ void Init_GL() {
 }
 
 void Init_Textures() {
-    unsigned int atlas = std::get<0>(Load_Texture("atlas.png"));
+    unsigned int atlas = std::get<0>(Load_Texture("atlas.png", false));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlas);
+    // glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 void Init_Shaders() {
@@ -401,30 +206,33 @@ void Init_Shaders() {
     glm::mat4 projection = glm::perspective(glm::radians((float)Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
     UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4), std::vector<Shader*> {shader, outlineShader, modelShader});
     UBO.Upload(1, projection);
+    
+    ShaderTransparencyLoc = shader->Get_Location("RenderTransparent");
+    OutlineModelLoc = outlineShader->Get_Location("model");
 }
 
 void Init_Buffers() {
     Data data;
     
-    float points[8][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}, {1, 0}, {1, 1}, {0, 1} };
-    float n[2] {float(-1 / sqrt(3)), float(1 / sqrt(3))};
+    int points[4][2] = { {0, 0}, {1, 0}, {1, 1}, {0, 1} };
+    float n[2] {-1 / sqrtf(3), 1 / sqrtf(3)};
     
-    for (float y = 0; y < 3; y++) {
+    for (int y = 0; y < 3; y++) {
         for (int i = 0; i < 4; i++) {
-            float x1 = points[i][0];
-            float z1 = points[i][1];
+            int x1 = points[i % 4][0];
+            int z1 = points[i % 4][1];
             
-            float y1 = (y == 2) ? 0 : y;
-            float y2 = (y == 2) ? 1 : y;
+            int y1 = (y == 2) ? 0 : y;
+            int y2 = (y == 2) ? 1 : y;
             
-            float x2 = (y == 2) ? x1 : ((i != 4) ? points[i + 1][0] : 0);
-            float z2 = (y == 2) ? z1 : ((i != 4) ? points[i + 1][1] : 0);
+            int x2 = (y == 2) ? x1 : ((i != 4) ? points[(i + 1) % 4][0] : 0);
+            int z2 = (y == 2) ? z1 : ((i != 4) ? points[(i + 1) % 4][1] : 0);
             
             Extend(data, x1, y1, z1);
-            Extend(data, n[int(x1)], n[int(y1)], n[int(z1)]);
+            Extend(data, n[x1], n[y1], n[z1]);
             
             Extend(data, x2, y2, z2);
-            Extend(data, n[int(x2)], n[int(y2)], n[int(z2)]);
+            Extend(data, n[x2], n[y2], n[z2]);
         }
     }
     
@@ -455,6 +263,8 @@ void Render_Scene() {
         shader->Upload("diffTex", Wireframe ? 50 : 0);
 	}
     
+    shader->Upload(ShaderTransparencyLoc, false);
+    
     for (auto const &chunk : ChunkMap) {
         if (chunk.second->Meshed) {
             if (!chunk.second->DataUploaded) {
@@ -468,9 +278,17 @@ void Render_Scene() {
         }
 	}
     
+    shader->Upload(ShaderTransparencyLoc, true);
+    
+    for (auto const &chunk : ChunkMap) {
+        if (chunk.second->Meshed && chunk.second->Visible && chunk.second->ContainsTransparentBlocks) {
+            chunk.second->buffer.Draw();
+        }
+    }
+    
     if (player.LookingAtBlock) {
         glm::mat4 model;
-        outlineShader->Upload("model", glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
+        outlineShader->Upload(OutlineModelLoc, glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
         OutlineBuffer.Draw();
     }
 }

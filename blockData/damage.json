@@ -1,11 +1,12 @@
 {"name": "Damage",
 	"id": 255,
 		
-	"types": {"1": {"texture": [1, 16]},
+	"types": {
+		"1": {"texture": [1, 16]},
 		"2": {"texture": [2, 16]},
 		"3": {"texture": [3, 16]},
 		"4": {"texture": [4, 16]},
-		"5": { "texture": [5, 16]},
+		"5": {"texture": [5, 16]},
 		"6": {"texture": [6, 16]},
 		"7": {"texture": [7, 16]},
 		"8": {"texture": [8, 16]},

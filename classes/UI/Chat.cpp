@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <unicode/ustream.h>
 
+#include "Blocks.h"
 #include "Player.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -296,43 +297,67 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
             return std::vector<std::string> {"&4Error! &fToo many parameters."};
         }
         
-        if (!BlockTypes.count(std::stoi(parameters[1]))) {
-            return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
+        std::string name = "";
+        
+        bool lastParameterIsSize = false;
+        int size = 64;
+        
+        if (parameters.size() >= 3) {
+            try {
+                lastParameterIsSize = true;
+                size = std::stoi(parameters[parameters.size() - 1]);
+            }
+            catch (std::invalid_argument) {
+                size = 64;
+                lastParameterIsSize = false;
+            }
+        }
+        
+        for (int p = 1; p < parameters.size() - lastParameterIsSize; ++p) {
+            name += parameters[p] + ((p < parameters.size() - (lastParameterIsSize + 1)) ? " " : "");
         }
         
         int type;
-        std::string data = "";
-        int size;
+        int data = 0;
         
-        if (parameters.size() == 4) {
-            size = std::stoi(parameters[3]);
+        unsigned long delimiterPos = parameters[1].find(':');
+        
+        if (delimiterPos != std::string::npos) {
+            type = std::stoi(parameters[1].substr(0, delimiterPos));
+            data = std::stoi(parameters[1].substr(delimiterPos + 1));
+            
+            if (Blocks::Exists(type) && !Blocks::Exists(type, data)) {
+                return std::vector<std::string> {"&4Error! &fNo block exists with that data value."};
+            }
         }
         else {
-            size = (parameters.size() == 3) ? std::stoi(parameters[2]) : 64;
+            try {
+                type = std::stoi(name);
+            }
+            catch (std::invalid_argument) {
+                const Block* block = Blocks::Get_Block_From_Name(name);
+                
+                if (block == nullptr) {
+                    return std::vector<std::string> {"&4Error! &fNo block exists with that name."};
+                }
+                else {
+                    name = block->Name;
+                    type = block->ID;
+                    data = block->Data;
+                }
+            }
         }
         
-        unsigned long delimiterPos1 = parameters[1].find(':');
-        unsigned long delimiterPos2 = parameters[1].find('.');
-        
-        if (delimiterPos1 != std::string::npos) {
-            type = std::stoi(parameters[1].substr(0, delimiterPos1));
-            data = parameters[1].substr(delimiterPos1 + 1);
-        }
-        else if (delimiterPos2 != std::string::npos) {
-            type = std::stoi(parameters[1].substr(0, delimiterPos2));
-            data = parameters[1].substr(delimiterPos2 + 1);
-        }
-        else {
-            type = std::stoi(parameters[1]);
+        if (!Blocks::Exists(type, data)) {
+            return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
         }
         
-        if (data != "" && !Get_Block_Type(type)->Types.count(data)) {
-            return std::vector<std::string> {"&4Error! &fNo block exists with that data value."};
-        }
+        name = Blocks::Get_Name(type, data);
         
+    done:
         inventory.Add_Stack(type, data, size);
         player.Mesh_Holding();
-        return std::vector<std::string> {"Given block &2" + parameters[1] + "&f to player."};
+        return std::vector<std::string> {"Given &2" + name + " &fto player."};
     }
     
     else if (command == "clear") {
