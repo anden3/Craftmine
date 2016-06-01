@@ -20,7 +20,6 @@ const bool Windows = false;
 #endif
 
 // TODO: Add 2D icon functionality to inventory.
-// TODO: Remove transparent block borders.
 // TODO: Interpolate lighting by having different values for vertices per block.
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);

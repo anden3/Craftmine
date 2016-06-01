@@ -115,7 +115,9 @@ public:
     }
     
 private:
-    void UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk);
+    void Update_Air(glm::ivec3 pos, glm::bvec3 inChunk);
+    void Update_Transparency(glm::ivec3 pos);
+    
     void Check_Ore(glm::ivec3 pos, glm::vec3 noisePos);
     int GetAO(glm::vec3 block, int face, int offset);
     
@@ -124,6 +126,7 @@ private:
     unsigned char SeesAir[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     
     std::set<glm::vec3, Vec3Comparator> TopBlocks;
+    std::set<glm::vec3, Vec3Comparator> TransparentBlocks;
     std::map<glm::vec3, int, Vec3Comparator> DataMap;
 };
 

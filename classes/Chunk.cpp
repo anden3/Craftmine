@@ -94,7 +94,7 @@ Chunk::Chunk(glm::vec3 position) {
     Position = position;
 }
 
-void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
+void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {
 	bool chunkTests[3] = { inChunk.y && inChunk.z, inChunk.x && inChunk.z, inChunk.x && inChunk.y };
 	static glm::ivec3 offsets[3] = { glm::ivec3(1, 0, 0), glm::ivec3(0, 1, 0), glm::ivec3(0, 0, 1) };
 
@@ -108,6 +108,22 @@ void Chunk::UpdateAir(glm::ivec3 pos, glm::bvec3 inChunk) {
             }
         }
 	}
+}
+
+void Chunk::Update_Transparency(glm::ivec3 pos) {
+    std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, pos);
+    
+    int index = 0;
+    for (auto const &neighbor : neighbors) {
+        if (Exists(neighbor.first)) {
+            if (ChunkMap[neighbor.first]->TransparentBlocks.count(neighbor.second)) {
+                ChunkMap[neighbor.first]->Get_Air_Ref(neighbor.second) &= ~(1 << index);
+                Get_Air_Ref(pos) &= ~(1 << (index + ((index % 2) ? -1 : 1)));
+            }
+        }
+        
+        ++index;
+    }
 }
 
 void Chunk::Check_Ore(glm::ivec3 pos, glm::vec3 noisePos) {
@@ -168,11 +184,13 @@ void Chunk::Generate() {
                             Blocks.insert(block);
                         }
                         else {
-                            UpdateAir(block, inChunk);
+                            TransparentBlocks.insert(block);
+                            Update_Air(block, inChunk);
+                            Update_Transparency(block);
                         }
                     }
                     else {
-                        UpdateAir(block, inChunk);
+                        Update_Air(block, inChunk);
                     }
                 }
                 else {
@@ -205,7 +223,7 @@ void Chunk::Generate() {
                         }
                     }
                     else {
-                        UpdateAir(block, inChunk);
+                        Update_Air(block, inChunk);
                     }
                 }
             }
@@ -391,6 +409,10 @@ void Chunk::Remove_Block(glm::ivec3 position) {
     Set_Data(position, 0);
     Blocks.erase(position);
     
+    if (TransparentBlocks.count(position)) {
+        TransparentBlocks.erase(position);
+    }
+    
     if (ChangedBlocks[Position].count(position)) {
         ChangedBlocks[Position].erase(position);
     }
@@ -485,16 +507,14 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int bl
                     }
                 }
                 else {
-                    int direction = i + 1;
-                    
-                    if (i % 2 != 0) {
-                        direction = i - 1;
-                    }
-                    
-                    Get_Air_Ref(position) |= 1 << direction;
+                    Get_Air_Ref(position) |= 1 << (i + ((i % 2) ? -1 : 1));
                 }
             }
         }
+    }
+    else {
+        TransparentBlocks.insert(position);
+        Update_Transparency(position);
     }
 	
     Light();
