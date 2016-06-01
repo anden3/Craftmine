@@ -4,7 +4,8 @@
 	"hardness": 0.5,
 	"sound": "wood",
 	"transparent": true,
-	"noCollision": true,
+	"fullBlock": false,
+	"collision": false,
 	"texture": [5, 1],
 	
 	"vertices": {

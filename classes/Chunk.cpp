@@ -163,29 +163,32 @@ void Chunk::Generate() {
 				);
                 
                 if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
-                    int type;
-                    int data;
+                    int type, data;
                     std::tie(type, data) = ChangedBlocks[Position][block];
                     
                     if (type > 0) {
                         const Block* blockInstance = Blocks::Get_Block(type, data);
                         
-                        if (!blockInstance->Transparent) {
-                            if (!topBlocks[topPos].count(block.xz())) {
-                                topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
-                                TopBlocks.insert(block);
-                                
-                                Set_Light(block, SUN_LIGHT_LEVEL);
-                                LightQueue.emplace(Position, block, SUN_LIGHT_LEVEL);
-                            }
+                        if (!topBlocks[topPos].count(block.xz())) {
+                            topBlocks[topPos][block.xz()] = Position.y * CHUNK_SIZE + y;
+                            TopBlocks.insert(block);
                             
                             Set_Block(block, type);
                             Set_Data(block, data);
                             Blocks.insert(block);
                         }
-                        else {
-                            TransparentBlocks.insert(block);
+                        
+                        Set_Block(block, type);
+                        Set_Data(block, data);
+                        Blocks.insert(block);
+                        
+                        if (!blockInstance->FullBlock || blockInstance->Transparent) {
+                            ContainsTransparentBlocks = true;
                             Update_Air(block, inChunk);
+                        }
+                        
+                        if (blockInstance->Transparent) {
+                            TransparentBlocks.insert(block);
                             Update_Transparency(block);
                         }
                     }
@@ -359,10 +362,6 @@ void Chunk::Mesh() {
             float lightValue = float(Get_Light(*block));
             const Block* blockInstance = Blocks::Get_Block(Get_Block(*block), Get_Data(*block));
             
-            if (blockInstance->Transparent) {
-                ContainsTransparentBlocks = true;
-            }
-            
             while (bit < 6) {
                 if (seesAir & 1) {
                     for (int j = 0; j < 6; j++) {
@@ -411,6 +410,11 @@ void Chunk::Remove_Block(glm::ivec3 position) {
     
     if (TransparentBlocks.count(position)) {
         TransparentBlocks.erase(position);
+        
+        // Checks if chunk still contains transparent blocks
+        if (ContainsTransparentBlocks && TransparentBlocks.empty()) {
+            ContainsTransparentBlocks = false;
+        }
     }
     
     if (ChangedBlocks[Position].count(position)) {
@@ -491,12 +495,12 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int bl
     
     const Block* block = Blocks::Get_Block(blockType, blockData);
     
-    if (!block->Transparent) {
+    if (block->FullBlock && !block->Transparent) {
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
+        glm::vec3 chunk, tile;
         
         for (int i = 0; i < 6; i++) {
-            glm::vec3 chunk = neighbors[i].first;
-            glm::uvec3 tile = neighbors[i].second;
+            std::tie(chunk, tile) = neighbors[i];
             
             if (Exists(chunk)) {
                 if (ChunkMap[chunk]->Get_Block(tile)) {
@@ -513,8 +517,12 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int bl
         }
     }
     else {
-        TransparentBlocks.insert(position);
-        Update_Transparency(position);
+        ContainsTransparentBlocks = true;
+        
+        if (block->Transparent) {
+            TransparentBlocks.insert(position);
+            Update_Transparency(position);
+        }
     }
 	
     Light();

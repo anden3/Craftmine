@@ -142,6 +142,4 @@ inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
 
 extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
 
-inline bool Exists(glm::vec3 chunk) {
-    return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded;
-}
+inline bool Exists(glm::vec3 chunk) { return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded; }

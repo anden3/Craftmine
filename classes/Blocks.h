@@ -14,6 +14,7 @@ struct Block {
     unsigned int ID = 0;
     int Data = 0;
     
+    bool FullBlock = true;
     bool Transparent = false;
     bool Collision = true;
     bool Targetable = true;

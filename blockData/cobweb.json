@@ -3,5 +3,7 @@
 	"id": 30,
 	"hardness": 4,
 	"sound": "cloth",
-	"texture": [12, 1]
+	"texture": [12, 1],
+	"fullBlock": false,
+	"collision": false
 }

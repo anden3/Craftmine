@@ -51,7 +51,8 @@ void Blocks::Init() {
                 if (it.key() == "name") { block.Name = it.value(); }
                 else if (it.key() == "hardness") { block.Hardness = it.value(); }
                 else if (it.key() == "transparent") { block.Transparent = it.value(); }
-                else if (it.key() == "noCollision") { block.Collision = !it.value(); }
+                else if (it.key() == "fullBlock") { block.FullBlock = it.value(); }
+                else if (it.key() == "collision") { block.Collision = it.value(); }
                 else if (it.key() == "targetable") { block.Targetable = it.value(); }
                 else if (it.key() == "luminosity") { block.Luminosity = it.value(); }
                 else if (it.key() == "sound") { block.Sound = it.value(); }
@@ -117,7 +118,8 @@ void Blocks::Init() {
                         if (it.key() == "name") { subType.Name = it.value(); }
                         else if (it.key() == "hardness") { subType.Hardness = it.value(); }
                         else if (it.key() == "transparent") { subType.Transparent = it.value(); }
-                        else if (it.key() == "noCollision") { subType.Collision = !it.value(); }
+                        else if (it.key() == "fullBlock") { subType.FullBlock = it.value(); }
+                        else if (it.key() == "collision") { subType.Collision = it.value(); }
                         else if (it.key() == "targetable") { subType.Targetable = it.value(); }
                         else if (it.key() == "luminosity") { subType.Luminosity = it.value(); }
                         else if (it.key() == "sound") { subType.Sound = it.value(); }

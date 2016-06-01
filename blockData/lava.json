@@ -3,6 +3,6 @@
 	"id": 11,
 	"targetable": false,
 	"transparent": true,
-	"noCollision": true,
+	"collision": false,
 	"texture": [14, 15]
 }

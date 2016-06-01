@@ -3,7 +3,7 @@
 	"id": 71,
 	"hardness": 5,
 	"sound": "stone",
-	"transparent": true,
+	"fullBlock": false,
 	"icon": [13, 19],
 	
 	"texCoords": {

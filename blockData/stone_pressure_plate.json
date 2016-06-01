@@ -4,6 +4,7 @@
 	"hardness": 0.5,
 	"sound": "stone",
 	"transparent": true,
+	"fullBlock": false,
 	"noCollision": true,
 	"texture": [2, 1],
 	

@@ -3,7 +3,7 @@
 	"id": 26,
 	"hardness": 0.2,
 	"sound": "wood",
-	"transparent": true,
+	"fullBlock": false,
 	"icon": [14, 19],
 	
 	"texCoords": {

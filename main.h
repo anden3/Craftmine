@@ -21,6 +21,7 @@ const bool Windows = false;
 
 // TODO: Add 2D icon functionality to inventory.
 // TODO: Interpolate lighting by having different values for vertices per block.
+// TODO: Test Array Textures again...
 
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
 const glm::vec3 AMBIENT_LIGHT = glm::vec3(0.1f);
