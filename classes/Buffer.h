@@ -39,6 +39,7 @@ private:
 class UniformBuffer {
 public:
     void Create(std::string name, int bufferID, int size, std::vector<Shader*> shaders);
+    void Add(std::string name, int bufferID, Shader* shader);
     
     template <typename T>
     void Upload(int index, T t);

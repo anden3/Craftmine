@@ -6,6 +6,7 @@
 #include FT_FREETYPE_H
 
 #include <SOIL/SOIL.h>
+#include <FreeImagePlus.h>
 
 #include "Blocks.h"
 #include "Shader.h"
@@ -104,15 +105,13 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
                 Extend(data, vertices[i][j]);
             }
             
-            if (block->CustomTexCoords) {
-                data.push_back(block->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(block->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
-            }
-            else if (block->MultiTextures) {
-                Extend(data, (block->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            if (block->MultiTextures) {
+                Extend(data, tex_coords[i][j]);
+                data.push_back(block->Textures[i]);
             }
             else if (block->HasTexture) {
-                Extend(data, (block->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+                Extend(data, tex_coords[i][j]);
+                data.push_back(block->Texture);
             }
             
             if (offsets) {
@@ -126,7 +125,7 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
 }
 
 std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
-    std::string path = "images/" + file;
+    std::string path = "Images/" + file;
     
     unsigned int texture;
     glGenTextures(1, &texture);
@@ -134,14 +133,7 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    
-    if (mipmap) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-    }
-    else {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    }
-    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipmap ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     
     int width, height;
@@ -152,6 +144,54 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     SOIL_free_image_data(image);
     
     return std::make_tuple(texture, width, height);
+}
+
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap, bool flipY) {
+    std::string path = "Images/" + file;
+    
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+    
+    FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
+    FIBITMAP* image = FreeImage_Load(format, path.c_str());
+    FreeImage_FlipVertical(image);
+    
+    int width = FreeImage_GetWidth(image);
+    int height = FreeImage_GetHeight(image);
+    
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, (mipmap > 0) ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY,
+                   mipmap + 1,
+                   GL_RGBA8,
+                   subSize.x, subSize.y, (width * height) / (subSize.x * subSize.y));
+    
+    int layer = 0;
+    
+    for (int h = 0; h < height; h += subSize.y) {
+        for (int w = 0; w < width; w += subSize.x) {
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+                            0,
+                            0, 0, layer++,
+                            subSize.x, subSize.y, 1,
+                            GL_BGRA,
+                            GL_UNSIGNED_BYTE,
+                            (void*)FreeImage_GetBits(FreeImage_Copy(image, w, height - h, w + subSize.x, height - h - subSize.y)));
+        }
+    }
+    
+    if (mipmap > 0) {
+        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+    }
+    
+    FreeImage_Unload(image);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    
+    return texture;
 }
 
 void Take_Screenshot() {
@@ -498,10 +538,10 @@ OrthoElement::OrthoElement(int type, int data, float x, float y, float scale) {
     Scale = scale;
     
     if (type == 0) {
-        OrthoBuffer.Create(3, 2, 2);
+        OrthoBuffer.Create(3, 3, 2);
     }
     else {
-        OrthoBuffer.Create(3, 2, 2, Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
+        OrthoBuffer.Create(3, 3, 2, Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
     }
 }
 

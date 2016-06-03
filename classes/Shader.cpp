@@ -6,8 +6,8 @@
 unsigned int shaderTypes[2] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
 
 Shader::Shader(const char *shader) {
-	std::string vPath = "shaders/" + std::string(shader) + ".vert";
-	std::string fPath = "shaders/" + std::string(shader) + ".frag";
+	std::string vPath = "Shaders/" + std::string(shader) + ".vert";
+	std::string fPath = "Shaders/" + std::string(shader) + ".frag";
 
 	Add_Shader(vShader, "VERTEX", vPath);
 	Add_Shader(fShader, "FRAGMENT", fPath);

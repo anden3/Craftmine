@@ -1,8 +1,0 @@
-{
-	"name": "Water",
-	"id": 9,
-	"targetable": false,
-	"transparent": true,
-	"collision": false,
-	"texture": [14, 13]
-}

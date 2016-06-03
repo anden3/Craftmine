@@ -34,7 +34,7 @@ void Listener::Delete() {
 Sound::Sound(std::string sound) {
 	Name = sound;
 
-	std::string path = "sounds/" + sound + ".ogg";
+	std::string path = "Sounds/" + sound + ".ogg";
 	std::vector<char> data = Load_OGG(path);
 
 	alGenBuffers(1, &Buffer);

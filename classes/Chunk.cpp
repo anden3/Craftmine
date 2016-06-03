@@ -374,15 +374,13 @@ void Chunk::Mesh() {
                             Extend(VBOData, vertices[bit][j] + (*block) + Position * float(CHUNK_SIZE));
                         }
                         
-                        if (blockInstance->CustomTexCoords) {
-                            VBOData.push_back(blockInstance->TexCoords[bit][tex_coords[bit][j].x].x / IMAGE_SIZE.x);
-                            VBOData.push_back(blockInstance->TexCoords[bit][tex_coords[bit][j].y].y / IMAGE_SIZE.y);
-                        }
-						else if (blockInstance->MultiTextures) {
-                            Extend(VBOData, (blockInstance->Textures[bit] - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
+                        if (blockInstance->MultiTextures) {
+                            Extend(VBOData, tex_coords[bit][j]);
+                            VBOData.push_back(blockInstance->Textures[bit]);
 						}
 						else {
-                            Extend(VBOData, (blockInstance->Texture - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
+                            Extend(VBOData, tex_coords[bit][j]);
+                            VBOData.push_back(blockInstance->Texture);
 						}
                         
                         VBOData.push_back(lightValue);

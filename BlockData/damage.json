@@ -1,0 +1,16 @@
+{"name": "Damage",
+	"id": 255,
+		
+	"types": {
+		"1": {"texture": 240},
+		"2": {"texture": 241},
+		"3": {"texture": 242},
+		"4": {"texture": 243},
+		"5": {"texture": 244},
+		"6": {"texture": 245},
+		"7": {"texture": 246},
+		"8": {"texture": 247},
+		"9": {"texture": 248},
+		"10": {"texture": 249}
+	}
+}

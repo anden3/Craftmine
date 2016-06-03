@@ -1,0 +1,7 @@
+{
+	"name": "Lapis Block",
+	"id": 22,
+	"hardness": 3,
+	"sound": "stone",
+	"texture": 160
+}

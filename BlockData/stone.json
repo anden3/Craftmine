@@ -1,0 +1,7 @@
+{
+	"name": "Stone",
+	"id": 1,
+	"hardness": 1.5,
+	"sound": "stone",
+	"texture": 1
+}

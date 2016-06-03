@@ -1,7 +1,0 @@
-{
-	"name": "Bedrock",
-	"id": 7,
-	"hardness": 1000000.0,
-	"sound": "stone",
-	"texture": [2, 2]
-}

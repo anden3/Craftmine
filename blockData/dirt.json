@@ -1,7 +1,0 @@
-{
-	"name": "Dirt",
-	"id": 3,
-	"hardness": 0.5,
-	"sound": "dirt",
-	"texture": [3, 1]
-}

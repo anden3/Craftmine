@@ -59,38 +59,25 @@ void Blocks::Init() {
                 
                 else if (it.key() == "icon") {
                     block.HasIcon = true;
-                    block.Icon = glm::vec2(it.value()[0], it.value()[1]);
+                    block.Icon = it.value();
                 }
                 
                 else if (it.key() == "texture") {
                     block.HasTexture = true;
-                    block.Texture = glm::vec2(it.value()[0], it.value()[1]);
+                    block.Texture = it.value();
                 }
                 
                 else if (it.key() == "multiTexture") {
                     block.MultiTextures = true;
                     
-                    std::map<std::string, glm::vec2> textureBuffer;
+                    std::map<std::string, int> textureBuffer;
                     
                     for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
+                        textureBuffer[at.key()] = at.value();
                     }
                     
                     for (auto const &side : sides) {
                         block.Textures.push_back(textureBuffer[side]);
-                    }
-                }
-                
-                else if (it.key() == "texCoords") {
-                    block.CustomTexCoords = true;
-                    std::map<std::string, glm::vec4> textureBuffer;
-                    
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
                     }
                 }
                 
@@ -126,38 +113,25 @@ void Blocks::Init() {
                         
                         else if (it.key() == "icon") {
                             subType.HasIcon = true;
-                            subType.Icon = glm::vec2(it.value()[0], it.value()[1]);
+                            subType.Icon = it.value();
                         }
                         
                         else if (it.key() == "texture") {
                             subType.HasTexture = true;
-                            subType.Texture = glm::vec2(it.value()[0], it.value()[1]);
+                            subType.Texture = it.value();
                         }
                         
                         else if (it.key() == "multiTexture") {
                             subType.MultiTextures = true;
                             
-                            std::map<std::string, glm::vec2> textureBuffer;
+                            std::map<std::string, int> textureBuffer;
                             
                             for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = glm::vec2(at.value()[0], at.value()[1]);
+                                textureBuffer[at.key()] = at.value();
                             }
                             
                             for (auto const &side : sides) {
                                 subType.Textures.push_back(textureBuffer[side]);
-                            }
-                        }
-                        
-                        else if (it.key() == "texCoords") {
-                            subType.CustomTexCoords = true;
-                            std::map<std::string, glm::vec4> textureBuffer;
-                            
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = glm::vec4(at.value()[0], at.value()[1], at.value()[2], at.value()[3]);
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.TexCoords.push_back(std::vector<glm::vec2> {textureBuffer[side].xy(), textureBuffer[side].zw()});
                             }
                         }
                         

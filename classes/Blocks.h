@@ -21,17 +21,15 @@ struct Block {
     bool HasIcon = false;
     bool HasTexture = false;
     bool MultiTextures = false;
-    bool CustomTexCoords = false;
     bool CustomVertices = false;
     
     float Hardness = 0;
     int Luminosity = 0;
     
-    glm::vec2 Icon = glm::vec2(0, 0);
-    glm::vec2 Texture = glm::vec2(0, 0);
+    int Icon = 0;
+    int Texture = 0;
     
-    std::vector<glm::vec2> Textures = {};
-    std::vector<std::vector<glm::vec2>> TexCoords = {};
+    std::vector<int> Textures = {};
     std::vector<std::vector<glm::vec3>> Vertices = {};
     
     std::map<int, Block> Types = {};

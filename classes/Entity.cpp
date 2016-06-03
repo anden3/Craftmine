@@ -30,21 +30,19 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 
                 Extend(data, (vertices[i][j] - 0.5f) * ENTITY_SCALE);
             }
             
-            if (block->CustomTexCoords) {
-                data.push_back(block->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(block->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
-            }
-            else if (block->MultiTextures) {
-                Extend(data, (block->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+            if (block->MultiTextures) {
+                Extend(data, tex_coords[i][j]);
+                data.push_back(block->Textures[i]);
             }
             else if (block->HasTexture) {
-                Extend(data, (block->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
+                Extend(data, tex_coords[i][j]);
+                data.push_back(block->Texture);
             }
         }
     }
     
     EntityBuffer.Init(modelShader);
-    EntityBuffer.Create(3, 2, data);
+    EntityBuffer.Create(3, 3, data);
     
     if (velocity == glm::vec3(-100)) {
         Velocity.y += 0.05;
