@@ -16,30 +16,7 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 
     BlockData = typeData;
     
     Data data;
-    
-    const Block* block = Blocks::Get_Block(type, typeData);
-    
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (block->CustomVertices) {
-                data.push_back((block->Vertices[i][vertices[i][j].x].x - 0.5f) * ENTITY_SCALE);
-                data.push_back((block->Vertices[i][vertices[i][j].y].y - 0.5f) * ENTITY_SCALE);
-                data.push_back((block->Vertices[i][vertices[i][j].z].z - 0.5f) * ENTITY_SCALE);
-            }
-            else {
-                Extend(data, (vertices[i][j] - 0.5f) * ENTITY_SCALE);
-            }
-            
-            if (block->MultiTextures) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(block->Textures[i]);
-            }
-            else if (block->HasTexture) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(block->Texture);
-            }
-        }
-    }
+    Blocks::Mesh(data, Blocks::Get_Block(type, typeData), glm::vec3(-0.5f), ENTITY_SCALE);
     
     EntityBuffer.Init(modelShader);
     EntityBuffer.Create(3, 3, data);

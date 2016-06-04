@@ -6,6 +6,8 @@
 
 #include "json.hpp"
 
+#include "Interface.h"
+
 bool iequals(const std::string &a, const std::string &b) {
     unsigned long sz = a.size();
     
@@ -81,16 +83,39 @@ void Blocks::Init() {
                     }
                 }
                 
-                else if (it.key() == "vertices") {
-                    block.CustomVertices = true;
-                    std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
+                else if (it.key() == "elements") {
+                    block.HasCustomData = true;
                     
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
+                    for (auto const &element : it.value()) {
+                        glm::vec3 startPos(element["from"][0], element["from"][1], element["from"][2]);
+                        glm::vec3 endPos(element["to"][0], element["to"][1], element["to"][2]);
+                        
+                        int index = 0;
+                        
+                        std::vector<std::vector<std::pair<glm::vec3, glm::vec3>>> elementData;
+                        
+                        for (auto const &texture : element["texCoords"]) {
+                            std::vector<std::pair<glm::vec3, glm::vec3>> data;
+                            
+                            int textureID = texture.is_array() ? texture[0] : texture;
+                            glm::vec2 texStart(0);
+                            glm::vec2 texEnd(1);
+                            
+                            if (texture.is_array()) {
+                                texStart = glm::vec2(texture[1], texture[2]);
+                                texEnd = glm::vec2(texture[3], texture[4]);
+                            }
+                            
+                            for (int i = 0; i < 6; i++) {
+                                data.push_back(std::make_pair(startPos + (endPos - startPos) * vertices[index][i],
+                                               glm::vec3(texStart + (texEnd - texStart) * tex_coords[index][i], textureID)));
+                            }
+                            
+                            elementData.push_back(data);
+                            ++index;
+                        }
+                        
+                        block.CustomData.push_back(elementData);
                     }
                 }
             }
@@ -136,15 +161,35 @@ void Blocks::Init() {
                         }
                         
                         else if (it.key() == "vertices") {
-                            subType.CustomVertices = true;
-                            std::map<std::string, std::pair<glm::vec3, glm::vec3>> textureBuffer;
+                            subType.HasCustomData = true;
                             
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = std::make_pair(glm::vec3(at.value()[0], at.value()[1], at.value()[2]), glm::vec3(at.value()[3], at.value()[4], at.value()[5]));
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.Vertices.push_back(std::vector<glm::vec3> {textureBuffer[side].first, textureBuffer[side].second});
+                            for (auto const &element : it.value()) {
+                                glm::vec3 startPos(element["from"][0], element["from"][1], element["from"][2]);
+                                glm::vec3 endPos(element["to"][0], element["to"][1], element["to"][2]);
+                                
+                                block.CustomData.push_back({});
+                                int index = 0;
+                                
+                                for (auto const &texture : element["texCoords"]) {
+                                    std::vector<std::pair<glm::vec3, glm::vec3>> data;
+                                    
+                                    int textureID = texture.is_array() ? texture[0] : texture;
+                                    glm::vec2 texStart(0);
+                                    glm::vec2 texEnd(1);
+                                    
+                                    if (texture.is_array()) {
+                                        texStart = glm::vec2(texture[1], texture[3]);
+                                        texEnd = glm::vec2(texture[2], texture[4]);
+                                    }
+                                    
+                                    for (int i = 0; i < 6; i++) {
+                                        data.push_back(std::make_pair(startPos + (endPos - startPos) * vertices[index][i],
+                                                       glm::vec3(texStart + (texEnd - texStart) * tex_coords[index][i], textureID)));
+                                    }
+                                    
+                                    subType.CustomData.back().push_back(data);
+                                    ++index;
+                                }
                             }
                         }
                     }
@@ -201,4 +246,43 @@ bool Blocks::Exists(unsigned int type, int data) {
     }
     
     return false;
+}
+
+Data Blocks::Mesh(const Block* block, glm::vec3 offset, float scale, Data data) {
+    Data storage;
+    Mesh(storage, block, offset, scale, data);
+    return storage;
+}
+
+void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float scale, Data data) {
+    if (block->HasCustomData) {
+        for (auto const &element : block->CustomData) {
+            for (int i = 0; i < 6; i++) {
+                for (int j = 0; j < 6; j++) {
+                    Extend(storage, (element[i][j].first + offset) * scale);
+                    Extend(storage, element[i][j].second);
+                    
+                    for (float const &value : data) {
+                        storage.push_back(value);
+                    }
+                }
+            }
+        }
+    }
+    else {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
+                Extend(storage, (vertices[i][j] + offset) * scale);
+                
+                if (block->MultiTextures) {
+                    Extend(storage, tex_coords[i][j]);
+                    storage.push_back(block->Textures[i]);
+                }
+                else if (block->HasTexture) {
+                    Extend(storage, tex_coords[i][j]);
+                    storage.push_back(block->Texture);
+                }
+            }
+        }
+    }
 }

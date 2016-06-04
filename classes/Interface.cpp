@@ -94,29 +94,38 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
     x *= 2.005f;
     y *= 2.005f;
     
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (block->CustomVertices) {
-                data.push_back(block->Vertices[i][vertices[i][j].x].x);
-                data.push_back(block->Vertices[i][vertices[i][j].y].y);
-                data.push_back(block->Vertices[i][vertices[i][j].z].z);
+    if (block->HasCustomData) {
+        for (auto const &element : block->CustomData) {
+            for (int i = 0; i < 6; i++) {
+                for (int j = 0; j < 6; j++) {
+                    Extend(data, element[i][j].first);
+                    Extend(data, element[i][j].second);
+                    
+                    if (offsets) {
+                        Extend(data, x, y);
+                    }
+                }
             }
-            else {
+        }
+    }
+    
+    else {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
                 Extend(data, vertices[i][j]);
-            }
-            
-            if (block->MultiTextures) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(block->Textures[i]);
-            }
-            else if (block->HasTexture) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(block->Texture);
-            }
-            
-            if (offsets) {
-                data.push_back(x);
-                data.push_back(y);
+                
+                if (block->MultiTextures) {
+                    Extend(data, tex_coords[i][j]);
+                    data.push_back(block->Textures[i]);
+                }
+                else if (block->HasTexture) {
+                    Extend(data, tex_coords[i][j]);
+                    data.push_back(block->Texture);
+                }
+                
+                if (offsets) {
+                    Extend(data, x, y);
+                }
             }
         }
     }
@@ -174,12 +183,7 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap
     
     for (int h = 0; h < height; h += subSize.y) {
         for (int w = 0; w < width; w += subSize.x) {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
-                            0,
-                            0, 0, layer++,
-                            subSize.x, subSize.y, 1,
-                            GL_BGRA,
-                            GL_UNSIGNED_BYTE,
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer++, subSize.x, subSize.y, 1, GL_BGRA, GL_UNSIGNED_BYTE,
                             (void*)FreeImage_GetBits(FreeImage_Copy(image, w, height - h, w + subSize.x, height - h - subSize.y)));
         }
     }

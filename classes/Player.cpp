@@ -88,34 +88,6 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     return elements;
 }
 
-Data Create_Textured_Cube(const Block *type, glm::vec3 offset = glm::vec3(-0.5f)) {
-    Data data;
-    
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (type->CustomVertices) {
-                data.push_back(type->Vertices[i][vertices[i][j].x].x + offset.x);
-                data.push_back(type->Vertices[i][vertices[i][j].y].y + offset.y);
-                data.push_back(type->Vertices[i][vertices[i][j].z].z + offset.z);
-            }
-            else {
-                Extend(data, vertices[i][j] + offset);
-            }
-            
-            if (type->MultiTextures) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(type->Textures[i]);
-            }
-            else if (type->HasTexture) {
-                Extend(data, tex_coords[i][j]);
-                data.push_back(type->Texture);
-            }
-        }
-    }
-    
-    return data;
-}
-
 bool Check_Col(glm::vec3 pos) {
     glm::vec3 chunk, tile;
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
@@ -199,12 +171,12 @@ void Player::Mesh_Holding() {
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
     
     if (CurrentBlock > 0) {
-        HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlockType));
+        HoldingBuffer.Upload(Blocks::Mesh(CurrentBlockType, glm::vec3(-0.5f)));
     }
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Create_Textured_Cube(Blocks::Get_Block(255, index + 1), glm::vec3(0)));
+    DamageBuffer.Upload(Blocks::Mesh(Blocks::Get_Block(255, index + 1)));
 }
 
 void Player::Draw_Model() {
@@ -443,11 +415,17 @@ void Player::Move(float deltaTime, bool update) {
                 MouseTimer = 0.0;
             }
             
+            glm::vec3 oldTile = LookingTile;
+            
             LookingChunk = hit[0];
             LookingAirChunk = hit[2];
             
             LookingTile = hit[1];
             LookingAirTile = hit[3];
+            
+            if (LookingTile != oldTile) {
+                LookingBlockType = Blocks::Get_Block(ChunkMap[LookingChunk]->Get_Block(LookingTile), ChunkMap[LookingChunk]->Get_Data(LookingTile));
+            }
         }
         
         if (CurrentChunk != lastChunk) {
