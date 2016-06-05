@@ -45,6 +45,8 @@ public:
     bool Creative = false;
     bool LookingAtBlock = false;
     
+    const Block* LookingBlockType;
+    
     glm::vec3 LookingChunk;
     glm::vec3 LookingAirChunk;
     
@@ -65,7 +67,7 @@ public:
     
     void Teleport(glm::vec3 pos);
         
-    void Render_Chunks();
+    void Render_Chunks(bool regenerate = false);
     void Clear_Keys();
 
     void Key_Handler(int key, int action);
@@ -87,7 +89,6 @@ private:
     int CurrentBlockData = 0;
     
     const Block* CurrentBlockType;
-    const Block* LookingBlockType;
     
 	float SpeedModifier = 1.0f;
     float Rotation;

@@ -32,6 +32,9 @@ struct Block {
     int Icon = 0;
     int Texture = 0;
     
+    glm::vec3 Scale = glm::vec3(1);
+    glm::vec3 ScaleOffset = glm::vec3(0);
+    
     std::vector<int> Textures = {};
     // Elements -> Side -> Vertex -> (Position, Texture Coords)
     std::vector<std::vector<std::vector<std::pair<glm::vec3, glm::vec3>>>> CustomData = {};

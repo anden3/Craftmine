@@ -94,7 +94,21 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
     x *= 2.005f;
     y *= 2.005f;
     
-    if (block->HasCustomData) {
+    if (block->HasIcon) {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
+                Extend(data, vertices[i][j]);
+                Extend(data, tex_coords[i][j]);
+                data.push_back(block->Icon);
+                
+                if (offsets) {
+                    Extend(data, x, y);
+                }
+            }
+        }
+    }
+    
+    else if (block->HasCustomData) {
         for (auto const &element : block->CustomData) {
             for (int i = 0; i < 6; i++) {
                 for (int j = 0; j < 6; j++) {
@@ -359,25 +373,39 @@ Slider::Slider(std::string text, float x, float y, float w, float h, float min, 
 inline void Slider::Hover() { HandleColor = SLIDER_HANDLE_HOVER_COLOR; }
 inline void Slider::Stop_Hover() { HandleColor = SLIDER_HANDLE_COLOR; }
 inline void Slider::Press() { HandleColor = SLIDER_HANDLE_CLICK_COLOR; }
-inline void Slider::Release() { HandleColor = SLIDER_HANDLE_COLOR; Function(); }
+
+void Slider::Release() {
+    HandleColor = SLIDER_HANDLE_COLOR;
+    Move(ceil(Value), true);
+    Function();
+}
     
-void Slider::Move(float position) {
+void Slider::Move(float position, bool setValue) {
     float w = SLIDER_WIDTH / 2;
+    float x;
     
-    if (position <= X + w) {
-        position = X + w;
+    if (setValue) {
+        x = X + Width * ((position - 0.5f) / (Max - Min)) - w;
     }
-    else if (position >= X + Width - 1) {
-        position = X + Width - 1;
+    else {
+        if (position <= X + w) {
+            position = X + w;
+        }
+        else if (position >= X + Width - 1) {
+            position = X + Width - 1;
+        }
+        
+        float percentage = (position - X) / Width;
+        x = X + Width * percentage - w;
+        
+        int oldValue = int(ceil(Value));
+        Value = (Max - Min) * percentage;
+        
+        Text.Text.replace(Text.Text.find(std::to_string(oldValue)), std::to_string(oldValue).length(), std::to_string(int(ceil(Value))));
     }
-    
-    float percentage = (position - X) / Width;
-    float x = X + Width * percentage - w;
     
     HandleBuffer.Upload(Data {x, Y + Height, x, Y, x + w, Y,  x, Y + Height, x + w, Y, x + w, Y + Height});
-    
     HandlePosition = x;
-    Value = (Max - Min) * percentage;
 }
 
 void Slider::Draw() {
@@ -482,6 +510,9 @@ Background::Background(float x, float y, float w, float h, bool border, glm::vec
             for (float gy = Y + pad.y; gy <= Y + Height - pad.y; gy += GridWidth.y) {
                 Extend(gridData, X + pad.x, gy, X + Width - pad.x, gy);
             }
+            
+            // Fix for missing pixel in upper-left corner.
+            Extend(gridData, X + pad.x - 0.5f, Y + Height - pad.y, X + pad.x, Y + Height - pad.y);
         }
         else {
             Extend(gridData, Get_Border(X + 5, X + Width - 5, Y + 5, Y + Height - 5));
@@ -551,9 +582,18 @@ OrthoElement::OrthoElement(int type, int data, float x, float y, float scale) {
 
 void OrthoElement::Mesh(int type, int data, float x, float y) {
     Type = type;
+    const Block* block = Blocks::Get_Block(type, data);
     
     if (Type != 0) {
-        OrthoBuffer.Upload(Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
+        glm::mat4 model;
+        
+        if (!block->HasIcon) {
+            model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1, 0, 0));
+            model = glm::rotate(model, 45.0f, glm::vec3(0, 1, 0));
+        }
+        
+        UI3DShader->Upload("model", model);
+        OrthoBuffer.Upload(Get_3D_Mesh(block, x, y, true));
     }
 }
 

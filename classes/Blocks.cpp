@@ -72,23 +72,29 @@ void Blocks::Init() {
                 else if (it.key() == "multiTexture") {
                     block.MultiTextures = true;
                     
-                    std::map<std::string, int> textureBuffer;
-                    
-                    for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                        textureBuffer[at.key()] = at.value();
-                    }
-                    
-                    for (auto const &side : sides) {
-                        block.Textures.push_back(textureBuffer[side]);
+                    for (auto const &side : it.value()) {
+                        block.Textures.push_back(side);
                     }
                 }
                 
                 else if (it.key() == "elements") {
                     block.HasCustomData = true;
                     
+                    glm::vec3 smallestCoord = glm::vec3(10);
+                    glm::vec3 largestCoord = glm::vec3(0);
+                    
                     for (auto const &element : it.value()) {
                         glm::vec3 startPos(element["from"][0], element["from"][1], element["from"][2]);
                         glm::vec3 endPos(element["to"][0], element["to"][1], element["to"][2]);
+                        
+                        for (int i = 0; i < 3; i++) {
+                            if (startPos[i] < smallestCoord[i]) {
+                                smallestCoord[i] = startPos[i];
+                            }
+                            if (endPos[i] > largestCoord[i]) {
+                                largestCoord[i] = endPos[i];
+                            }
+                        }
                         
                         int index = 0;
                         
@@ -117,6 +123,9 @@ void Blocks::Init() {
                         
                         block.CustomData.push_back(elementData);
                     }
+                    
+                    block.Scale = largestCoord - smallestCoord;
+                    block.ScaleOffset = smallestCoord;
                 }
             }
             
@@ -149,23 +158,29 @@ void Blocks::Init() {
                         else if (it.key() == "multiTexture") {
                             subType.MultiTextures = true;
                             
-                            std::map<std::string, int> textureBuffer;
-                            
-                            for (nlohmann::json::iterator at = it.value().begin(); at != it.value().end(); ++at) {
-                                textureBuffer[at.key()] = at.value();
-                            }
-                            
-                            for (auto const &side : sides) {
-                                subType.Textures.push_back(textureBuffer[side]);
+                            for (auto const &side : it.value()) {
+                                subType.Textures.push_back(side);
                             }
                         }
                         
-                        else if (it.key() == "vertices") {
+                        else if (it.key() == "elements") {
                             subType.HasCustomData = true;
+                            
+                            glm::vec3 smallestCoord = glm::vec3(10);
+                            glm::vec3 largestCoord = glm::vec3(0);
                             
                             for (auto const &element : it.value()) {
                                 glm::vec3 startPos(element["from"][0], element["from"][1], element["from"][2]);
                                 glm::vec3 endPos(element["to"][0], element["to"][1], element["to"][2]);
+                                
+                                for (int i = 0; i < 3; i++) {
+                                    if (startPos[i] < smallestCoord[i]) {
+                                        smallestCoord[i] = startPos[i];
+                                    }
+                                    if (endPos[i] > largestCoord[i]) {
+                                        largestCoord[i] = endPos[i];
+                                    }
+                                }
                                 
                                 block.CustomData.push_back({});
                                 int index = 0;
@@ -191,6 +206,9 @@ void Blocks::Init() {
                                     ++index;
                                 }
                             }
+                            
+                            subType.Scale = largestCoord - smallestCoord;
+                            subType.ScaleOffset = smallestCoord;
                         }
                     }
                     

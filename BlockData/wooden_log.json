@@ -4,12 +4,5 @@
 	"hardness": 2.0,
 	"sound": "wood",
 	
-	"multiTexture": {
-		"left": 20,
-		"right": 20,
-		"down": 21,
-		"up": 21,
-		"back": 20,
-		"front": 20
-	}
+	"multiTexture": [20, 20, 21, 21, 20, 20]
 }

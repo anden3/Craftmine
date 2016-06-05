@@ -4,12 +4,5 @@
 	"hardness": 0.8,
 	"sound": "stone",
 	
-	"multiTexture": {
-		"left": 208,
-		"right": 208,
-		"down": 192,
-		"up": 192,
-		"back": 208,
-		"front": 208
-	}
+	"multiTexture": [208, 208, 192, 192, 208, 208]
 }

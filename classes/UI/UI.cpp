@@ -14,6 +14,9 @@ const std::string FONT = "Roboto";
 
 double last_fps[AVG_UPDATE_RANGE];
 double last_cpu[AVG_UPDATE_RANGE];
+
+std::deque<int> CPU;
+
 double lastUIUpdate;
 
 bool ShowTitle = true;
@@ -35,6 +38,7 @@ void Bind_Current_Document();
 
 void Toggle_Options_Menu();
 void Toggle_VSync();
+void Toggle_AO();
 void Toggle_Wireframe();
 void Change_Render_Distance();
 
@@ -184,6 +188,7 @@ void Init_Title() {
     
     glm::vec4 optionButtonDims(Scale(620, 400), buttonSize);
     glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
+    glm::vec4 aoButtonDims(Scale(420, 400), buttonSize);
     glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
@@ -213,6 +218,7 @@ void Init_Title() {
     interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
     interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
     interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AmbientOcclusion], aoButtonDims, Toggle_AO);
     interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
     
     interface.Set_Document("");
@@ -226,6 +232,7 @@ void Init_Menu() {
     glm::vec4 optionButtonDims(Scale(620, 500), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
     glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
+    glm::vec4 aoButtonDims(Scale(420, 400), buttonSize);
     glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
@@ -244,6 +251,7 @@ void Init_Menu() {
     interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
     interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
     interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AmbientOcclusion], aoButtonDims, Toggle_AO);
     interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
     
     interface.Set_Document("");
@@ -254,7 +262,6 @@ void Init_Debug() {
     
     interface.Set_Document("debug");
     
-    interface.Add_Text("fps",         "FPS: 0",                                   Scale(30, 850));
     interface.Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
     interface.Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
     interface.Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
@@ -273,37 +280,28 @@ int Get_Loaded() {
 }
 
 void Draw_Debug() {
-    for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-        if (i < AVG_UPDATE_RANGE - 1) {
-            last_fps[i] = last_fps[i + 1];
-            last_cpu[i] = last_cpu[i + 1];
-        }
-        else {
-            last_fps[i] = (1.0f / DeltaTime + 0.5);
-            last_cpu[i] = System::GetCPUUsage();
-        }
+    CPU.push_back(int(System::GetCPUUsage()));
+    
+    if (CPU.size() > AVG_UPDATE_RANGE) {
+        CPU.pop_front();
     }
+    
+    interface.Set_Document("debug");
     
     if (LastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
         lastUIUpdate = LastFrame;
         
-        double fps_sum = 0.0;
-        double cpu_sum = 0.0;
+        int cpu_sum = 0;
         
-        for (int i = 0; i < AVG_UPDATE_RANGE; i++) {
-            fps_sum += last_fps[i];
-            cpu_sum += last_cpu[i];
+        for (int const &time : CPU) {
+            cpu_sum += time;
         }
         
-        interface.Set_Document("debug");
-        
-        interface.Get_Text_Element("fps")->Text = "FPS: " + std::to_string((int)(fps_sum / AVG_UPDATE_RANGE));
-        interface.Get_Text_Element("cpu")->Text = "CPU: " + std::to_string((int)(cpu_sum / AVG_UPDATE_RANGE)) + "%";
+        interface.Get_Text_Element("cpu")->Text = "CPU: " + std::to_string(int(cpu_sum / AVG_UPDATE_RANGE)) + "%";
         interface.Get_Text_Element("ram")->Text = "RAM: " + System::GetPhysicalMemoryUsage();
     }
     
-    interface.Set_Document("debug");
-    interface.Get_Text_Element("chunkQueue")->Text = "Chunks Queued: " + std::to_string(int(ChunkMap.size()) - Get_Loaded());
+    interface.Get_Text_Element("chunkQueue")->Text = "Chunks Queued: " + std::to_string(ChunkMap.size() - Get_Loaded());
     interface.Set_Document("");
     
     interface.Draw_Document("debug");
@@ -324,6 +322,17 @@ void Toggle_VSync() {
     Write_Config();
 }
 
+void Toggle_AO() {
+    AmbientOcclusion = !AmbientOcclusion;
+    
+    Bind_Current_Document();
+    interface.Get_Button("option_ao")->Text.Text = "Ambient Occlusion: " + BoolStrings[AmbientOcclusion];
+    interface.Set_Document("");
+    
+    Write_Config();
+    player.Render_Chunks(true);
+}
+
 void Toggle_Wireframe() {
     ToggleWireframe = true;
     
@@ -341,7 +350,6 @@ void Change_Render_Distance() {
     
     if (value != RenderDistance) {
         RenderDistance = value;
-        slider->Text.Text = "Render Distance: " + std::to_string(value);
         Write_Config();
         
         player.Render_Chunks();

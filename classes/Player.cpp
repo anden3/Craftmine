@@ -26,7 +26,7 @@ const float CAMERA_HEIGHT = 1.7f;
 
 const float VOLUME = 0.1f;
 
-const float HITSCAN_STEP_SIZE = 0.1f;
+const float HITSCAN_STEP_SIZE = 0.03f;
 
 const float JUMP_HEIGHT = 0.1f;
 
@@ -314,6 +314,8 @@ void Player::Move(float deltaTime, bool update) {
                 WorldPos += flyDirs[i / 2] * speed * signs[i % 2];
             }
         }
+        
+        std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
     }
     else {
         for (int i = 0; i < 4; i++) {
@@ -399,12 +401,14 @@ void Player::Move(float deltaTime, bool update) {
             mobShader->Upload("lightLevel", LightLevel);
         }
         
+        // Update camera position
         Cam.Position = WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0);
         
         if (ThirdPerson) {
             Cam.Position -= Cam.Front * 2.0f;
         }
         
+        // Update audio listener position
         listener.Set_Position(Cam.Position);
         
         std::vector<glm::vec3> hit = Hitscan();
@@ -418,9 +422,9 @@ void Player::Move(float deltaTime, bool update) {
             glm::vec3 oldTile = LookingTile;
             
             LookingChunk = hit[0];
-            LookingAirChunk = hit[2];
-            
             LookingTile = hit[1];
+            
+            LookingAirChunk = hit[2];
             LookingAirTile = hit[3];
             
             if (LookingTile != oldTile) {
@@ -490,7 +494,11 @@ void Player::Check_Pickup() {
 void Player::Teleport(glm::vec3 pos) {
     Velocity = glm::vec3(0);
     WorldPos = pos;
+    
+    std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
+    
     Move(0.0f, true);
+    Render_Chunks();
 }
 
 void Player::Drop_Item() {
@@ -576,16 +584,23 @@ std::vector<glm::vec3> Player::Hitscan() {
             std::tie(chunk1, tile1) = Get_Chunk_Pos(checkingPos);
             
             if (Blocks::Get_Block(ChunkMap[chunk1]->Get_Block(tile1))->Targetable) {
-                std::vector<glm::vec3> result;
-                Extend(result, chunk1, tile1);
+                glm::vec3 checkingFrac = glm::fract(checkingPos);
+                const Block* blockType = Blocks::Get_Block(ChunkMap[chunk1]->Get_Block(tile1));
                 
-                if (started) {
-                    glm::vec3 chunk2, tile2;
-                    std::tie(chunk2, tile2) = Get_Chunk_Pos(lastPos);
-                    Extend(result, chunk2, tile2);
+                if (glm::greaterThanEqual(checkingFrac, blockType->ScaleOffset) == glm::bvec3(true)) {
+                    if (glm::lessThanEqual(checkingFrac, blockType->Scale + blockType->ScaleOffset) == glm::bvec3(true)) {
+                        std::vector<glm::vec3> result;
+                        Extend(result, chunk1, tile1);
+                        
+                        if (started) {
+                            glm::vec3 chunk2, tile2;
+                            std::tie(chunk2, tile2) = Get_Chunk_Pos(lastPos);
+                            Extend(result, chunk2, tile2);
+                        }
+                        
+                        return result;
+                    }
                 }
-                
-                return result;
             }
 		}
 
@@ -687,9 +702,8 @@ void Player::Mouse_Handler(double posX, double posY) {
     PUNCHING_ANGLE_END = Cam.Pitch + 120;
 
 	listener.Set_Orientation(Cam.Front, Cam.Up);
-
-    std::vector<glm::vec3> hit = Hitscan();
     
+    std::vector<glm::vec3> hit = Hitscan();
     LookingAtBlock = hit.size() == 4;
 
     if (hit.size() == 4) {
@@ -829,9 +843,9 @@ void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
 	soundPlayers.push_back(soundPlayer);
 }
 
-void Player::Render_Chunks() {
-    int startY = 3;
-    int endY = -10;
+void Player::Render_Chunks(bool regenerate) {
+    float startY = 3;
+    float endY = -10;
     
     if (player.CurrentChunk.y <= -6) {
         startY = int(player.CurrentChunk.y) + 3;
@@ -845,23 +859,25 @@ void Player::Render_Chunks() {
     ChunkMapBusy = true;
     
     for (auto chunk = ChunkMap.begin(); chunk != ChunkMap.end();) {
-        double dist = pow(CurrentChunk.x - chunk->first.x, 2) + pow(CurrentChunk.z - chunk->first.z, 2);
-        bool inRange = dist > pow(RenderDistance, 2) || chunk->first.y > startY || chunk->first.y < endY;
+        float dist = glm::distance(CurrentChunk.xz(), chunk->first.xz());
+        bool outOfRange = dist > RenderDistance || chunk->first.y > startY || chunk->first.y < endY;
         
-        if (inRange) {
+        if (regenerate || outOfRange) {
             delete chunk->second;
+            chunk = ChunkMap.erase(chunk);
         }
-        
-        chunk = inRange ? ChunkMap.erase(chunk) : ++chunk;
+        else {
+            ++chunk;
+        }
     }
 
-    for (int x = (int) CurrentChunk.x - RenderDistance; x <= CurrentChunk.x + RenderDistance; x++) {
-        for (int z = (int) CurrentChunk.z - RenderDistance; z <= CurrentChunk.z + RenderDistance; z++) {
-			for (int y = startY; y >= endY; y--) {
+    for (float x = CurrentChunk.x - RenderDistance; x <= CurrentChunk.x + RenderDistance; x++) {
+        for (float z = CurrentChunk.z - RenderDistance; z <= CurrentChunk.z + RenderDistance; z++) {
+			for (float y = startY; y >= endY; y--) {
                 glm::vec3 pos(x, y, z);
 
-				if (pos != CurrentChunk && !ChunkMap.count(pos)) {
-                    if (pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RenderDistance, 2)) {
+				if (!ChunkMap.count(pos)) {
+                    if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RenderDistance) {
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
                         ChunkMap[pos]->buffer.Create(3, 3, 1, 1);

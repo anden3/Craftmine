@@ -21,7 +21,7 @@ inline std::string Format_Vector(glm::vec3 vector) {
 }
 
 inline Data Get_Rect(float x1, float x2, float y1, float y2) { return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2}; }
-inline Data Get_Border(float x1, float x2, float y1, float y2) { return Data { x1, y1, x2, y1, x2, y1, x2, y2, x2, y2, x1, y2, x1, y2, x1, y1 }; }
+inline Data Get_Border(float x1, float x2, float y1, float y2) { return Data { x1, y1, x2, y1, x2, y1, x2, y2, x2, y2, x1, y2, x1, y2, x1, y1, x1 - 0.5f, y2, x1, y2 }; }
 inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data { x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0, x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0}; }
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
@@ -115,9 +115,9 @@ public:
     inline void Stop_Hover();
     
     inline void Press();
-    inline void Release();
+    void Release();
     
-    void Move(float position);
+    void Move(float position, bool setValue = false);
     void Draw();
     
 private:

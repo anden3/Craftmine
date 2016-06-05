@@ -3,13 +3,6 @@
 	"id": 23,
 	"hardness": 3.5,
 	"sound": "stone",
-	
-	"multiTexture": {
-		"left": 45,
-		"right": 45,
-		"down": 62,
-		"up": 62,
-		"back": 45,
-		"front": 46
-	}
+    
+	"multiTexture": [45, 45, 62, 62, 45, 46]
 }

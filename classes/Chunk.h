@@ -9,6 +9,7 @@
 
 const int CHUNK_SIZE = 16;
 const int SUN_LIGHT_LEVEL = 15;
+extern int AmbientOcclusion;
 
 extern glm::vec2 IMAGE_SIZE;
 
@@ -119,7 +120,7 @@ private:
     void Update_Transparency(glm::ivec3 pos);
     
     void Check_Ore(glm::ivec3 pos, glm::vec3 noisePos);
-    int GetAO(glm::vec3 block, int face, int offset);
+    float GetAO(glm::vec3 block, int face, int offset);
     
     char BlockMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};
     unsigned char LightMap[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE] = {0};

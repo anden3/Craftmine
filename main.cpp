@@ -288,7 +288,9 @@ void Render_Scene() {
     
     if (player.LookingAtBlock) {
         glm::mat4 model;
-        outlineShader->Upload(OutlineModelLoc, glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile)));
+        model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile) + player.LookingBlockType->ScaleOffset);
+        model = glm::scale(model, player.LookingBlockType->Scale);
+        outlineShader->Upload(OutlineModelLoc, model);
         OutlineBuffer.Draw();
     }
 }
@@ -307,22 +309,22 @@ void BackgroundThread() {
         
         ChunkMapBusy = true;
         
-        glm::vec3 playerPos = player.CurrentChunk;
+        glm::vec2 playerPos = player.CurrentChunk.xz();
         float nearestDistance = RenderDistance;
         Chunk* nearestChunk = nullptr;
         
         for (auto const &chunk : ChunkMap) {
             if (!chunk.second->Meshed) {
-                float dist = glm::distance(chunk.first, playerPos);
+                float dist = glm::distance(chunk.first.xz(), playerPos);
                 
-                if (dist < nearestDistance) {
+                if (dist < nearestDistance && dist < RenderDistance) {
                     nearestDistance = dist;
                     nearestChunk = chunk.second;
                 }
             }
         }
         
-        if (nearestChunk != nullptr && glm::distance(nearestChunk->Position.xz(), player.CurrentChunk.xz()) <= RenderDistance) {
+        if (nearestChunk != nullptr) {
             if (!nearestChunk->Generated) {
                 nearestChunk->Generate();
             }

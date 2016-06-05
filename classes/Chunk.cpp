@@ -328,15 +328,16 @@ void Chunk::Light(bool flag) {
     }
 }
 
-int Chunk::GetAO(glm::vec3 block, int face, int index) {
-	int ao = 0;
-
-	int vertexIndex[3][2] = { {int(vertices[face][index].z), int(vertices[face][index].y)}, {int(vertices[face][index].x), int(vertices[face][index].z)}, {int(vertices[face][index].x), int(vertices[face][index].y)} };
-
+float Chunk::GetAO(glm::vec3 block, int face, int index) {
+	float ao = 0.0f;
+    
+    glm::ivec2 vertexIndex[3] = {vertices[face][index].zy(), vertices[face][index].xz(), vertices[face][index].xy()};
+    
 	for (int i = 0; i < 3; i++) {
-		if (Blocks.count(block + offsets[face][vertexIndex[face / 2][0]][vertexIndex[face / 2][1]][i])) {
+        glm::ivec2 index = vertexIndex[face / 2];
+		if (Blocks.count(block + offsets[face][index.x][index.y][i])) {
             if (ao == 1 && i == 1) {
-                return 0;
+                return 0.0f;
             }
             
 			++ao;
@@ -391,7 +392,13 @@ void Chunk::Mesh() {
                             }
                             
                             VBOData.push_back(lightValue);
-                            VBOData.push_back(float(GetAO(*block, bit, j)));
+                            
+                            if (AmbientOcclusion) {
+                                VBOData.push_back(GetAO(*block, bit, j));
+                            }
+                            else {
+                                VBOData.push_back(0);
+                            }
                         }
                     }
                     ++bit;
@@ -559,8 +566,8 @@ std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm:
 }
 
 std::pair<glm::vec3, glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos) {
-    glm::vec3 chunk(floor(worldPos.x / CHUNK_SIZE), floor(worldPos.y / CHUNK_SIZE), floor(worldPos.z / CHUNK_SIZE));
-    glm::vec3 tile(floor(worldPos.x - (chunk.x * CHUNK_SIZE)), floor(worldPos.y - (chunk.y * CHUNK_SIZE)), floor(worldPos.z - (chunk.z * CHUNK_SIZE)));
+    glm::vec3 chunk = glm::floor(worldPos / float(CHUNK_SIZE));
+    glm::vec3 tile = glm::floor(worldPos - (chunk * float(CHUNK_SIZE)));
 
     return std::make_pair(chunk, tile);
 }
