@@ -359,39 +359,46 @@ void Chunk::Mesh() {
         }
         else {
             int bit = 0;
+            glm::vec3 posOffset = *block + Position * float(CHUNK_SIZE);
             float lightValue = float(Get_Light(*block));
             const Block* blockInstance = Blocks::Get_Block(Get_Block(*block), Get_Data(*block));
             
-            while (bit < 6) {
-                if (seesAir & 1) {
-                    for (int j = 0; j < 6; j++) {
-                        if (blockInstance->CustomVertices) {
-                            VBOData.push_back(blockInstance->Vertices[bit][vertices[bit][j].x].x + block->x + Position.x * CHUNK_SIZE);
-                            VBOData.push_back(blockInstance->Vertices[bit][vertices[bit][j].y].y + block->y + Position.y * CHUNK_SIZE);
-                            VBOData.push_back(blockInstance->Vertices[bit][vertices[bit][j].z].z + block->z + Position.z * CHUNK_SIZE);
+            if (blockInstance->HasCustomData) {
+                for (auto const &element : blockInstance->CustomData) {
+                    for (int i = 0; i < 6; i++) {
+                        for (int j = 0; j < 6; j++) {
+                            Extend(VBOData, element[i][j].first + posOffset);
+                            Extend(VBOData, element[i][j].second);
+                            VBOData.push_back(lightValue);
+                            VBOData.push_back(0);
                         }
-                        else {
-                            Extend(VBOData, vertices[bit][j] + (*block) + Position * float(CHUNK_SIZE));
-                        }
-                        
-                        if (blockInstance->CustomTexCoords) {
-                            VBOData.push_back(blockInstance->TexCoords[bit][tex_coords[bit][j].x].x / IMAGE_SIZE.x);
-                            VBOData.push_back(blockInstance->TexCoords[bit][tex_coords[bit][j].y].y / IMAGE_SIZE.y);
-                        }
-						else if (blockInstance->MultiTextures) {
-                            Extend(VBOData, (blockInstance->Textures[bit] - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
-						}
-						else {
-                            Extend(VBOData, (blockInstance->Texture - 1.0f + tex_coords[bit][j]) / IMAGE_SIZE);
-						}
-                        
-                        VBOData.push_back(lightValue);
-						VBOData.push_back(float(GetAO(*block, bit, j)));
                     }
                 }
-                ++bit;
-                seesAir = seesAir >> 1;
             }
+            else {
+                while (bit < 6) {
+                    if (seesAir & 1) {
+                        for (int j = 0; j < 6; j++) {
+                            Extend(VBOData, vertices[bit][j] + posOffset);
+                                
+                            if (blockInstance->MultiTextures) {
+                                Extend(VBOData, tex_coords[bit][j]);
+                                VBOData.push_back(blockInstance->Textures[bit]);
+                            }
+                            else {
+                                Extend(VBOData, tex_coords[bit][j]);
+                                VBOData.push_back(blockInstance->Texture);
+                            }
+                            
+                            VBOData.push_back(lightValue);
+                            VBOData.push_back(float(GetAO(*block, bit, j)));
+                        }
+                    }
+                    ++bit;
+                    seesAir = seesAir >> 1;
+                }
+            }
+            
             ++block;
         }
     }

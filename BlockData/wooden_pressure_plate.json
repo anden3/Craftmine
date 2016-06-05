@@ -1,0 +1,19 @@
+{
+	"name": "Wooden Pressure Plate",
+	"id": 72,
+	"hardness": 0.5,
+	"sound": "wood",
+	"transparent": true,
+	"fullBlock": false,
+	"collision": false,
+	"texture": 4,
+	
+	"vertices": {
+		"left": [0, 0, 0, 0, 0.1, 1],
+		"right": [1, 0, 0, 1, 0.1, 1],
+		"down": [0, 0, 0, 1, 0, 1],
+		"up": [0, 0.1, 0, 1, 0.1, 1],
+		"back": [0, 0, 0, 1, 0.1, 0],
+		"front": [0, 0, 1, 1, 0.1, 1]
+	}
+}

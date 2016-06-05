@@ -88,6 +88,10 @@ void UniformBuffer::Create(std::string name, int bufferID, int size, std::vector
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 0, size);
 }
 
+void UniformBuffer::Add(std::string name, int bufferID, Shader* shader) {
+    glUniformBlockBinding(shader->Program, glGetUniformBlockIndex(shader->Program, name.c_str()), bufferID);
+}
+
 template <typename T>
 void UniformBuffer::Upload(int index, T t) {
     glBindBuffer(GL_UNIFORM_BUFFER, UBO);

@@ -16,35 +16,10 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 
     BlockData = typeData;
     
     Data data;
-    
-    const Block* block = Blocks::Get_Block(type, typeData);
-    
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (block->CustomVertices) {
-                data.push_back((block->Vertices[i][vertices[i][j].x].x - 0.5f) * ENTITY_SCALE);
-                data.push_back((block->Vertices[i][vertices[i][j].y].y - 0.5f) * ENTITY_SCALE);
-                data.push_back((block->Vertices[i][vertices[i][j].z].z - 0.5f) * ENTITY_SCALE);
-            }
-            else {
-                Extend(data, (vertices[i][j] - 0.5f) * ENTITY_SCALE);
-            }
-            
-            if (block->CustomTexCoords) {
-                data.push_back(block->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(block->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
-            }
-            else if (block->MultiTextures) {
-                Extend(data, (block->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
-            }
-            else if (block->HasTexture) {
-                Extend(data, (block->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
-            }
-        }
-    }
+    Blocks::Mesh(data, Blocks::Get_Block(type, typeData), glm::vec3(-0.5f), ENTITY_SCALE);
     
     EntityBuffer.Init(modelShader);
-    EntityBuffer.Create(3, 2, data);
+    EntityBuffer.Create(3, 3, data);
     
     if (velocity == glm::vec3(-100)) {
         Velocity.y += 0.05;

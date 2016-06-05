@@ -26,6 +26,7 @@ Inventory inventory = Inventory();
 Shader* shader;
 Shader* modelShader;
 Shader* outlineShader;
+Shader* mobShader;
 
 UniformBuffer UBO;
 Buffer OutlineBuffer;
@@ -192,19 +193,18 @@ void Init_GL() {
 }
 
 void Init_Textures() {
-    unsigned int atlas = std::get<0>(Load_Texture("atlas.png", false));
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, atlas);
-    // glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16), 4, true));
 }
 
 void Init_Shaders() {
     shader = new Shader("shader");
     outlineShader = new Shader("outline");
     modelShader = new Shader("model");
+    mobShader = new Shader("model2DTex");
     
-    glm::mat4 projection = glm::perspective(glm::radians((float)Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.001f, 1000.0f);
-    UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4), std::vector<Shader*> {shader, outlineShader, modelShader});
+    glm::mat4 projection = glm::perspective(glm::radians((float)Cam.Zoom), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.04f, 1000.0f);
+    UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4), std::vector<Shader*> {shader, outlineShader, modelShader, mobShader});
     UBO.Upload(1, projection);
     
     ShaderTransparencyLoc = shader->Get_Location("RenderTransparent");
@@ -307,22 +307,32 @@ void BackgroundThread() {
         
         ChunkMapBusy = true;
         
+        glm::vec3 playerPos = player.CurrentChunk;
+        float nearestDistance = RenderDistance;
+        Chunk* nearestChunk = nullptr;
+        
         for (auto const &chunk : ChunkMap) {
             if (!chunk.second->Meshed) {
-                if (glm::distance(chunk.second->Position.xz(), player.CurrentChunk.xz()) <= RenderDistance) {
-                    if (!chunk.second->Generated) {
-                        chunk.second->Generate();
-                    }
-                    
-                    chunk.second->Light();
-                    chunk.second->Mesh();
-                    chunk.second->Meshed = true;
-                    chunk.second->DataUploaded = false;
-                    
-                    queueEmpty = false;
-                    break;
+                float dist = glm::distance(chunk.first, playerPos);
+                
+                if (dist < nearestDistance) {
+                    nearestDistance = dist;
+                    nearestChunk = chunk.second;
                 }
             }
+        }
+        
+        if (nearestChunk != nullptr && glm::distance(nearestChunk->Position.xz(), player.CurrentChunk.xz()) <= RenderDistance) {
+            if (!nearestChunk->Generated) {
+                nearestChunk->Generate();
+            }
+            
+            nearestChunk->Light();
+            nearestChunk->Mesh();
+            nearestChunk->Meshed = true;
+            nearestChunk->DataUploaded = false;
+            
+            queueEmpty = false;
         }
         
         ChunkMapBusy = false;

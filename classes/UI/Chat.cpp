@@ -286,7 +286,7 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         
         player.Teleport(glm::vec3(x, y, z));
         
-        return std::vector<std::string> {"Player teleported to (&3" + parameters[1] + "&f, &3" + parameters[2] + "%f, &3" + parameters[3] + "&f)."};
+        return std::vector<std::string> {"Player teleported to (&3" + parameters[1] + "&f, &3" + parameters[2] + "&f, &3" + parameters[3] + "&f)."};
     }
     
     else if (command == "give") {

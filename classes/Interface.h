@@ -25,7 +25,10 @@ inline Data Get_Border(float x1, float x2, float y1, float y2) { return Data { x
 inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data { x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0, x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0}; }
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
+
 std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap = false);
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap = 0, bool flipY = false);
+
 void Take_Screenshot();
 
 template <typename T> inline float Scale_X(const T x) { return (x / 1440.0f) * SCREEN_WIDTH; }

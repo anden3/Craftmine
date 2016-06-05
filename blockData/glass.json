@@ -1,7 +1,0 @@
-{
-	"name": "Glass",
-	"id": 20,
-	"hardness": 0.3,
-	"transparent": true,
-	"texture": [2, 4]
-}

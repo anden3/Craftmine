@@ -1,0 +1,24 @@
+{
+	"id": 15,
+	"hardness": 3,
+	"sound": "stone",
+	
+	"types": {
+		"1": {
+			"name": "Coal Ore",
+			"texture": 34
+		},
+		"2": {
+			"name": "Iron Ore",
+			"texture": 33
+		},
+		"3": {
+			"name": "Gold Ore",
+			"texture": 32
+		},
+		"4": {
+			"name": "Lapis Lazuli Ore",
+			"texture": 176
+		}
+	}
+}

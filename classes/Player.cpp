@@ -50,7 +50,8 @@ bool keys[1024] = {0};
 bool MouseDown = false;
 
 int ModelShaderModelLoc;
-int ModelShaderTexLoc;
+int MobShaderModelLoc;
+int MobShaderTexLoc;
 
 int NumKeys[10] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_3, GLFW_KEY_4, GLFW_KEY_5, GLFW_KEY_6, GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9, GLFW_KEY_0};
 
@@ -63,6 +64,8 @@ Buffer LeftArmBuffer;
 Buffer RightArmBuffer;
 Buffer LeftLegBuffer;
 Buffer RightLegBuffer;
+
+extern Shader* mobShader;
 
 int punchingAngleDirection = 200;
 int movementAngleDirection = 5000;
@@ -85,36 +88,6 @@ std::vector<std::string> Split(const std::string &s, char delim) {
     return elements;
 }
 
-Data Create_Textured_Cube(const Block *type, glm::vec3 offset = glm::vec3(-0.5f)) {
-    Data data;
-    
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (type->CustomVertices) {
-                data.push_back(type->Vertices[i][vertices[i][j].x].x + offset.x);
-                data.push_back(type->Vertices[i][vertices[i][j].y].y + offset.y);
-                data.push_back(type->Vertices[i][vertices[i][j].z].z + offset.z);
-            }
-            else {
-                Extend(data, vertices[i][j] + offset);
-            }
-            
-            if (type->CustomTexCoords) {
-                data.push_back(type->TexCoords[i][tex_coords[i][j].x].x / IMAGE_SIZE.x);
-                data.push_back(type->TexCoords[i][tex_coords[i][j].y].y / IMAGE_SIZE.y);
-            }
-            else if (type->MultiTextures) {
-                Extend(data, (type->Textures[i] - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
-            }
-            else if (type->HasTexture) {
-                Extend(data, (type->Texture - 1.0f + tex_coords[i][j]) / IMAGE_SIZE);
-            }
-        }
-    }
-    
-    return data;
-}
-
 bool Check_Col(glm::vec3 pos) {
     glm::vec3 chunk, tile;
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
@@ -128,13 +101,13 @@ void Player::Init() {
     glm::vec3 hpRange(0, 100, 100);
     
     ModelShaderModelLoc = modelShader->Get_Location("model");
-    ModelShaderTexLoc = modelShader->Get_Location("tex");
+    modelShader->Upload("tex", 0);
     
     HoldingBuffer.Init(modelShader);
     DamageBuffer.Init(modelShader);
     
-    HoldingBuffer.Create(3, 2);
-    DamageBuffer.Create(3, 2);
+    HoldingBuffer.Create(3, 3);
+    DamageBuffer.Create(3, 3);
     
     interface.Set_Document("playerUI");
     interface.Add_Bar("health", "HP", hpDims, hpRange);
@@ -145,6 +118,9 @@ void Player::Init() {
 }
 
 void Player::Init_Model() {
+    mobShader->Upload("tex", PLAYER_TEXTURE_UNIT);
+    MobShaderModelLoc = mobShader->Get_Location("model");
+    
     glActiveTexture(GL_TEXTURE0 + PLAYER_TEXTURE_UNIT);
     unsigned int texture = std::get<0>(Load_Texture("skin.png"));
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -157,7 +133,7 @@ void Player::Init_Model() {
     std::string parts[6] = { "head", "body", "arm", "arm", "leg", "leg" };
     
     for (int b = 0; b < 6; b++) {
-        buffers[b]->Init(modelShader);
+        buffers[b]->Init(mobShader);
         
         Data data;
         
@@ -195,20 +171,18 @@ void Player::Mesh_Holding() {
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
     
     if (CurrentBlock > 0) {
-        HoldingBuffer.Upload(Create_Textured_Cube(CurrentBlockType));
+        HoldingBuffer.Upload(Blocks::Mesh(CurrentBlockType, glm::vec3(-0.5f)));
     }
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Create_Textured_Cube(Blocks::Get_Block(255, index + 1), glm::vec3(0)));
+    DamageBuffer.Upload(Blocks::Mesh(Blocks::Get_Block(255, index + 1)));
 }
 
 void Player::Draw_Model() {
     if (!ThirdPerson && !MouseDown) {
         return;
     }
-    
-    modelShader->Upload(ModelShaderTexLoc, PLAYER_TEXTURE_UNIT);
     
     static glm::vec3 translateOffsets[6] = {
         glm::vec3(0, 1.5, 0), glm::vec3(0, 0.75, 0), glm::vec3(0, 1.50, 0),
@@ -228,7 +202,7 @@ void Player::Draw_Model() {
         model = glm::rotate(model, glm::radians(punchingAngle), Cam.Right);
         model = glm::rotate(model, Rotation, glm::vec3(0, 1, 0));
         model = glm::scale(model, scalingFactors[3]);
-        modelShader->Upload(ModelShaderModelLoc, model);
+        mobShader->Upload(MobShaderModelLoc, model);
         buffers[3]->Draw();
     }
     else {
@@ -249,7 +223,7 @@ void Player::Draw_Model() {
             
             model = glm::scale(model, scalingFactors[i]);
             
-            modelShader->Upload(ModelShaderModelLoc, model);
+            mobShader->Upload(MobShaderModelLoc, model);
             buffers[i]->Draw();
         }
     }
@@ -265,7 +239,6 @@ void Player::Draw_Model() {
         model = glm::scale(model, glm::vec3(0.2f));
         
         modelShader->Upload(ModelShaderModelLoc, model);
-        modelShader->Upload(ModelShaderTexLoc, 0);
         HoldingBuffer.Draw();
     }
 }
@@ -281,7 +254,6 @@ void Player::Draw_Holding() {
     model = glm::rotate(model, float(glm::radians(Cam.Pitch)), glm::vec3(1, 0, 0));
     
     modelShader->Upload(ModelShaderModelLoc, model);
-    modelShader->Upload(ModelShaderTexLoc, 0);
     HoldingBuffer.Draw();
 }
 
@@ -292,7 +264,6 @@ void Player::Draw_Damage() {
     
     glm::mat4 model;
     modelShader->Upload(ModelShaderModelLoc, glm::translate(model, Get_World_Pos(LookingChunk, LookingTile)));
-    modelShader->Upload(ModelShaderTexLoc, 0);
     
     // "Fix" for Z-Fighting
     glEnable(GL_POLYGON_OFFSET_FILL);
@@ -425,6 +396,7 @@ void Player::Move(float deltaTime, bool update) {
             }
             
             modelShader->Upload("lightLevel", LightLevel);
+            mobShader->Upload("lightLevel", LightLevel);
         }
         
         Cam.Position = WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0);
@@ -443,11 +415,17 @@ void Player::Move(float deltaTime, bool update) {
                 MouseTimer = 0.0;
             }
             
+            glm::vec3 oldTile = LookingTile;
+            
             LookingChunk = hit[0];
             LookingAirChunk = hit[2];
             
             LookingTile = hit[1];
             LookingAirTile = hit[3];
+            
+            if (LookingTile != oldTile) {
+                LookingBlockType = Blocks::Get_Block(ChunkMap[LookingChunk]->Get_Block(LookingTile), ChunkMap[LookingChunk]->Get_Data(LookingTile));
+            }
         }
         
         if (CurrentChunk != lastChunk) {
@@ -886,7 +864,7 @@ void Player::Render_Chunks() {
                     if (pow(CurrentChunk.x - x, 2) + pow(CurrentChunk.z - z, 2) <= pow(RenderDistance, 2)) {
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
-                        ChunkMap[pos]->buffer.Create(3, 2, 1, 1);
+                        ChunkMap[pos]->buffer.Create(3, 3, 1, 1);
                     }
 				}
             }
