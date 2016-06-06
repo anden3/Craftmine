@@ -42,11 +42,25 @@ struct Block {
     std::map<int, Block> Types = {};
 };
 
+struct Item {
+    std::string Name = "";
+    
+    unsigned int ID = 0;
+    int Data = 0;
+    int Icon = 0;
+    
+    std::map<int, Item> Types = {};
+};
+
 namespace Blocks {
     void Init();
     
     const Block* Get_Block(unsigned int type, int data = 0);
+    const Item* Get_Item(unsigned int type, int data = 0);
+    
     const Block* Get_Block_From_Name(std::string name);
+    const Item* Get_Item_From_Name(std::string name);
+    
     std::string Get_Name(unsigned int type, int data = 0);
     bool Exists(unsigned int type, int data = 0);
     std::vector<float> Mesh(const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {});

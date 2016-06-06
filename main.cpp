@@ -287,9 +287,21 @@ void Render_Scene() {
     }
     
     if (player.LookingAtBlock) {
+        int blockType = ChunkMap[player.LookingChunk]->Get_Block(player.LookingTile);
+        int blockData = ChunkMap[player.LookingChunk]->Get_Block(player.LookingTile);
+        
         glm::mat4 model;
-        model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile) + player.LookingBlockType->ScaleOffset);
-        model = glm::scale(model, player.LookingBlockType->Scale);
+        
+        if (blockData == -1) {
+            const Block* block = Blocks::Get_Block(blockType);
+            model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile) + block->ScaleOffset - glm::vec3(0, 1, 0));
+            model = glm::scale(model, block->Scale);
+        }
+        else {
+            model = glm::translate(model, Get_World_Pos(player.LookingChunk, player.LookingTile) + player.LookingBlockType->ScaleOffset);
+            model = glm::scale(model, player.LookingBlockType->Scale);
+        }
+        
         outlineShader->Upload(OutlineModelLoc, model);
         OutlineBuffer.Draw();
     }

@@ -338,7 +338,15 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
                 const Block* block = Blocks::Get_Block_From_Name(name);
                 
                 if (block == nullptr) {
-                    return std::vector<std::string> {"&4Error! &fNo block exists with that name."};
+                    const Item* item = Blocks::Get_Item_From_Name(name);
+                    
+                    if (item == nullptr) {
+                        return std::vector<std::string> {"&4Error! &fNo block exists with that name."};
+                    }
+                    
+                    name = item->Name;
+                    type = item->ID;
+                    data = item->Data;
                 }
                 else {
                     name = block->Name;

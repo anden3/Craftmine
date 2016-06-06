@@ -418,6 +418,22 @@ void Chunk::Mesh() {
 }
 
 void Chunk::Remove_Block(glm::ivec3 position) {
+    const Block* block = Blocks::Get_Block(Get_Block(position), Get_Data(position));
+    
+    if (block->ID == 64) { // Wooden Door
+        glm::vec3 otherPart = position;
+        
+        if (block->ID == 1) { // Top
+            otherPart -= glm::ivec3(0, 1, 0);
+        }
+        else if (block->ID == 2) { // Bottom
+            otherPart += glm::ivec3(0, 1, 0);
+        }
+        
+        Set_Data(otherPart, 0);
+        Remove_Block(otherPart);
+    }
+    
     Set_Block(position, 0);
     Set_Data(position, 0);
     Blocks.erase(position);
@@ -488,7 +504,20 @@ void Chunk::Remove_Block(glm::ivec3 position) {
     }
 }
 
-void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int blockData) {
+void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData) {
+    const Block* block = Blocks::Get_Block(blockType, blockData);
+    
+    if (blockType == 64 && blockData == 0) { // Wooden Door
+        glm::vec3 topPos = position + glm::ivec3(0, 1, 0);
+        
+        if (!Is_Block(topPos)) {
+            Add_Block(position, 64, 2);
+            Add_Block(topPos, 64, 1);
+        }
+        
+        return;
+    }
+    
 	Set_Block(position, blockType);
     Set_Data(position, blockData);
 	Blocks.insert(position);
@@ -506,8 +535,6 @@ void Chunk::Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int bl
     }
 
 	std::vector<Chunk*> meshingList;
-    
-    const Block* block = Blocks::Get_Block(blockType, blockData);
     
     if (block->FullBlock && !block->Transparent) {
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);

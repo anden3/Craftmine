@@ -25,10 +25,11 @@ bool iequals(const std::string &a, const std::string &b) {
 }
 
 std::map<unsigned int, Block> BlockTypes;
+std::map<unsigned int, Item> ItemTypes;
 
 void Blocks::Init() {
-    DIR *dir = opendir("blockData");
-    struct dirent *ent;
+    DIR* dir = opendir("BlockData");
+    struct dirent* ent;
     
     std::vector<std::string> sides = {"left", "right", "down", "up", "back", "front"};
     
@@ -37,10 +38,9 @@ void Blocks::Init() {
         
         if (name.find(".json") != std::string::npos) {
             Block block;
-            
             std::stringstream file_content;
             
-            std::ifstream file("blockData/" + name);
+            std::ifstream file("BlockData/" + name);
             file_content << file.rdbuf();
             file.close();
             
@@ -62,6 +62,18 @@ void Blocks::Init() {
                 else if (it.key() == "icon") {
                     block.HasIcon = true;
                     block.Icon = it.value();
+                }
+                
+                else if (it.key() == "hitboxScale") {
+                    for (int j = 0; j < 3; j++) {
+                        block.Scale[j] = it.value()[j];
+                    }
+                }
+                
+                else if (it.key() == "hitboxOffset") {
+                    for (int j = 0; j < 3; j++) {
+                        block.ScaleOffset[j] = it.value()[j];
+                    }
                 }
                 
                 else if (it.key() == "texture") {
@@ -124,18 +136,24 @@ void Blocks::Init() {
                         block.CustomData.push_back(elementData);
                     }
                     
-                    block.Scale = largestCoord - smallestCoord;
-                    block.ScaleOffset = smallestCoord;
+                    if (block.Scale == glm::vec3(1)) {
+                        block.Scale = largestCoord - smallestCoord;
+                    }
+                    
+                    if (block.ScaleOffset == glm::vec3(0)) {
+                        block.ScaleOffset = smallestCoord;
+                    }
                 }
             }
             
             if (j.count("types")) {
-                for (nlohmann::json::iterator at = j["types"].begin(); at != j["types"].end(); ++at) {
+                int i = 0;
+                
+                for (auto &type : j["types"]) {
                     Block subType = block;
-                    int index = std::stoi(at.key());
-                    subType.Data = index;
+                    subType.Data = ++i;
                     
-                    for (nlohmann::json::iterator it = at.value().begin(); it != at.value().end(); ++it) {
+                    for (nlohmann::json::iterator it = type.begin(); it != type.end(); ++it) {
                         if (it.key() == "name") { subType.Name = it.value(); }
                         else if (it.key() == "hardness") { subType.Hardness = it.value(); }
                         else if (it.key() == "transparent") { subType.Transparent = it.value(); }
@@ -148,6 +166,18 @@ void Blocks::Init() {
                         else if (it.key() == "icon") {
                             subType.HasIcon = true;
                             subType.Icon = it.value();
+                        }
+                        
+                        else if (it.key() == "hitboxScale") {
+                            for (int j = 0; j < 3; j++) {
+                                subType.Scale[j] = it.value()[j];
+                            }
+                        }
+                        
+                        else if (it.key() == "hitboxOffset") {
+                            for (int j = 0; j < 3; j++) {
+                                subType.ScaleOffset[j] = it.value()[j];
+                            }
                         }
                         
                         else if (it.key() == "texture") {
@@ -182,7 +212,7 @@ void Blocks::Init() {
                                     }
                                 }
                                 
-                                block.CustomData.push_back({});
+                                subType.CustomData.push_back({});
                                 int index = 0;
                                 
                                 for (auto const &texture : element["texCoords"]) {
@@ -207,24 +237,79 @@ void Blocks::Init() {
                                 }
                             }
                             
-                            subType.Scale = largestCoord - smallestCoord;
-                            subType.ScaleOffset = smallestCoord;
+                            if (subType.Scale == glm::vec3(1)) {
+                                subType.Scale = largestCoord - smallestCoord;
+                            }
+                            
+                            if (subType.ScaleOffset == glm::vec3(0)) {
+                                subType.ScaleOffset = smallestCoord;
+                            }
+                            
                         }
                     }
                     
-                    block.Types[index] = subType;
+                    block.Types[i] = subType;
                 }
             }
             
-            BlockTypes[j["id"]] = block;
+            BlockTypes[block.ID] = block;
         }
     }
     
     closedir(dir);
+    
+    DIR* itemDir = opendir("/Users/mac/Documents/Craftmine/Craftmine/ItemData");
+    struct dirent* itemEnt;
+    
+    while ((itemEnt = readdir(itemDir)) != nullptr) {
+        std::string name(itemEnt->d_name);
+        
+        if (name.find(".json") != std::string::npos) {
+            Item item;
+            std::stringstream file_content;
+            
+            std::ifstream file("/Users/mac/Documents/Craftmine/Craftmine/ItemData/" + name);
+            file_content << file.rdbuf();
+            file.close();
+            
+            nlohmann::json j;
+            j << file_content;
+            
+            for (nlohmann::json::iterator it = j.begin(); it != j.end(); ++it) {
+                if (it.key() == "id") { item.ID = it.value(); }
+                else if (it.key() == "name") { item.Name = it.value(); }
+                else if (it.key() == "icon") { item.Icon = it.value(); }
+            }
+            
+            if (j.count("types")) {
+                int i = 0;
+                
+                for (auto &type : j["types"]) {
+                    Item subType = item;
+                    subType.Data = ++i;
+                    
+                    for (nlohmann::json::iterator it = type.begin(); it != type.end(); ++it) {
+                        if (it.key() == "name") { subType.Name = it.value(); }
+                        if (it.key() == "icon") { subType.Icon = it.value(); }
+                    }
+                    
+                    item.Types[i] = subType;
+                }
+            }
+            
+            ItemTypes[item.ID] = item;
+        }
+    }
+    
+    closedir(itemDir);
 }
 
 const Block* Blocks::Get_Block(unsigned int type, int data) {
     return (data == 0) ? &BlockTypes[type] : &BlockTypes[type].Types[data];
+}
+
+const Item* Blocks::Get_Item(unsigned int type, int data) {
+    return (data == 0) ? &ItemTypes[type] : &ItemTypes[type].Types[data];
 }
 
 const Block* Blocks::Get_Block_From_Name(std::string name) {
@@ -244,20 +329,48 @@ const Block* Blocks::Get_Block_From_Name(std::string name) {
     return nullptr;
 }
 
+const Item* Blocks::Get_Item_From_Name(std::string name) {
+    for (auto const &item : ItemTypes) {
+        if (iequals(name, item.second.Name)) {
+            return &item.second;
+        }
+        else if (!item.second.Types.empty()) {
+            for (auto const &subItem : item.second.Types) {
+                if (iequals(name, subItem.second.Name)) {
+                    return &subItem.second;
+                }
+            }
+        }
+    }
+    
+    return nullptr;
+}
+
 std::string Blocks::Get_Name(unsigned int type, int data) {
-    Block &block = BlockTypes[type];
-    if (data == 0) {
-        return block.Name;
+    if (BlockTypes.count(type)) {
+        Block &block = BlockTypes[type];
+        return (data == 0) ? block.Name : block.Types[data].Name;
     }
-    else {
-        return block.Types[data].Name;
+    else if (ItemTypes.count(type)) {
+        Item &item = ItemTypes[type];
+        return (data == 0) ? item.Name : item.Types[data].Name;
     }
+    
+    return "";
 }
 
 bool Blocks::Exists(unsigned int type, int data) {
     if (BlockTypes.count(type)) {
         if (data != 0) {
             return BlockTypes[type].Types.count(data);
+        }
+        
+        return true;
+    }
+    
+    else if (ItemTypes.count(type)) {
+        if (data != 0) {
+            return ItemTypes[type].Types.count(data);
         }
         
         return true;

@@ -769,23 +769,9 @@ void Player::Click_Handler(int button, int action) {
         }
         
         if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (LookingAtBlock && CurrentBlock && CurrentBlock < 255) {
-                glm::vec3 newBlockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
-                
-                if (LookingAirChunk.x == CurrentChunk.x && LookingAirChunk.z == CurrentChunk.z) {
-                    if (LookingAirTile.x == CurrentTile.x && LookingAirTile.z == CurrentTile.z) {
-                        int diff = int(newBlockPos.y) - int(floor(WorldPos.y));
-                        
-                        if (diff >= 0 && diff < 2) {
-                            return;
-                        }
-                    }
-                }
-                
-                glm::vec3 diff = newBlockPos - Get_World_Pos(LookingChunk, LookingTile);
-                
+            if (LookingAtBlock && CurrentBlock && CurrentBlock < 255) {                
                 if (ChunkMap.count(LookingAirChunk)) {
-                    ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, diff, CurrentBlock, CurrentBlockData);
+                    ChunkMap[LookingAirChunk]->Add_Block(LookingAirTile, CurrentBlock, CurrentBlockData);
                     
                     inventory.Decrease_Size();
                     
@@ -823,8 +809,24 @@ void Player::Break_Block() {
         blockType = 3;
     }
     
-    ChunkMap[LookingChunk]->Remove_Block(LookingTile);
-    Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType, LookingBlockType->Data);
+    if (blockType == 64 && LookingBlockType->Data > 0) {
+        glm::vec3 chunk, tile;
+        
+        if (LookingBlockType->Data == 1) {
+            std::tie(chunk, tile) = Get_Chunk_Pos(Get_World_Pos(LookingChunk, LookingTile) - glm::vec3(0, 1, 0));
+        }
+        else {
+            std::tie(chunk, tile) = Get_Chunk_Pos(Get_World_Pos(LookingChunk, LookingTile) + glm::vec3(0, 1, 0));
+        }
+        
+        ChunkMap[LookingChunk]->Remove_Block(LookingTile);
+        ChunkMap[chunk]->Remove_Block(tile);
+        Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType, 0);
+    }
+    else {
+        ChunkMap[LookingChunk]->Remove_Block(LookingTile);
+        Entity::Spawn(Get_World_Pos(LookingChunk, LookingTile), blockType, LookingBlockType->Data);
+    }
 }
 
 void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {

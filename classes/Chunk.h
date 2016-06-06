@@ -100,7 +100,7 @@ public:
     void Mesh();
 
     void Remove_Block(glm::ivec3 position);
-    void Add_Block(glm::ivec3 position, glm::vec3 diff, int blockType, int blockData);
+    void Add_Block(glm::ivec3 position, int blockType, int blockData);
     
     inline int Get_Light(glm::vec3 pos) { return LightMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
     inline void Set_Light(glm::ivec3 pos, int value) { LightMap[pos.x][pos.y][pos.z] = value; }
