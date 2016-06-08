@@ -3,6 +3,7 @@
 #include <random>
 #include <noise/noise.h>
 
+#include "main.h"
 #include "Blocks.h"
 #include "Interface.h"
 
@@ -62,8 +63,8 @@ const glm::vec3 offsets[6][2][2][3] = {
 };
 
 std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
-std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, Vec3Comparator> UnloadedLightQueue;
-std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
+std::map<glm::vec3, std::set<LightNode, LightNodeComparator>, VectorComparator> UnloadedLightQueue;
+std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorComparator>, VectorComparator> ChangedBlocks;
 
 void Seed() {
     Seeded = true;
@@ -95,10 +96,10 @@ Chunk::Chunk(glm::vec3 position) {
 }
 
 void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {
-	bool chunkTests[3] = { inChunk.y && inChunk.z, inChunk.x && inChunk.z, inChunk.x && inChunk.y };
-	static glm::ivec3 offsets[3] = { glm::ivec3(1, 0, 0), glm::ivec3(0, 1, 0), glm::ivec3(0, 0, 1) };
+    bool chunkTests[3] = { inChunk.y && inChunk.z, inChunk.x && inChunk.z, inChunk.x && inChunk.y };
+    static glm::ivec3 offsets[3] = { glm::ivec3(1, 0, 0), glm::ivec3(0, 1, 0), glm::ivec3(0, 0, 1) };
 
-	for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         if (chunkTests[i]) {
             if (pos[i] < CHUNK_SIZE - 1) {
                 Get_Air_Ref(pos + offsets[i]) |= 1 << (i * 2);
@@ -107,7 +108,7 @@ void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {
                 Get_Air_Ref(pos - offsets[i]) |= 1 << (i * 2 + 1);
             }
         }
-	}
+    }
 }
 
 void Chunk::Update_Transparency(glm::ivec3 pos) {
@@ -156,11 +157,11 @@ void Chunk::Generate() {
             for (int y = CHUNK_SIZE; y >= -1; y--) {
                 glm::ivec3 block(x, y, z);
 
-				glm::bvec3 inChunk = glm::bvec3(
-					x >= 0 && x < CHUNK_SIZE,
-					y >= 0 && y < CHUNK_SIZE,
-					z >= 0 && z < CHUNK_SIZE
-				);
+                glm::bvec3 inChunk = glm::bvec3(
+                    x >= 0 && x < CHUNK_SIZE,
+                    y >= 0 && y < CHUNK_SIZE,
+                    z >= 0 && z < CHUNK_SIZE
+                );
                 
                 if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
                     int type, data;
@@ -329,22 +330,22 @@ void Chunk::Light(bool flag) {
 }
 
 float Chunk::GetAO(glm::vec3 block, int face, int index) {
-	float ao = 0.0f;
+    float ao = 0.0f;
     
     glm::ivec2 vertexIndex[3] = {vertices[face][index].zy(), vertices[face][index].xz(), vertices[face][index].xy()};
     
-	for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         glm::ivec2 index = vertexIndex[face / 2];
-		if (Blocks.count(block + offsets[face][index.x][index.y][i])) {
+        if (Blocks.count(block + offsets[face][index.x][index.y][i])) {
             if (ao == 1 && i == 1) {
                 return 0.0f;
             }
             
-			++ao;
-		}
-	}
-	
-	return ao;
+            ++ao;
+        }
+    }
+    
+    return ao;
 }
 
 void Chunk::Mesh() {
@@ -393,7 +394,7 @@ void Chunk::Mesh() {
                             
                             VBOData.push_back(lightValue);
                             
-                            if (AmbientOcclusion) {
+                            if (AMBIENT_OCCLUSION) {
                                 VBOData.push_back(GetAO(*block, bit, j));
                             }
                             else {
@@ -461,7 +462,7 @@ void Chunk::Remove_Block(glm::ivec3 position) {
         topBlocks[Position.xz()][position.xz()]--;
     }
 
-	std::vector<Chunk*> meshingList;
+    std::vector<Chunk*> meshingList;
     std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
 
     for (int i = 0; i < 6; i++) {
@@ -518,9 +519,9 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData) {
         return;
     }
     
-	Set_Block(position, blockType);
+    Set_Block(position, blockType);
     Set_Data(position, blockData);
-	Blocks.insert(position);
+    Blocks.insert(position);
     
     if (ChangedBlocks[Position].count(position) && ChangedBlocks[Position][position] == std::pair<int, int>(0, 0)) {
         ChangedBlocks[Position].erase(position);
@@ -534,7 +535,7 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData) {
         Set_Light(position, SUN_LIGHT_LEVEL);
     }
 
-	std::vector<Chunk*> meshingList;
+    std::vector<Chunk*> meshingList;
     
     if (block->FullBlock && !block->Transparent) {
         std::vector<std::pair<glm::vec3, glm::vec3>> neighbors = Get_Neighbors(Position, position);
@@ -565,9 +566,9 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData) {
             Update_Transparency(position);
         }
     }
-	
+    
     Light();
-	Mesh();
+    Mesh();
 
     for (auto const &chunk : meshingList) {
         chunk->Light();
@@ -603,4 +604,8 @@ bool Is_Block(glm::vec3 pos) {
     glm::vec3 chunk, tile;
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
     return Exists(chunk) && ChunkMap[chunk]->Get_Block(tile) > 0;
+}
+
+bool Exists(glm::vec3 chunk) {
+    return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded;
 }

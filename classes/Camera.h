@@ -8,7 +8,7 @@
 const double DEFAULT_FOV = 90.0;
 
 class Camera {
-public:
+  public:
     glm::vec3 Position = glm::vec3(0.0f);
 
     glm::vec3 Front;

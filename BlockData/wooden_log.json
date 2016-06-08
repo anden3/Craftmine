@@ -1,8 +1,8 @@
 {
-	"name": "Wooden Log",
-	"id": 17,
-	"hardness": 2.0,
-	"sound": "wood",
-	
-	"multiTexture": [20, 20, 21, 21, 20, 20]
+    "name": "Wooden Log",
+    "id": 17,
+    "hardness": 2.0,
+    "sound": "wood",
+    
+    "multiTexture": [20, 20, 21, 21, 20, 20]
 }

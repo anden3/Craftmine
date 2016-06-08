@@ -1,8 +1,8 @@
 {
-	"name": "Water",
-	"id": 9,
-	"targetable": false,
-	"transparent": true,
-	"collision": false,
-	"texture": 205
+    "name": "Water",
+    "id": 9,
+    "targetable": false,
+    "transparent": true,
+    "collision": false,
+    "texture": 205
 }

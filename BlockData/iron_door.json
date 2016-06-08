@@ -1,28 +1,28 @@
 {
-	"name": "Wooden Door",
-	"id": 71,
-	"hardness": 5,
-	"sound": "stone",
-	"fullBlock": false,
-	"icon": 300,
-	
-	"elements": [
-		{
-			"from": [0, 0, 0.4375],
-			"to": [1, 2, 0.5625],
-			
-			"texCoords": [
-				81, 81, 81, 81, 81, 81
-			]
-		}
-	],
-	
-	"texCoords": {
-		"left": [2, 5, 2.0625, 7],
-		"right": [2.9375, 5, 3, 7],
-		"down": [2, 6.9375, 3, 7],
-		"up": [2, 5, 3, 5.0625],
-		"back": [3, 5, 2, 7],
-		"front": [2, 5, 3, 7]
-	}
+    "name": "Wooden Door",
+    "id": 71,
+    "hardness": 5,
+    "sound": "stone",
+    "fullBlock": false,
+    "icon": 300,
+    
+    "elements": [
+        {
+            "from": [0, 0, 0.4375],
+            "to": [1, 2, 0.5625],
+            
+            "texCoords": [
+                81, 81, 81, 81, 81, 81
+            ]
+        }
+    ],
+    
+    "texCoords": {
+        "left": [2, 5, 2.0625, 7],
+        "right": [2.9375, 5, 3, 7],
+        "down": [2, 6.9375, 3, 7],
+        "up": [2, 5, 3, 5.0625],
+        "back": [3, 5, 2, 7],
+        "front": [2, 5, 3, 7]
+    }
 }

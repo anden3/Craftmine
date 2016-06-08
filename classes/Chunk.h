@@ -8,13 +8,9 @@
 #include "Buffer.h"
 
 const int CHUNK_SIZE = 16;
-const int SUN_LIGHT_LEVEL = 15;
-extern int AmbientOcclusion;
-
-extern glm::vec2 IMAGE_SIZE;
 
 class Vec3Comparator {
-public:
+  public:
     bool operator () (const glm::vec3 &a, const glm::vec3 &b) const {
         if (a.x != b.x) return a.x < b.x;
         else if (a.z != b.z) return a.z < b.z;
@@ -24,16 +20,13 @@ public:
 };
 
 class Vec2Comparator {
-public:
+  public:
     bool operator () (const glm::vec2 &a, const glm::vec2 &b) const {
         if (a.x != b.x) return a.x < b.x;
         else if (a.y != b.y) return a.y < b.y;
         else return false;
     }
 };
-
-extern glm::vec3 vertices[6][6];
-extern glm::vec2 tex_coords[6][6];
 
 extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 
@@ -54,7 +47,7 @@ struct LightNode {
 };
 
 class LightNodeComparator {
-public:
+  public:
     bool operator () (const LightNode &a, const LightNode &b) const {
         if (a.Chunk.x != b.Chunk.x) return a.Chunk.x < b.Chunk.x;
         else if (a.Chunk.y != b.Chunk.y) return a.Chunk.y < b.Chunk.y;
@@ -69,7 +62,7 @@ public:
 };
 
 class Chunk {
-public:
+  public:
     glm::vec3 Position;
     std::set<glm::vec3, Vec3Comparator> Blocks;
     Buffer buffer;
@@ -115,7 +108,7 @@ public:
         }
     }
     
-private:
+  private:
     void Update_Air(glm::ivec3 pos, glm::bvec3 inChunk);
     void Update_Transparency(glm::ivec3 pos);
     
@@ -135,12 +128,6 @@ std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm:
 std::pair<glm::vec3, glm::vec3> Get_Chunk_Pos(glm::vec3 worldPos);
 
 bool Is_Block(glm::vec3 pos);
+bool Exists(glm::vec3 chunk);
 
-inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
-    chunk *= CHUNK_SIZE;
-    return chunk + tile;
-}
-
-extern std::map<glm::vec3, Chunk*, Vec3Comparator> ChunkMap;
-
-inline bool Exists(glm::vec3 chunk) { return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded; }
+inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) { return chunk * static_cast<float>(CHUNK_SIZE) + tile; }

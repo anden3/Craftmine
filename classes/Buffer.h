@@ -1,17 +1,17 @@
 #pragma once
 
+#define GLM_SWIZZLE
+#include <glm/glm.hpp>
+
 #include <map>
 #include <string>
 #include <vector>
-
-#define GLM_SWIZZLE
-#include <glm/glm.hpp>
 
 typedef std::vector<float> Data;
 class Shader;
 
 class Buffer {
-public:
+  public:
     int VertexType;
     int Vertices = 0;
     
@@ -27,7 +27,7 @@ public:
     void Upload(const Data &data, int start = 0, bool sub = false);
     void Draw(int start = 0, int length = 0);
     
-private:
+  private:
     unsigned int VAO;
     unsigned int VBO;
     
@@ -37,7 +37,7 @@ private:
 };
 
 class UniformBuffer {
-public:
+  public:
     void Create(std::string name, int bufferID, int size, std::vector<Shader*> shaders);
     void Add(std::string name, int bufferID, Shader* shader);
     
@@ -45,7 +45,7 @@ public:
     void Upload(int index, T t);
     void Upload(int index, glm::mat4 matrix);
 
-private:
+  private:
     unsigned int UBO;
     int BufferID;
 };

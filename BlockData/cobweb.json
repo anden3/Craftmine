@@ -1,9 +1,9 @@
 {
-	"name": "Cobweb",
-	"id": 30,
-	"hardness": 4,
-	"sound": "cloth",
-	"texture": 11,
-	"fullBlock": false,
-	"collision": false
+    "name": "Cobweb",
+    "id": 30,
+    "hardness": 4,
+    "sound": "cloth",
+    "texture": 11,
+    "fullBlock": false,
+    "collision": false
 }

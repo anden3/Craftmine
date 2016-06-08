@@ -7,11 +7,6 @@
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
-class Interface;
-class Shader;
-
-extern Interface interface;
-
 struct Stack {
     Stack() {
         Type = 0;
@@ -41,19 +36,7 @@ struct Stack {
     int Data;
 };
 
-extern std::map<unsigned int, glm::vec2> BlockIcons;
-
 extern bool keys[1024];
-
-extern int colorLocation;
-extern int alphaLocation;
-extern int borderColorLocation;
-
-extern int SCREEN_WIDTH, SCREEN_HEIGHT;
-
-extern Shader* UIShader;
-extern Shader* UIBorderShader;
-extern Shader* UITextureShader;
 
 template <typename T>
 double Sum(const std::vector<T> &a) {

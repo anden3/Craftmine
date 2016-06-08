@@ -22,7 +22,7 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
     
     if (data.size() > 0) {
         glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
-        Vertices = int(data.size()) / VertexSize;
+        Vertices = static_cast<int>(data.size()) / VertexSize;
     }
     
     int index = 0;
@@ -30,7 +30,7 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
     
     for (auto const &element : config) {
         glEnableVertexAttribArray(index);
-        glVertexAttribPointer(index, element, GL_FLOAT, false, VertexSize * sizeof(float), (void*)(partSum * sizeof(float)));
+        glVertexAttribPointer(index, element, GL_FLOAT, false, VertexSize * sizeof(float), reinterpret_cast<void*>(partSum * sizeof(float)));
         
         partSum += element;
         ++index;
@@ -44,7 +44,7 @@ void Buffer::Upload(const Data &data, int start, bool sub) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     
     if (start == 0 && !sub) {
-        Vertices = int(data.size()) / VertexSize;
+        Vertices = static_cast<int>(data.size()) / VertexSize;
         glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
     }
     else {

@@ -1,8 +1,8 @@
 {
-	"name": "Dispenser",
-	"id": 23,
-	"hardness": 3.5,
-	"sound": "stone",
+    "name": "Dispenser",
+    "id": 23,
+    "hardness": 3.5,
+    "sound": "stone",
     
-	"multiTexture": [45, 45, 62, 62, 45, 46]
+    "multiTexture": [45, 45, 62, 62, 45, 46]
 }

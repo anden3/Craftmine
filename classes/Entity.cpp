@@ -3,6 +3,7 @@
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "main.h"
 #include "Chunk.h"
 #include "Blocks.h"
 #include "Shader.h"

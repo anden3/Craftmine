@@ -1,8 +1,8 @@
 {
-	"name": "Leaves",
-	"id": 18,
-	"hardness": 0.2,
-	"sound": "dirt",
-	"transparent": true,
-	"texture": 52
+    "name": "Leaves",
+    "id": 18,
+    "hardness": 0.2,
+    "sound": "dirt",
+    "transparent": true,
+    "texture": 52
 }

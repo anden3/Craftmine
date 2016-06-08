@@ -8,28 +8,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-class Player;
-class Chat;
-
-extern const bool Windows;
-
-extern int VSync;
-extern bool Wireframe;
-extern bool ToggleWireframe;
-extern bool MouseEnabled;
-extern bool GamePaused;
-
-extern int RenderDistance;
-
-extern double DeltaTime;
-extern double LastFrame;
-
-extern GLFWwindow* Window;
-extern Player player;
-extern Chat chat;
-
-extern void Write_Config();
-
 namespace UI {
     void Init();
     void Draw();
@@ -38,6 +16,8 @@ namespace UI {
     void Click(double mouseX, double mouseY, int action, int button);
     void Mouse_Handler(double x, double y);
     void Key_Handler(int key, int action);
+    
+    void Toggle_Mouse(bool enable);
     
     void Toggle_Title();
     void Toggle_Game_Menu();

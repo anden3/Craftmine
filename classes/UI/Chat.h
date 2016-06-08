@@ -4,17 +4,8 @@
 #include <string>
 #include <vector>
 
-class Player;
-class Interface;
-class Inventory;
-
-extern Player player;
-extern Interface interface;
-extern Inventory inventory;
-
-extern double DeltaTime;
-
 struct Message {
+    Message() {}
     Message(unsigned int Id, float y, std::string text, double timeLeft) : ID(Id), Y(y), Text(text), TimeLeft(timeLeft) {}
     
     unsigned int ID;
@@ -26,10 +17,11 @@ struct Message {
     float RealOpacity = 1.0f;
     
     bool Hidden = false;
+    bool OutOfView = false;
 };
 
 class Chat {
-public:
+  public:
     bool Focused = false;
     bool FocusToggled = false;
     
@@ -39,11 +31,13 @@ public:
     
     void Input(unsigned int key);
     void Key_Handler(int key);
+    void Mouse_Handler(double x, double y);
+    void Scroll(int direction);
     
     void Write(std::string text);
     void Update();
     
-private:
+  private:
     std::map<unsigned int, Message> Messages;
     std::vector<std::string> History;
     
@@ -54,12 +48,17 @@ private:
     double LastCursorToggle = 0.0;
     bool CursorVisible = true;
     
+    double MouseX;
+    double MouseY;
+    
+    bool MouseOverChat = false;
+    
     std::string NewMessage = "";
     
     void Get_Prev();
     void Get_Next();
     
-    void Toggle_Cursor(int opacity = -1);
+    void Toggle_Cursor(float opacity = -1.0f);
     void Update_Message();
     void Move_Up(float spacing);
     void Submit();

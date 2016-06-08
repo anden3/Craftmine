@@ -1,6 +1,7 @@
 #include "UI.h"
 
 #include "Chat.h"
+#include "main.h"
 #include "Chunk.h"
 #include "Player.h"
 #include "System.h"
@@ -33,7 +34,6 @@ void Init_Debug();
 
 void Draw_Debug();
 
-void Toggle_Mouse(bool enable);
 void Bind_Current_Document();
 
 void Toggle_Options_Menu();
@@ -41,8 +41,6 @@ void Toggle_VSync();
 void Toggle_AO();
 void Toggle_Wireframe();
 void Change_Render_Distance();
-
-void Exit();
 
 void UI::Init() {
     interface.Init();
@@ -100,6 +98,10 @@ void UI::Mouse_Handler(double x, double y) {
     Bind_Current_Document();
     interface.Mouse_Handler(float(x), float(SCREEN_HEIGHT - y));
     interface.Set_Document("");
+    
+    if (chat.Focused && !chat.FocusToggled) {
+        chat.Mouse_Handler(x, y);
+    }
 }
 
 void UI::Key_Handler(int key, int action) {
@@ -163,7 +165,7 @@ void UI::Toggle_Inventory() {
     }
 }
 
-void Toggle_Mouse(bool enable) {
+void UI::Toggle_Mouse(bool enable) {
     MouseEnabled = enable;
     glfwSetInputMode(Window, GLFW_CURSOR, enable ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 }
@@ -193,7 +195,7 @@ void Init_Title() {
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
     
-    glm::vec3 renderDistSliderRange(1, 10, float(RenderDistance));
+    glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
     
     interface.Set_Document("title");
     
@@ -215,10 +217,10 @@ void Init_Title() {
     interface.Get_Background("menuBg")->Color = glm::vec3(0.2f);
     interface.Get_Background("menuBg")->Opacity = 1.0f;
     
-    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
+    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
     interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
-    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AmbientOcclusion], aoButtonDims, Toggle_AO);
+    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
     interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
     
     interface.Set_Document("");
@@ -237,7 +239,7 @@ void Init_Menu() {
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
     
-    glm::vec3 renderDistSliderRange(1, 10, float(RenderDistance));
+    glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
     
     interface.Set_Document("mainMenu");
     
@@ -248,10 +250,10 @@ void Init_Menu() {
     interface.Set_Document("options");
     
     interface.Add_Background("menuBg", bgDims);
-    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSync], vsyncButtonDims, Toggle_VSync);
+    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
     interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RenderDistance), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
-    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AmbientOcclusion], aoButtonDims, Toggle_AO);
+    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
     interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
     
     interface.Set_Document("");
@@ -312,21 +314,21 @@ void Toggle_Options_Menu() {
 }
 
 void Toggle_VSync() {
-    VSync = !VSync;
+    VSYNC = !VSYNC;
     
     Bind_Current_Document();
-    interface.Get_Button("option_vsync")->Text.Text = "V-Sync: " + BoolStrings[VSync];
+    interface.Get_Button("option_vsync")->Text.Text = "V-Sync: " + BoolStrings[VSYNC];
     interface.Set_Document("");
     
-    glfwSwapInterval(VSync);
+    glfwSwapInterval(VSYNC);
     Write_Config();
 }
 
 void Toggle_AO() {
-    AmbientOcclusion = !AmbientOcclusion;
+    AMBIENT_OCCLUSION = !AMBIENT_OCCLUSION;
     
     Bind_Current_Document();
-    interface.Get_Button("option_ao")->Text.Text = "Ambient Occlusion: " + BoolStrings[AmbientOcclusion];
+    interface.Get_Button("option_ao")->Text.Text = "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION];
     interface.Set_Document("");
     
     Write_Config();
@@ -348,14 +350,10 @@ void Change_Render_Distance() {
     
     int value = int(ceil(slider->Value));
     
-    if (value != RenderDistance) {
-        RenderDistance = value;
+    if (value != RENDER_DISTANCE) {
+        RENDER_DISTANCE = value;
         Write_Config();
         
         player.Render_Chunks();
     }
-}
-
-void Exit() {
-    glfwSetWindowShouldClose(Window, GL_TRUE);
 }

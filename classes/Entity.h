@@ -11,11 +11,6 @@ static const float MERGING_RADIUS = 1.0f;
 
 const float GRAVITY = 0.004f;
 
-extern glm::vec3 vertices[6][6];
-extern glm::vec2 tex_coords[6][6];
-
-extern Shader* modelShader;
-
 extern void Upload_Data(const unsigned int vbo, const Data &data);
 
 class EntityInstance {

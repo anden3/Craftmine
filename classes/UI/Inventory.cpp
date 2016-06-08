@@ -7,6 +7,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include "main.h"
 #include "Interface.h"
 
 const int SLOTS_X = 10;

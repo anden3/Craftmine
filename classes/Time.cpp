@@ -141,15 +141,15 @@ Time::Time(std::string id) {
     count = 0;
     begun_last = false;
 
-	if (!Initialized) {
-		QueryPerformanceFrequency(&Frequency);
-		Initialized = false;
-	}
+    if (!Initialized) {
+        QueryPerformanceFrequency(&Frequency);
+        Initialized = false;
+    }
 }
 
 void Time::Add() {
-	LARGE_INTEGER t;
-	QueryPerformanceCounter(&t);
+    LARGE_INTEGER t;
+    QueryPerformanceCounter(&t);
 
     if (timings.size() == 0) {
         t0 = t.QuadPart;
@@ -157,9 +157,9 @@ void Time::Add() {
     }
     else {
         if (t0 != 0) {
-			uint64_t ticks = t.QuadPart - t0;
-			ticks *= 1000000;
-			ticks /= Frequency.QuadPart;
+            uint64_t ticks = t.QuadPart - t0;
+            ticks *= 1000000;
+            ticks /= Frequency.QuadPart;
             timings[count] = ticks;
 
             count += 1;

@@ -9,13 +9,6 @@ typedef std::vector<float> Data;
 
 struct Block;
 
-extern int SCREEN_WIDTH;
-extern int SCREEN_HEIGHT;
-
-extern glm::vec2 IMAGE_SIZE;
-extern glm::vec3 vertices[6][6];
-extern glm::vec2 tex_coords[6][6];
-
 inline std::string Format_Vector(glm::vec3 vector) {
     return std::string("X: " + std::to_string(int(vector.x)) + "\t\tY: " + std::to_string(int(vector.y)) + "\t\tZ: " + std::to_string(int(vector.z)));
 }
@@ -27,14 +20,14 @@ inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data {
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
 
 std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap = false);
-unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap = 0, bool flipY = false);
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap = 0, bool flipY = false);
 
 void Take_Screenshot();
 
-template <typename T> inline float Scale_X(const T x) { return (x / 1440.0f) * SCREEN_WIDTH; }
-template <typename T> inline float Scale_Y(const T y) { return (y / 900.0f) * SCREEN_HEIGHT; }
-template <typename T> inline glm::vec2 Scale(const T t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
-template <typename X, typename Y> inline glm::vec2 Scale(const X x, const Y y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
+float Scale_X(const float x);
+float Scale_Y(const float y);
+glm::vec2 Scale(const float t);
+glm::vec2 Scale(const float x, const float y);
 
 template <typename V, typename T> inline void Extend(std::vector<V> &storage, T t) { storage.push_back(V(t)); }
 template <typename V, typename T, typename... Args> inline void Extend(std::vector<V> &storage, T t, Args... args) { storage.push_back(V(t)); Extend(storage, args...); }

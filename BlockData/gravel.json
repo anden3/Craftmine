@@ -1,7 +1,7 @@
 {
-	"name": "Gravel",
-	"id": 13,
-	"hardness": 0.6,
-	"sound": "gravel",
-	"texture": 19
+    "name": "Gravel",
+    "id": 13,
+    "hardness": 0.6,
+    "sound": "gravel",
+    "texture": 19
 }

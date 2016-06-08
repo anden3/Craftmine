@@ -3,11 +3,11 @@
 #include <string>
 
 namespace System {
-	std::string GetVirtualMemoryUsage();
-	std::string GetPhysicalMemoryUsage();
-	std::string GetVRAMUsage();
+    std::string GetVirtualMemoryUsage();
+    std::string GetPhysicalMemoryUsage();
+    std::string GetVRAMUsage();
 
-	double GetCPUUsage();
+    double GetCPUUsage();
 }
 
 template <typename I>

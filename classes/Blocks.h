@@ -1,14 +1,12 @@
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
-extern glm::vec2 tex_coords[6][6];
-extern glm::vec3 vertices[6][6];
+#include <map>
+#include <string>
+#include <vector>
+#include <utility>
 
 struct Block {
     std::string Name = "";
@@ -65,4 +63,4 @@ namespace Blocks {
     bool Exists(unsigned int type, int data = 0);
     std::vector<float> Mesh(const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {});
     void Mesh(std::vector<float> &storage, const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {});
-}
+}  // namespace Blocks

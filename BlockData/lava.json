@@ -1,8 +1,8 @@
 {
-	"name": "Lava",
-	"id": 11,
-	"targetable": false,
-	"transparent": true,
-	"collision": false,
-	"texture": 237
+    "name": "Lava",
+    "id": 11,
+    "targetable": false,
+    "transparent": true,
+    "collision": false,
+    "texture": 237
 }

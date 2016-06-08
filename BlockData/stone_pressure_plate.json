@@ -1,19 +1,19 @@
 {
-	"name": "Stone Pressure Plate",
-	"id": 70,
-	"hardness": 0.5,
-	"sound": "stone",
-	"transparent": true,
-	"fullBlock": false,
-	"noCollision": true,
-	"texture": 1,
-	
-	"vertices": {
-		"left": [0, 0, 0, 0, 0.1, 1],
-		"right": [1, 0, 0, 1, 0.1, 1],
-		"down": [0, 0, 0, 1, 0, 1],
-		"up": [0, 0.1, 0, 1, 0.1, 1],
-		"back": [0, 0, 0, 1, 0.1, 0],
-		"front": [0, 0, 1, 1, 0.1, 1]
-	}
+    "name": "Stone Pressure Plate",
+    "id": 70,
+    "hardness": 0.5,
+    "sound": "stone",
+    "transparent": true,
+    "fullBlock": false,
+    "noCollision": true,
+    "texture": 1,
+    
+    "vertices": {
+        "left": [0, 0, 0, 0, 0.1, 1],
+        "right": [1, 0, 0, 1, 0.1, 1],
+        "down": [0, 0, 0, 1, 0, 1],
+        "up": [0, 0.1, 0, 1, 0.1, 1],
+        "back": [0, 0, 0, 1, 0.1, 0],
+        "front": [0, 0, 1, 1, 0.1, 1]
+    }
 }

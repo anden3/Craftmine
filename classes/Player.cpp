@@ -5,6 +5,7 @@
 #include <dirent.h>
 
 #include "Chat.h"
+#include "main.h"
 #include "Chunk.h"
 #include "Sound.h"
 #include "Blocks.h"
@@ -65,8 +66,6 @@ Buffer RightArmBuffer;
 Buffer LeftLegBuffer;
 Buffer RightLegBuffer;
 
-extern Shader* mobShader;
-
 int punchingAngleDirection = 200;
 int movementAngleDirection = 5000;
 
@@ -97,6 +96,8 @@ bool Check_Col(glm::vec3 pos) {
 }
 
 void Player::Init() {
+    LightLevel = SUN_LIGHT_LEVEL;
+    
     glm::vec4 hpDims(50, 50, 200, 20);
     glm::vec3 hpRange(0, 100, 100);
     
@@ -140,8 +141,8 @@ void Player::Init_Model() {
         for (int i = 0; i < 6; i++) {
             for (int j = 0; j < 6; j++) {
                 Extend(data, vertices[i][j] - offsets[b]);
-                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j].x].x / 64);
-                data.push_back(PlayerTexCoords[parts[b]][i][tex_coords[i][j].y].y / 32);
+                data.push_back(PlayerTexCoords.at(parts[b])[i][tex_coords[i][j].x].x / 64);
+                data.push_back(PlayerTexCoords.at(parts[b])[i][tex_coords[i][j].y].y / 32);
             }
         }
         
@@ -273,13 +274,13 @@ void Player::Draw_Damage() {
 }
 
 void Player::Poll_Sounds() {
-	if (soundPlayers.size() > 0) {
+    if (soundPlayers.size() > 0) {
         std::vector<SoundPlayer>::iterator sound = soundPlayers.begin();
         
         while (sound != soundPlayers.end()) {
             sound = sound->Playing() ? sound + 1 : soundPlayers.erase(sound);
         }
-	}
+    }
 }
 
 void Player::Move(float deltaTime, bool update) {
@@ -293,10 +294,10 @@ void Player::Move(float deltaTime, bool update) {
     Velocity.x = 0;
     Velocity.z = 0;
 
-	float speed = PLAYER_BASE_SPEED * deltaTime;
+    float speed = PLAYER_BASE_SPEED * deltaTime;
 
     if (keys[GLFW_KEY_LEFT_SHIFT]) {
-		speed *= PLAYER_SPRINT_MODIFIER * (Flying + 1);
+        speed *= PLAYER_SPRINT_MODIFIER * (Flying + 1);
     }
     
     static int moveKeys[4] = {GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_A};
@@ -344,7 +345,7 @@ void Player::Move(float deltaTime, bool update) {
         else {
             movementAngle = 0.0f;
         }
-	}
+    }
     
     if (MouseDown) {
         punchingAngle += deltaTime * punchingAngleDirection;
@@ -510,11 +511,11 @@ void Player::Drop_Item() {
 }
 
 void Player::ColDetection() {
-	if (ChunkMap.empty() || !Exists(CurrentChunk)) {
-		return;
-	}
+    if (ChunkMap.empty() || !Exists(CurrentChunk)) {
+        return;
+    }
 
-	Velocity.y -= GRAVITY;
+    Velocity.y -= GRAVITY;
     
     OnGround = (Velocity.y <= 0 && Check_Col(glm::vec3(WorldPos.x, WorldPos.y + Velocity.y - 0.01f, WorldPos.z)));
     
@@ -572,14 +573,14 @@ void Player::Remove_Light() {
 std::vector<glm::vec3> Player::Hitscan() {
     std::vector<glm::vec3> failedScan = {glm::vec3(0)};
 
-	glm::vec3 lastPos;
+    glm::vec3 lastPos;
 
-	bool started = false;
+    bool started = false;
 
     for (float t = 0; t < PLAYER_RANGE; t += HITSCAN_STEP_SIZE) {
         glm::vec3 checkingPos = Cam.Position + Cam.Front * t;
 
-		if (Is_Block(checkingPos)) {
+        if (Is_Block(checkingPos)) {
             glm::vec3 chunk1, tile1;
             std::tie(chunk1, tile1) = Get_Chunk_Pos(checkingPos);
             
@@ -602,10 +603,10 @@ std::vector<glm::vec3> Player::Hitscan() {
                     }
                 }
             }
-		}
+        }
 
-		lastPos = checkingPos;
-		started = true;
+        lastPos = checkingPos;
+        started = true;
     }
 
     return failedScan;
@@ -701,7 +702,7 @@ void Player::Mouse_Handler(double posX, double posY) {
     PUNCHING_ANGLE_START = Cam.Pitch + 90;
     PUNCHING_ANGLE_END = Cam.Pitch + 120;
 
-	listener.Set_Orientation(Cam.Front, Cam.Up);
+    listener.Set_Orientation(Cam.Front, Cam.Up);
     
     std::vector<glm::vec3> hit = Hitscan();
     LookingAtBlock = hit.size() == 4;
@@ -721,7 +722,7 @@ void Player::Mouse_Handler(double posX, double posY) {
         }
         
         LookingAirChunk = hit[2];
-		LookingAirTile = hit[3];
+        LookingAirTile = hit[3];
     }
     
     if (ThirdPerson) {
@@ -741,18 +742,23 @@ void Player::Mouse_Handler(double posX, double posY) {
 
 void Player::Scroll_Handler(double offsetY) {
     if (fabs(offsetY) > 0.2) {
-        inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
-        
-        if (inventory.ActiveToolbarSlot > 9) {
-            inventory.ActiveToolbarSlot = 0;
+        if (chat.Focused && !chat.FocusToggled) {
+            chat.Scroll(int(std::copysign(1, offsetY)));
         }
-        
-        else if (inventory.ActiveToolbarSlot < 0) {
-            inventory.ActiveToolbarSlot = 9;
+        else {
+            inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
+            
+            if (inventory.ActiveToolbarSlot > 9) {
+                inventory.ActiveToolbarSlot = 0;
+            }
+            
+            else if (inventory.ActiveToolbarSlot < 0) {
+                inventory.ActiveToolbarSlot = 9;
+            }
+            
+            inventory.Switch_Slot();
+            Mesh_Holding();
         }
-        
-        inventory.Switch_Slot();
-        Mesh_Holding();
     }
 }
 
@@ -830,19 +836,19 @@ void Player::Break_Block() {
 }
 
 void Player::Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile) {
-	SoundPlayer soundPlayer;
+    SoundPlayer soundPlayer;
 
-	soundPlayer.Set_Position(Get_World_Pos(chunk, tile));
-	soundPlayer.Set_Volume(VOLUME);
+    soundPlayer.Set_Position(Get_World_Pos(chunk, tile));
+    soundPlayer.Set_Volume(VOLUME);
     
     // Get random sound
     std::vector<Sound>::iterator sound = Sounds[type].begin();
     std::advance(sound, std::rand() % Sounds[type].size());
     
-	soundPlayer.Add((*sound));
-	soundPlayer.Play();
+    soundPlayer.Add((*sound));
+    soundPlayer.Play();
 
-	soundPlayers.push_back(soundPlayer);
+    soundPlayers.push_back(soundPlayer);
 }
 
 void Player::Render_Chunks(bool regenerate) {
@@ -862,7 +868,7 @@ void Player::Render_Chunks(bool regenerate) {
     
     for (auto chunk = ChunkMap.begin(); chunk != ChunkMap.end();) {
         float dist = glm::distance(CurrentChunk.xz(), chunk->first.xz());
-        bool outOfRange = dist > RenderDistance || chunk->first.y > startY || chunk->first.y < endY;
+        bool outOfRange = dist > RENDER_DISTANCE || chunk->first.y > startY || chunk->first.y < endY;
         
         if (regenerate || outOfRange) {
             delete chunk->second;
@@ -873,18 +879,18 @@ void Player::Render_Chunks(bool regenerate) {
         }
     }
 
-    for (float x = CurrentChunk.x - RenderDistance; x <= CurrentChunk.x + RenderDistance; x++) {
-        for (float z = CurrentChunk.z - RenderDistance; z <= CurrentChunk.z + RenderDistance; z++) {
-			for (float y = startY; y >= endY; y--) {
+    for (float x = CurrentChunk.x - RENDER_DISTANCE; x <= CurrentChunk.x + RENDER_DISTANCE; x++) {
+        for (float z = CurrentChunk.z - RENDER_DISTANCE; z <= CurrentChunk.z + RENDER_DISTANCE; z++) {
+            for (float y = startY; y >= endY; y--) {
                 glm::vec3 pos(x, y, z);
 
-				if (!ChunkMap.count(pos)) {
-                    if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RenderDistance) {
+                if (!ChunkMap.count(pos)) {
+                    if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RENDER_DISTANCE) {
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
                         ChunkMap[pos]->buffer.Create(3, 3, 1, 1);
                     }
-				}
+                }
             }
         }
     }

@@ -1,74 +1,74 @@
 {
-	"name": "White Wool",
-	"id": 35,
-	"hardness": 0.8,
-	"sound": "cloth",
-	"texture": 64,
-	
-	"types": {
-		"1": {
-			"name": "White Wool",
-			"texture": 64
-		},
-		"2": {
-			"name": "Black Wool",
-			"texture": 113
-		},
-		"3": {
-			"name": "Red Wool",
-			"texture": 129
-		},
-		"4": {
-			"name": "Dark Green Wool",
-			"texture": 145
-		},
-		"5": {
-			"name": "Brown Wool",
-			"texture": 161
-		},
-		"6": {
-			"name": "Blue Wool",
-			"texture": 177
-		},
-		"7": {
-			"name": "Purple Wool",
-			"texture": 193
-		},
-		"8": {
-			"name": "Cyan Wool",
-			"texture": 209
-		},
-		"9": {
-			"name": "Light Gray Wool",
-			"texture": 225
-		},
-		"10": {
-			"name": "Gray Wool",
-			"texture": 114
-		},
-		"11": {
-			"name": "Pink Wool",
-			"texture": 130
-		},
-		"12": {
-			"name": "Lime Wool",
-			"texture": 146
-		},
-		"13": {
-			"name": "Yellow Wool",
-			"texture": 162
-		},
-		"14": {
-			"name": "Light Blue Wool",
-			"texture": 178
-		},
-		"15": {
-			"name": "Magenta Wool",
-			"texture": 194
-		},
-		"16": {
-			"name": "Orange Wool",
-			"texture": 210
-		}
-	}
+    "name": "White Wool",
+    "id": 35,
+    "hardness": 0.8,
+    "sound": "cloth",
+    "texture": 64,
+    
+    "types": {
+        "1": {
+            "name": "White Wool",
+            "texture": 64
+        },
+        "2": {
+            "name": "Black Wool",
+            "texture": 113
+        },
+        "3": {
+            "name": "Red Wool",
+            "texture": 129
+        },
+        "4": {
+            "name": "Dark Green Wool",
+            "texture": 145
+        },
+        "5": {
+            "name": "Brown Wool",
+            "texture": 161
+        },
+        "6": {
+            "name": "Blue Wool",
+            "texture": 177
+        },
+        "7": {
+            "name": "Purple Wool",
+            "texture": 193
+        },
+        "8": {
+            "name": "Cyan Wool",
+            "texture": 209
+        },
+        "9": {
+            "name": "Light Gray Wool",
+            "texture": 225
+        },
+        "10": {
+            "name": "Gray Wool",
+            "texture": 114
+        },
+        "11": {
+            "name": "Pink Wool",
+            "texture": 130
+        },
+        "12": {
+            "name": "Lime Wool",
+            "texture": 146
+        },
+        "13": {
+            "name": "Yellow Wool",
+            "texture": 162
+        },
+        "14": {
+            "name": "Light Blue Wool",
+            "texture": 178
+        },
+        "15": {
+            "name": "Magenta Wool",
+            "texture": 194
+        },
+        "16": {
+            "name": "Orange Wool",
+            "texture": 210
+        }
+    }
 }

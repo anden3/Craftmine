@@ -12,27 +12,7 @@ typedef std::vector<float> Data;
 
 enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
-extern bool MouseEnabled;
-extern bool ChunkMapBusy;
-extern int RenderDistance;
-
-extern const int SUN_LIGHT_LEVEL;
-
 struct Block;
-
-class Chat;
-class Camera;
-class Shader;
-class Listener;
-class Inventory;
-
-extern Chat chat;
-extern Camera Cam;
-extern Shader* shader;
-extern Listener listener;
-extern Inventory inventory;
-
-extern std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords;
 
 std::vector<std::string> Split(const std::string &s, char delim);
 
@@ -51,7 +31,7 @@ public:
     glm::vec3 LookingAirChunk;
     
     glm::vec3 LookingTile;
-	glm::vec3 LookingAirTile;
+    glm::vec3 LookingAirTile;
     
     glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
     
@@ -60,7 +40,7 @@ public:
     void Mesh_Holding();
     void Mesh_Damage(int index);
 
-	void Poll_Sounds();
+    void Poll_Sounds();
     
     void Move(float deltaTime, bool update = false);
     void Draw();
@@ -76,21 +56,21 @@ public:
     void Click_Handler(int button, int action);
 
 private:
-	bool Flying = false;
-	bool Jumping = false;
-	bool OnGround = false;
+    bool Flying = false;
+    bool Jumping = false;
+    bool OnGround = false;
     bool FirstTime = true;
-	bool MovedMouse = false;
+    bool MovedMouse = false;
     bool ThirdPerson = false;
     
-    int LightLevel = SUN_LIGHT_LEVEL;
+    int LightLevel;
     
     int CurrentBlock;
     int CurrentBlockData = 0;
     
     const Block* CurrentBlockType;
     
-	float SpeedModifier = 1.0f;
+    float SpeedModifier = 1.0f;
     float Rotation;
     
     double MouseTimer = 0.0;
@@ -104,8 +84,8 @@ private:
     void Draw_Holding();
     void Draw_Damage();
     
-	void ColDetection();
-	std::vector<glm::vec3> Hitscan();
+    void ColDetection();
+    std::vector<glm::vec3> Hitscan();
     
     void Check_Pickup();
     
@@ -117,5 +97,3 @@ private:
     void Place_Light(int lightLevel);
     void Remove_Light();
 };
-
-extern Player player;

@@ -8,6 +8,7 @@
 #include <SOIL/SOIL.h>
 #include <FreeImagePlus.h>
 
+#include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
 
@@ -78,6 +79,12 @@ std::map<char, glm::vec3> ColorCodes = {
     {'e', glm::vec3(1.000, 1.000, 0.333)}, // Yellow
     {'f', glm::vec3(1.000, 1.000, 1.000)}, // White
 };
+
+float Scale_X(const float x) { return (x / 1440.0f) * SCREEN_WIDTH; }
+float Scale_Y(const float y) { return (y / 900.0f) * SCREEN_HEIGHT; }
+
+glm::vec2 Scale(const float t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
+glm::vec2 Scale(const float x, const float y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
 
 struct Character {
     unsigned int TextureID;
@@ -169,7 +176,7 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     return std::make_tuple(texture, width, height);
 }
 
-unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap, bool flipY) {
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap, bool flipY) {
     std::string path = "Images/" + file;
     
     unsigned int texture;
@@ -182,6 +189,8 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subSize, int mipmap
     
     int width = FreeImage_GetWidth(image);
     int height = FreeImage_GetHeight(image);
+    
+    glm::ivec2 subSize(width / subCount.x, height / subCount.y);
     
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);

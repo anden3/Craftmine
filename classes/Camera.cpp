@@ -6,10 +6,10 @@ Camera::Camera() {
 
 void Camera::UpdateCameraVectors() {
     glm::vec3 front;
-
-    front.x = float(cos(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
-    front.y = float(sin(glm::radians(Pitch)));
-    front.z = float(sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)));
+    
+    front.x = glm::cos(glm::radians(Yaw)) * glm::cos(glm::radians(Pitch));
+    front.y = glm::sin(glm::radians(Pitch));
+    front.z = glm::sin(glm::radians(Yaw)) * glm::cos(glm::radians(Pitch));
 
     FrontDirection = glm::normalize(glm::vec3(front.x, 0, front.z));
     RightDirection = glm::vec3(-FrontDirection.z, 0, FrontDirection.x);

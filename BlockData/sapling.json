@@ -1,9 +1,9 @@
 {
-	"name": "Sapling",
-	"id": 6,
-	"hardness": 0,
-	"sound": "wood",
-	"transparent": true,
-	"collision": false,
-	"texture": 15
+    "name": "Sapling",
+    "id": 6,
+    "hardness": 0,
+    "sound": "wood",
+    "transparent": true,
+    "collision": false,
+    "texture": 15
 }

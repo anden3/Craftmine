@@ -1,15 +1,15 @@
 #include "Blocks.h"
 
+#include <dirent.h>
 #include <sstream>
 #include <fstream>
-#include <dirent.h>
-
 #include "json.hpp"
 
+#include "../main.h"
 #include "Interface.h"
 
 bool iequals(const std::string &a, const std::string &b) {
-    unsigned long sz = a.size();
+    int sz = static_cast<int>(a.size());
     
     if (b.size() != sz) {
         return false;
@@ -244,7 +244,6 @@ void Blocks::Init() {
                             if (subType.ScaleOffset == glm::vec3(0)) {
                                 subType.ScaleOffset = smallestCoord;
                             }
-                            
                         }
                     }
                     
