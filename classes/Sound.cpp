@@ -20,7 +20,7 @@ void Listener::Set_Orientation(glm::vec3 frontVector, glm::vec3 upVector) {
         frontVector.x, frontVector.y, frontVector.z,
         upVector.x, upVector.y, upVector.z
     };
-    
+
     alListenerfv(AL_ORIENTATION, vec);
 }
 
@@ -52,11 +52,11 @@ std::vector<char> Sound::Load_OGG(std::string path) {
     ov_open(file, &oggFile, NULL, 0);
 
     vorbis_info* pInfo = ov_info(&oggFile, -1);
-    
+
     if (pInfo == NULL) {
         return std::vector<char> {'0'};
     }
-    
+
     Format = (pInfo->channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 
     int bitStream;
@@ -117,7 +117,7 @@ void SoundPlayer::Set_Position(glm::vec3 pos) {
 }
 
 void SoundPlayer::Set_Seek(float seek) {
-    alSourcei(Source, AL_BYTE_OFFSET, (int)(Queue.front().Length * seek));
+    alSourcei(Source, AL_BYTE_OFFSET, static_cast<int>(Queue.front().Length * seek));
 }
 
 void SoundPlayer::Add(Sound sound) {

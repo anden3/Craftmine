@@ -12,13 +12,13 @@ namespace UI {
     void Init();
     void Draw();
     void Clean();
-    
-    void Click(double mouseX, double mouseY, int action, int button);
+
+    void Click(int action, int button);
     void Mouse_Handler(double x, double y);
     void Key_Handler(int key, int action);
-    
+
     void Toggle_Mouse(bool enable);
-    
+
     void Toggle_Title();
     void Toggle_Game_Menu();
     void Toggle_Debug();

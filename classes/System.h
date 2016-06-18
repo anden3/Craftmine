@@ -14,12 +14,12 @@ template <typename I>
 std::string FormatOutput(I usage) {
     std::string units[4] = { "B", "KB", "MB", "GB" };
     int unitIndex = 0;
-    
+
     while (usage >= 1024) {
         usage /= 1024;
         unitIndex++;
     }
-    
+
     return std::string(std::to_string(usage) + " " + units[unitIndex]);
 }
 

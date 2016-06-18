@@ -3,8 +3,6 @@
 #include <fstream>
 #include <sstream>
 
-unsigned int shaderTypes[2] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
-
 Shader::Shader(const char *shader) {
     std::string vPath = "Shaders/" + std::string(shader) + ".vert";
     std::string fPath = "Shaders/" + std::string(shader) + ".frag";
@@ -31,7 +29,7 @@ std::string Shader::Load_File(std::string path) {
 void Shader::Add_Shader(unsigned int shader, std::string type, std::string path) {
     std::string shaderString = Load_File(path);
     const char* shaderCode = shaderString.c_str();
-    
+
     if (strcmp(shaderCode, "ERROR") == 0) {
         std::cout << "ERROR::SHADER::" << type << "::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
     }

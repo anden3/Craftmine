@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-const double DEFAULT_FOV = 90.0;
+const float DEFAULT_FOV = 90.0f;
 
 class Camera {
   public:
@@ -18,12 +18,12 @@ class Camera {
     glm::vec3 FrontDirection;
     glm::vec3 RightDirection;
 
-    double Yaw = 270.0;
-    double Pitch = 0.0;
-    double Zoom = DEFAULT_FOV;
+    float Yaw = 270.0f;
+    float Pitch = 0.0f;
+    float Zoom = DEFAULT_FOV;
 
     Camera();
-    
+
     inline glm::mat4 GetViewMatrix() { return glm::lookAt(Position, Position + Front, Up); }
     void UpdateCameraVectors();
 };

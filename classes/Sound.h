@@ -3,10 +3,8 @@
 #ifdef _WIN32
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
-
 #elif __APPLE__
 #include <OpenAL/OpenAL.h>
-
 #endif
 
 #define GLM_SWIZZLE
@@ -86,6 +84,6 @@ private:
     float Rolloff = 1.0f;
 
     bool Loop = false;
-    
+
     std::vector<Sound> Queue;
 };

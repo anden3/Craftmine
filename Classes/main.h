@@ -40,7 +40,8 @@ class Shader;
 class Listener;
 class Interface;
 class Inventory;
-class GLFWwindow;
+struct GLFWwindow;
+class NetworkClient;
 
 // Declaring shaders.
 extern Shader* shader;
@@ -55,8 +56,8 @@ extern Player player;
 extern Listener listener;
 extern Interface interface;
 extern Inventory inventory;
-
 extern GLFWwindow* Window;
+extern NetworkClient Client;
 
 extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
 
@@ -75,8 +76,20 @@ const glm::vec3 DIFFUSE_LIGHT = glm::vec3(0.7f);
 // The light level of blocks in direct sunlight.
 const int SUN_LIGHT_LEVEL = 15;
 
+// The number that all noise coordinates are divided by.
+// Higher values equals more zoom.
+const int CHUNK_ZOOM = 50;
+
+// The minimum noise density required to be a solid block.
+const double NOISE_DENSITY_BLOCK = 0.5;
+
+// The minimum noise density required to be a solid block during cave generation.
+const double NOISE_DENSITY_CAVE = -0.85;
+
 // The file to load settings from.
 const char CONFIG_FILE[] = "config.conf";
+
+const char PLAYER_NAME[] = "anden3";
 
 // Vertex coordinates for a 3D-block.
 // Side order is: Left - Right - Down - Up - Back - Front.
@@ -107,6 +120,9 @@ const std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords
     {"leg",  { {{8,  20}, {12, 32}}, {{0,  20}, {4,  32}}, {{8,  16}, {12, 20}}, {{4,  16}, {8,  20}}, {{4,  20}, {8,  32}}, {{12, 20}, {16, 32}} }},
     {"arm",  { {{48, 20}, {52, 32}}, {{40, 20}, {40, 32}}, {{48, 16}, {52, 20}}, {{44, 16}, {48, 20}}, {{44, 20}, {48, 32}}, {{52, 20}, {56, 32}} }},
 };
+
+// Order of directions for block faces.
+enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 
 // The resolution of the window.
 // If fullscreen is off, it's set to the values in the config file.

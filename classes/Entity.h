@@ -17,13 +17,13 @@ class EntityInstance {
 public:
     glm::vec3 Position;
     glm::vec3 Velocity;
-    
+
     int Type;
     int Size = 1;
     int BlockData = 0;
-    
+
     bool Can_Move = false;
-    
+
     EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 velocity);
     void Update(float deltaTime);
     void Draw();
@@ -32,9 +32,9 @@ private:
     float TimeAlive = 0;
     float Rotation = 0.0f;
     bool OnGround = false;
-    
+
     Buffer EntityBuffer;
-    
+
     void Col_Check(float deltaTime);
 };
 

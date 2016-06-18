@@ -12,16 +12,16 @@ public:
     Time(std::string id);
 
     void Add();
-    void Stop();
-    void Remove();
+    inline void Stop() { T0 = 0; }
+    inline void Remove() { Timings[Count--] = 0; }
     void Get(std::string type);
 
 private:
-    uint64_t t0;
-    int count;
-    bool begun_last;
+    uint64_t T0 = 0;
+    int Count = 0;
+    bool BegunLast = false;
 
-    std::map<int, uint64_t> timings;
+    std::map<int, uint64_t> Timings;
 
     uint64_t Get_Sum();
     uint64_t Get_Min();
