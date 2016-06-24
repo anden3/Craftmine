@@ -31,6 +31,10 @@ void Convert_Time(uint64_t t, std::string text) {
 }
 
 void Time::Get(std::string type) {
+    if (Timings.size() == 0) {
+        return;
+    }
+
     if (type == "all") {
         if (!BegunLast) {
             BegunLast = true;

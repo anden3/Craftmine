@@ -295,14 +295,19 @@ void Draw_Debug() {
             cpu_sum += time;
         }
 
-        interface.Get_Text_Element("cpu")->Text = "CPU: " + std::to_string(int(cpu_sum / AVG_UPDATE_RANGE)) + "%";
-        interface.Get_Text_Element("ram")->Text = "RAM: " + System::GetPhysicalMemoryUsage();
+        interface.Get_Text_Element("cpu")->Set_Text(
+            "CPU: " + std::to_string(int(cpu_sum / AVG_UPDATE_RANGE)) + "%"
+        );
+        interface.Get_Text_Element("ram")->Set_Text(
+            "RAM: " + System::GetPhysicalMemoryUsage()
+        );
     }
 
-    interface.Get_Text_Element("chunkQueue")->Text = "Chunks Queued: "
-        + std::to_string(static_cast<int>(ChunkMap.size()) - Get_Loaded());
-    interface.Set_Document("");
+    interface.Get_Text_Element("chunkQueue")->Set_Text(
+        "Chunks Queued: " + std::to_string(static_cast<int>(ChunkMap.size()) - Get_Loaded())
+    );
 
+    interface.Set_Document("");
     interface.Draw_Document("debug");
 }
 
@@ -314,7 +319,9 @@ void Toggle_VSync() {
     VSYNC = !VSYNC;
 
     Bind_Current_Document();
-    interface.Get_Button("option_vsync")->Text.Text = "V-Sync: " + BoolStrings[VSYNC];
+    interface.Get_Button("option_vsync")->Text.Set_Text(
+        "V-Sync: " + BoolStrings[VSYNC]
+    );
     interface.Set_Document("");
 
     glfwSwapInterval(VSYNC);
@@ -325,7 +332,9 @@ void Toggle_AO() {
     AMBIENT_OCCLUSION = !AMBIENT_OCCLUSION;
 
     Bind_Current_Document();
-    interface.Get_Button("option_ao")->Text.Text = "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION];
+    interface.Get_Button("option_ao")->Text.Set_Text(
+        "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION]
+    );
     interface.Set_Document("");
 
     Write_Config();
@@ -336,7 +345,9 @@ void Toggle_Wireframe() {
     ToggleWireframe = true;
 
     Bind_Current_Document();
-    interface.Get_Button("option_wireframe")->Text.Text = "Wireframe: " + BoolStrings[!Wireframe];
+    interface.Get_Button("option_wireframe")->Text.Set_Text(
+        "Wireframe: " + BoolStrings[!Wireframe]
+    );
     interface.Set_Document("");
 }
 

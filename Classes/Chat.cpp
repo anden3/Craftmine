@@ -194,7 +194,9 @@ void Chat::Submit() {
             Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
         }
 
-        Client.Send(NewMessage);
+        if (Multiplayer) {
+            Client.Send(NewMessage);
+        }
 
         History.push_back(NewMessage);
         HistoryIndex = static_cast<unsigned int>(History.size());
@@ -217,9 +219,14 @@ void Chat::Toggle_Cursor(float opacity) {
 
 void Chat::Update_Message() {
     interface.Set_Document("chatFocused");
-    interface.Get_Text_Element("newMessage")->Text = NewMessage;
-    interface.Get_Text_Element("cursor")->X = chatDims.x +
-        interface.Get_String_Width(NewMessage.substr(0, CursorPos));
+
+    TextElement* message = interface.Get_Text_Element("newMessage");
+    TextElement* cursor = interface.Get_Text_Element("cursor");
+
+    message->Text = NewMessage;
+    cursor->X = chatDims.x + interface.Get_String_Width(NewMessage.substr(0, CursorPos));
+    message->Mesh();
+
     interface.Set_Document("");
 }
 
@@ -331,11 +338,11 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
             "List of commands:",
             "&a/help&f: Displays this list.",
             "&a/tp&f <&2X&f> <&2Y&f> <&2Z&f>: Teleports player to specified location.",
-            "&a/give&f <&2ID&f> [&2NUM&f]: Gives &2NUM&f
-            (or 64 if &2NUM&f is unspecified) blocks of type &2ID&f to player.",
+            "&a/give&f <&2ID&f> [&2NUM&f]: Gives &2NUM&f \
+                (or 64 if &2NUM&f is unspecified) blocks of type &2ID&f to player.",
             "&a/clear&f: Clears the player's inventory.",
-            "&a/gamemode&f <&2MODE&f>: Sets the player's gamemode to &6Creative&f
-            if &2MODE&f is &5'c'&f, or &6Survival&f if &2MODE&f is &5's'&f.",
+            "&a/gamemode&f <&2MODE&f>: Sets the player's gamemode to &6Creative&f \
+                if &2MODE&f is &5'c'&f, or &6Survival&f if &2MODE&f is &5's'&f.",
             "&a/pos&f: Displays player's position, current chunk, and current tile."
         };
     }

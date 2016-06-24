@@ -38,14 +38,14 @@ class Buffer {
 
 class UniformBuffer {
   public:
-    void Create(std::string name, int bufferID, int size, std::vector<Shader*> shaders);
-    void Add(std::string name, int bufferID, Shader* shader);
+    void Create(std::string name, unsigned int bufferID, int size, std::vector<Shader*> shaders);
+    void Add(std::string name, unsigned int bufferID, Shader* shader);
 
     template <typename T>
-    void Upload(int index, T t);
-    void Upload(int index, glm::mat4 matrix);
+    void Upload(unsigned long index, T t);
+    void Upload(unsigned long index, glm::mat4 matrix);
 
   private:
     unsigned int UBO;
-    int BufferID;
+    unsigned int BufferID;
 };

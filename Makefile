@@ -2,7 +2,7 @@ HEADER_PATHS=-iquote Build/Classes -I /usr/local/include -isystem /usr/local/inc
 
 LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
-ITEMS_TO_COPY=Fonts Images Sounds Shaders BlockData config.conf
+ITEMS_TO_COPY=Fonts Images Sounds Shaders BlockData ItemData config.conf
 APP_DIRECTORIES=. MacOS Resources Frameworks
 
 LIBRARY_FLAGS=$(addprefix -l,$(LIBRARIES))
@@ -60,4 +60,4 @@ clean:
 	rm -rf Build/Craftmine.app
 	\
 	$(info Removing build data...)
-	rm $(OBJECTS_FOLDER)/*
+	rm $(OBJECTS_FOLDER)

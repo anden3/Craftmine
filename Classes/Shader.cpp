@@ -66,3 +66,13 @@ void Shader::Link() {
     glDeleteShader(vShader);
     glDeleteShader(fShader);
 }
+
+int Shader::Get_Location(const std::string name) {
+    if (UniformLocations.count(name)) {
+        return UniformLocations[name];
+    }
+
+    int location = glGetUniformLocation(Program, name.c_str());
+    UniformLocations[name] = location;
+    return location;
+}

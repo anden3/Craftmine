@@ -56,15 +56,22 @@ public:
     glm::vec3 Color;
 
     TextElement() {}
-    TextElement(std::string text, float x, float y, float opacity = 1.0f, glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f) {
+    TextElement(std::string text, float x, float y, float opacity = 1.0f,
+                glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f)
+    {
         Create(text, x, y, opacity, color, scale);
     }
 
-    void Create(std::string text, float x, float y, float opacity = 1.0f, glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f);
+    void Create(std::string text, float x, float y, float opacity = 1.0f,
+        glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f);
     void Center(float x, float y, float width);
+    void Set_Text(std::string newText);
+
+    void Mesh();
     void Draw();
 
 private:
+    Buffer TextBuffer;
     float Get_Width();
 };
 

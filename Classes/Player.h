@@ -40,7 +40,9 @@ class Player {
 
     void Poll_Sounds();
 
-    void Move(float deltaTime, bool update = false);
+    void Move();
+
+    void Update(bool update = false);
     void Draw();
 
     void Teleport(glm::vec3 pos);
@@ -52,14 +54,14 @@ class Player {
     void Mouse_Handler(double posX, double posY);
     void Scroll_Handler(double offsetY);
     void Click_Handler(int button, int action);
-    void Request_Handler(std::string packet);
+    void Request_Handler(std::string packet, bool sending);
 
   private:
     bool Flying = false;
     bool Jumping = false;
     bool OnGround = false;
-    bool FirstTime = true;
     bool MovedMouse = false;
+    bool FirstUpdate = true;
     bool ThirdPerson = false;
 
     int LightLevel;
@@ -81,8 +83,8 @@ class Player {
     void Draw_Holding();
     void Draw_Damage();
 
-    void ColDetection();
-    std::vector<glm::vec3> Hitscan();
+    void Col_Detection();
+    void Check_Hit();
 
     void Check_Pickup();
 
@@ -93,4 +95,6 @@ class Player {
 
     void Place_Light(int lightLevel);
     void Remove_Light();
+
+    void Cull_Chunks();
 };

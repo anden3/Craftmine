@@ -9,14 +9,14 @@
 
 // Check if program is running on Windows or OS X.
 #ifdef _WIN32
-const bool Windows = true;
+    const bool Windows = true;
 #elif __APPLE__
-const bool Windows = false;
+    const bool Windows = false;
 #endif
 
 // Compares two vec3 objects, and returns the smallest one.
 class VectorComparator {
- public:
+  public:
     bool operator () (const glm::vec3 &a, const glm::vec3 &b) const {
         if (a.x != b.x) {
             return a.x < b.x;
@@ -45,9 +45,9 @@ class NetworkClient;
 
 // Declaring shaders.
 extern Shader* shader;
+extern Shader* mobShader;
 extern Shader* modelShader;
 extern Shader* outlineShader;
-extern Shader* mobShader;
 
 // Defining references to objects.
 extern Chat chat;
@@ -61,7 +61,6 @@ extern NetworkClient Client;
 
 extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
 
-// TODO-list.
 // TODO: Interpolate lighting by having different values for vertices per block.
 
 // The color that the screen gets filled with when the color buffer is cleared.
@@ -115,10 +114,22 @@ const glm::vec2 tex_coords[6][6] = {
 
 // Texture coordinates for the different body parts of the player model.
 const std::map<std::string, std::vector<std::vector<glm::vec2>>> PlayerTexCoords = {
-    {"head", { {{16,  8}, {24, 16}}, {{0,   8}, {8,  16}}, {{16,  0}, {24,  8}}, {{8,   0}, {16,  8}}, {{8,   8}, {16, 16}}, {{24,  8}, {32, 16}} }},
-    {"body", { {{28, 20}, {32, 32}}, {{16, 20}, {20, 32}}, {{28, 16}, {36, 20}}, {{20, 16}, {28, 20}}, {{20, 20}, {28, 32}}, {{32, 20}, {40, 32}} }},
-    {"leg",  { {{8,  20}, {12, 32}}, {{0,  20}, {4,  32}}, {{8,  16}, {12, 20}}, {{4,  16}, {8,  20}}, {{4,  20}, {8,  32}}, {{12, 20}, {16, 32}} }},
-    {"arm",  { {{48, 20}, {52, 32}}, {{40, 20}, {40, 32}}, {{48, 16}, {52, 20}}, {{44, 16}, {48, 20}}, {{44, 20}, {48, 32}}, {{52, 20}, {56, 32}} }},
+    {"head", {
+        {{16,  8}, {24, 16}}, {{0,   8}, {8,  16}}, {{16,  0}, {24,  8}},
+        {{8,   0}, {16,  8}}, {{8,   8}, {16, 16}}, {{24,  8}, {32, 16}}
+    }},
+    {"body", {
+        {{28, 20}, {32, 32}}, {{16, 20}, {20, 32}}, {{28, 16}, {36, 20}},
+        {{20, 16}, {28, 20}}, {{20, 20}, {28, 32}}, {{32, 20}, {40, 32}}
+    }},
+    {"leg",  {
+        {{8,  20}, {12, 32}}, {{0,  20}, {4,  32}}, {{8,  16}, {12, 20}},
+        {{4,  16}, {8,  20}}, {{4,  20}, {8,  32}}, {{12, 20}, {16, 32}}
+    }},
+    {"arm",  {
+        {{48, 20}, {52, 32}}, {{40, 20}, {40, 32}}, {{48, 16}, {52, 20}},
+        {{44, 16}, {48, 20}}, {{44, 20}, {48, 32}}, {{52, 20}, {56, 32}}
+    }}
 };
 
 // Order of directions for block faces.
@@ -129,17 +140,12 @@ enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 // Else, it's set to the resolution of the primary monitor.
 extern int SCREEN_WIDTH, SCREEN_HEIGHT;
 
-// If window is in fullscreen mode.
-extern int FULLSCREEN;
-
-// If VSync is enabled.
 extern int VSYNC;
+extern int FULLSCREEN;
+extern int AMBIENT_OCCLUSION;
 
 // The radius (in chunks) around the player to render.
 extern int RENDER_DISTANCE;
-
-// If ambient occlusion is enabled.
-extern int AMBIENT_OCCLUSION;
 
 // Used for storing the time difference between the current frame and the last (in seconds).
 extern double DeltaTime;
@@ -147,20 +153,17 @@ extern double DeltaTime;
 // Used for storing the timestamp (in seconds) of the last frame.
 extern double LastFrame;
 
-// If wireframe is enabled.
 extern bool Wireframe;
-
-// If set to true, will toggle the wireframe state.
-extern bool ToggleWireframe;
-
-// If the game is paused.
 extern bool GamePaused;
+extern bool ToggleWireframe;
 
 // If the mouse cursor is visible.
 extern bool MouseEnabled;
 
 // If the chunk map is currently locked to a thread.
 extern bool ChunkMapBusy;
+
+extern bool Multiplayer;
 
 void Write_Config();
 void Exit();

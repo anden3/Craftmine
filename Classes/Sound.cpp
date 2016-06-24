@@ -11,6 +11,30 @@ Listener::Listener() {
     alcMakeContextCurrent(Context);
 }
 
+void Listener::Add_Sound(Sound &sound, glm::vec3 pos) {
+    SoundPlayer soundPlayer;
+
+    soundPlayer.Set_Position(pos);
+    soundPlayer.Set_Volume(GlobalVolume);
+
+    soundPlayer.Add(sound);
+    soundPlayer.Play();
+
+    soundPlayers.push_back(soundPlayer);
+}
+
+void Listener::Poll_Sounds() {
+    if (soundPlayers.size() == 0) {
+        return;
+    }
+
+    std::vector<SoundPlayer>::iterator sound = soundPlayers.begin();
+
+    while (sound != soundPlayers.end()) {
+        sound = sound->Playing() ? sound + 1 : soundPlayers.erase(sound);
+    }
+}
+
 void Listener::Set_Position(glm::vec3 pos) {
     alListener3f(AL_POSITION, pos.x, pos.y, pos.z);
 }

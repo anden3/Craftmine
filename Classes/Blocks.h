@@ -24,6 +24,10 @@ struct Block {
     bool MultiTextures = false;
     bool HasCustomData = false;
 
+    bool MultiBlock = false;
+    bool IsMBRoot = false;
+    glm::ivec3 MBOffset = glm::vec3(0);
+
     float Hardness = 0;
     int Luminosity = 0;
 

@@ -25,7 +25,7 @@ public:
     bool Can_Move = false;
 
     EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 velocity);
-    void Update(float deltaTime);
+    void Update();
     void Draw();
 
 private:
@@ -35,12 +35,12 @@ private:
 
     Buffer EntityBuffer;
 
-    void Col_Check(float deltaTime);
+    void Col_Check();
 };
 
 namespace Entity {
     void Spawn(glm::vec3 pos, int type, int typeData = 0, glm::vec3 velocity = glm::vec3(-100));
-    void Update(double deltaTime);
+    void Update();
     void Check_Pickup(glm::vec3 playerPos);
     void Draw();
 }

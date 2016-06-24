@@ -25,6 +25,10 @@ void NetworkClient::Update(unsigned int timeout) {
     ENetEvent event;
 
     while (enet_host_service(client, &event, timeout) > 0) {
+        if (event.type == ENET_EVENT_TYPE_NONE) {
+            return;
+        }
+
         if (event.type == ENET_EVENT_TYPE_CONNECT) {
             printf("Connected to %x:%u.\n\n", event.peer->address.host, event.peer->address.port);
 
@@ -33,14 +37,13 @@ void NetworkClient::Update(unsigned int timeout) {
             Send(j.dump());
         }
         else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
-            player.Request_Handler(std::string(reinterpret_cast<char*>(event.packet->data)));
+            player.Request_Handler(
+                std::string(reinterpret_cast<char*>(event.packet->data)), false
+            );
             enet_packet_destroy(event.packet);
         }
         else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
             puts("Disconnected from server!\n");
-        }
-        else if (event.type == ENET_EVENT_TYPE_NONE) {
-            return;
         }
     }
 }

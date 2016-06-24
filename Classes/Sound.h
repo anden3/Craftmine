@@ -15,20 +15,6 @@
 
 #include <vorbis/vorbisfile.h>
 
-class Listener {
-public:
-    Listener();
-
-    void Set_Position(glm::vec3 pos);
-    void Set_Orientation(glm::vec3 frontVector, glm::vec3 upVector);
-
-    void Delete();
-
-private:
-    ALCdevice* Device;
-    ALCcontext* Context;
-};
-
 class Sound {
 public:
     std::string Name;
@@ -86,4 +72,25 @@ private:
     bool Loop = false;
 
     std::vector<Sound> Queue;
+};
+
+class Listener {
+public:
+    Listener();
+
+    void Set_Position(glm::vec3 pos);
+    void Set_Orientation(glm::vec3 frontVector, glm::vec3 upVector);
+
+    void Add_Sound(Sound &sound, glm::vec3 pos);
+    void Poll_Sounds();
+
+    void Delete();
+
+private:
+    ALCdevice* Device;
+    ALCcontext* Context;
+
+    float GlobalVolume = 0.1f;
+
+    std::vector<SoundPlayer> soundPlayers;
 };

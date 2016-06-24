@@ -492,7 +492,7 @@ void Inventory::Right_Click_Stack(Stack &stack) {
             stack.Size++;
         }
         else if (!stack.Type) {
-            stack = Stack(HoldingStack.Type, HoldingStack.Data);
+            stack = Stack(HoldingStack.Type, HoldingStack.Data, 1);
         }
 
         if (--HoldingStack.Size == 0) {
@@ -597,6 +597,8 @@ void Inventory::Click_Handler(int button, int action) {
         DivideSlots.clear();
         Mesh();
     }
+
+    Mouse_Handler(-1, -1);
 }
 
 void Inventory::Mouse_Handler(double x, double y) {
@@ -667,9 +669,9 @@ void Inventory::Mouse_Handler(double x, double y) {
     mouseStack->Opacity = float(HoldingStack.Size > 0);
 
     if (HoldingStack.Type) {
-        mouseStack->Text = std::to_string(HoldingStack.Size);
         mouseStack->X = static_cast<float>(std::floor(x));
         mouseStack->Y = static_cast<float>(std::floor(mouseY));
+        mouseStack->Set_Text(std::to_string(HoldingStack.Size));
     }
 
     interface.Get_3D_Element("mouseStack")->Mesh(HoldingStack.Type, HoldingStack.Data,
@@ -698,11 +700,15 @@ void Inventory::Mesh() {
         }
 
         std::string textName = std::to_string(index);
-        interface.Get_Text_Element(textName)->Opacity = float(stack.Type > 0);
+        interface.Get_Text_Element(textName)->Opacity = static_cast<float>(stack.Type > 0);
         interface.Get_3D_Element(textName)->Mesh(stack.Type, stack.Data, pos + glm::vec2(0, 10));
 
         if (stack.Type) {
-            interface.Get_Text_Element(textName)->Text = std::to_string(stack.Size);
+            TextElement* text = interface.Get_Text_Element(textName);
+
+            if (text->Text != std::to_string(stack.Size)) {
+                text->Set_Text(std::to_string(stack.Size));
+            }
         }
 
         if (!Is_Open && index == 9) {
@@ -719,11 +725,17 @@ void Inventory::Mesh() {
             std::string textName = std::to_string(INV_SIZE + index);
             glm::vec2 pos = craftDims.xy() + glm::vec2(index % 3, index / 3) * slotWidth + slotPad;
 
-            interface.Get_Text_Element(textName)->Opacity = float(stack.Type > 0);
-            interface.Get_3D_Element(textName)->Mesh(stack.Type, stack.Data, pos + glm::vec2(0, 10));
+            interface.Get_Text_Element(textName)->Opacity = static_cast<float>(stack.Type > 0);
+            interface.Get_3D_Element(textName)->Mesh(
+                stack.Type, stack.Data, pos + glm::vec2(0, 10)
+            );
 
             if (stack.Type) {
-                interface.Get_Text_Element(textName)->Text = std::to_string(stack.Size);
+                TextElement* text = interface.Get_Text_Element(textName);
+
+                if (text->Text != std::to_string(stack.Size)) {
+                    text->Set_Text(std::to_string(stack.Size));
+                }
             }
 
             ++index;
@@ -731,10 +743,17 @@ void Inventory::Mesh() {
 
         std::string outputName = std::to_string(OUTPUT_SLOT);
         interface.Get_Text_Element(outputName)->Opacity = float(CraftingOutput.Type > 0);
-        interface.Get_3D_Element(outputName)->Mesh(CraftingOutput.Type, CraftingOutput.Data, outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2));
+        interface.Get_3D_Element(outputName)->Mesh(
+            CraftingOutput.Type, CraftingOutput.Data,
+            outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2)
+        );
 
         if (CraftingOutput.Type) {
-            interface.Get_Text_Element(outputName)->Text = std::to_string(CraftingOutput.Size);
+            TextElement* text = interface.Get_Text_Element(outputName);
+
+            if (text->Text != std::to_string(CraftingOutput.Size)) {
+                text->Set_Text(std::to_string(CraftingOutput.Size));
+            }
         }
     }
 

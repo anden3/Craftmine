@@ -31,6 +31,8 @@ class Vec2Comparator {
 extern std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
 extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> topBlocks;
 
+struct Block;
+
 struct LightNode {
     glm::vec3 Chunk;
     glm::vec3 Tile;
@@ -66,8 +68,8 @@ class Chunk {
 
     Chunk(glm::vec3 position);
 
-    inline int Get_Block(glm::ivec3 pos) { return BlockMap[pos.x][pos.y][pos.z]; }
-    inline void Set_Block(glm::ivec3 pos, int value) { BlockMap[pos.x][pos.y][pos.z] = value; }
+    inline int Get_Type(glm::ivec3 pos) { return BlockMap[pos.x][pos.y][pos.z]; }
+    inline void Set_Type(glm::ivec3 pos, int value) { BlockMap[pos.x][pos.y][pos.z] = value; }
     inline unsigned char Get_Air(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
     inline unsigned char& Get_Air_Ref(glm::ivec3 pos) { return SeesAir[pos.x][pos.y][pos.z]; }
 
@@ -78,8 +80,11 @@ class Chunk {
     void Light(bool flag = true);
     void Mesh();
 
-    void Remove_Block(glm::ivec3 position);
-    void Add_Block(glm::ivec3 position, int blockType, int blockData);
+    void Remove_Multiblock(glm::ivec3 position, const Block* block);
+    void Add_Multiblock(glm::ivec3 position, const Block* block);
+
+    void Remove_Block(glm::ivec3 position, bool checkMulti = true);
+    void Add_Block(glm::ivec3 position, int blockType, int blockData, bool checkMulti = true);
 
     inline int Get_Light(glm::vec3 pos) { return LightMap[int(pos.x)][int(pos.y)][int(pos.z)]; }
     inline void Set_Light(glm::ivec3 pos, int value) { LightMap[pos.x][pos.y][pos.z] = static_cast<unsigned char>(value); }

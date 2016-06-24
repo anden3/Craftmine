@@ -35,26 +35,28 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 
     }
 }
 
-void EntityInstance::Update(float deltaTime) {
-    Rotation += ROTATION_RATE * deltaTime;
+void EntityInstance::Update() {
+    Rotation += ROTATION_RATE * static_cast<float>(DeltaTime);
 
+    // Normalize rotation angle.
     if (Rotation > 360) {
         Rotation -= 360;
     }
-
-    if (Rotation < 0) {
+    else if (Rotation < 0) {
         Rotation += 360;
     }
 
-    TimeAlive += deltaTime;
+    TimeAlive += static_cast<float>(DeltaTime);
 
     if (TimeAlive >= IGNORE_TIMER) {
         Can_Move = true;
     }
 
-    Col_Check(deltaTime);
+    Col_Check();
 
+    // Merge nearby entities.
     for (auto const &entity : Entities) {
+        // Check if the entity is empty or is itself.
         if (entity->Size == 0 || entity == this) {
             continue;
         }
@@ -68,10 +70,12 @@ void EntityInstance::Update(float deltaTime) {
     }
 }
 
-void EntityInstance::Col_Check(float deltaTime) {
+void EntityInstance::Col_Check() {
     Velocity.y -= GRAVITY;
 
-    OnGround = (Velocity.y < 0 && Is_Block(glm::vec3(Position.x, Position.y + Velocity.y - (ENTITY_SCALE / 2), Position.z)));
+    OnGround = (Velocity.y <= 0 && Is_Block(
+        Position + glm::vec3(0, Velocity.y - (ENTITY_SCALE / 2), 0)
+    ));
 
     if (OnGround) {
         Velocity.y = 0;
@@ -102,12 +106,12 @@ void EntityInstance::Col_Check(float deltaTime) {
     };
 
     for (int i = 0; i < 3; i += 2) {
-        if (Velocity[i] != 0.0f) {
-            glm::vec3 checkingPos = Position + offsets[i / 2];
+        if (Velocity[i] == 0.0f) {
+            continue;
+        }
 
-            if (!Is_Block(checkingPos)) {
-                Position[i] += Velocity[i] * deltaTime;
-            }
+        if (!Is_Block(Position + offsets[i / 2])) {
+            Position[i] += Velocity[i] * static_cast<float>(DeltaTime);
         }
     }
 }
@@ -148,9 +152,9 @@ void Entity::Spawn(glm::vec3 pos, int type, int typeData, glm::vec3 velocity) {
     Entities.push_back(new EntityInstance(pos, type, typeData, velocity));
 }
 
-void Entity::Update(double deltaTime) {
+void Entity::Update() {
     for (auto const &entity : Entities) {
-        entity->Update(float(deltaTime));
+        entity->Update();
     }
 
     std::vector<EntityInstance*>::iterator it = Entities.begin();

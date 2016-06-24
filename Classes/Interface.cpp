@@ -15,19 +15,17 @@
 const std::string FONT = "Roboto";
 const int FONT_SIZE = 15;
 
-static Shader* UIBackgroundShader;
+static Shader* TextShader;
+static Shader* UI3DShader;
 static Shader* UIBorderShader;
 static Shader* UITextureShader;
-static Shader* UI3DShader;
+static Shader* UIBackgroundShader;
 
-static Buffer TextBuffer;
-
-static int BgColorLoc;
-static int BgAlphaLoc;
-static int TextColorLoc;
-static int BorderColorLoc;
+static int TEXT_ATLAS_WIDTH = 0;
+static int TEXT_ATLAS_HEIGHT = 0;
 
 const int       TEXT_TEXTURE_UNIT         = 10;
+const int       TEXT_GLYPHS               = 128;
 const float     TEXT_PADDING              = 20;
 
 const float     BUTTON_PADDING            = 20.0f;
@@ -86,14 +84,15 @@ float Scale_Y(const float y) { return (y / 900.0f) * SCREEN_HEIGHT; }
 glm::vec2 Scale(const float t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
 glm::vec2 Scale(const float x, const float y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
 
-struct Character {
-    unsigned int TextureID;
-    glm::ivec2 Size;
-    glm::ivec2 Bearing;
-    unsigned int Advance;
+struct CharacterInfo {
+  glm::vec2 Advance;
+  glm::vec2 BitmapSize;
+  glm::vec2 BitmapOffset;
+
+  float OffsetX;
 };
 
-static std::map<char, Character> Characters;
+static std::map<char, CharacterInfo> Characters;
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
     Data data;
@@ -195,7 +194,9 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, (mipmap > 0) ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, (mipmap > 0) ?
+        GL_NEAREST_MIPMAP_NEAREST :
+        GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glTexStorage3D(GL_TEXTURE_2D_ARRAY,
@@ -207,8 +208,11 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
     for (int h = 0; h < height; h += subSize.y) {
         for (int w = 0; w < width; w += subSize.x) {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer++, subSize.x, subSize.y, 1, GL_BGRA, GL_UNSIGNED_BYTE,
-                reinterpret_cast<void*>(FreeImage_GetBits(FreeImage_Copy(image, w, height - h, w + subSize.x, height - h - subSize.y))));
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0,
+                layer++, subSize.x, subSize.y, 1, GL_BGRA, GL_UNSIGNED_BYTE,
+                reinterpret_cast<void*>(FreeImage_GetBits(
+                    FreeImage_Copy(image, w, height - h, w + subSize.x, height - h - subSize.y)
+                )));
         }
     }
 
@@ -223,7 +227,10 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 }
 
 void Take_Screenshot() {
-    SOIL_save_screenshot("/Users/mac/Desktop/screenshot.bmp", SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SOIL_save_screenshot(
+        "/Users/mac/Desktop/screenshot.bmp",
+        SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+    );
 }
 
 void TextElement::Create(std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
@@ -239,6 +246,11 @@ void TextElement::Create(std::string text, float x, float y, float opacity, glm:
     Color = color;
 
     Width = Get_Width();
+
+    TextBuffer.Init(TextShader);
+    TextBuffer.Create(2, 2, 3);
+
+    Mesh();
 }
 
 void TextElement::Center(float x, float y, float width) {
@@ -246,68 +258,92 @@ void TextElement::Center(float x, float y, float width) {
     Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
 }
 
+void TextElement::Set_Text(std::string newText) {
+    Text = newText;
+    Mesh();
+}
+
+void TextElement::Mesh() {
+    float charX = 0;
+    float charY = 0;
+
+    Data data;
+
+    bool SkipNext = false;
+    glm::vec3 textColor = Color;
+
+    for (char const &c : Text) {
+        if (c == '&' || SkipNext) {
+            if (SkipNext) {
+                textColor = ColorCodes.at(c);
+            }
+
+            SkipNext = (c == '&');
+            continue;
+        }
+
+        CharacterInfo ch = Characters[c];
+
+        float x1 = charX + ch.BitmapOffset.x * Scale;
+        float y2 = charY + ch.BitmapOffset.y * Scale;
+
+        float w = ch.BitmapSize.x * Scale;
+        float h = ch.BitmapSize.y * Scale;
+
+        float x2 = x1 + w;
+        float y1 = y2 - h;
+
+        charX += ch.Advance.x * Scale;
+        charY += ch.Advance.y * Scale;
+
+        if (w == 0 || h == 0) {
+            continue;
+        }
+
+        float texX1 = ch.OffsetX;
+        float texX2 = ch.OffsetX + ch.BitmapSize.x / TEXT_ATLAS_WIDTH;
+        float texY2 = ch.BitmapSize.y / TEXT_ATLAS_HEIGHT;
+
+        Extend(data,
+            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
+            x2, y1, texX2, texY2, textColor.r, textColor.g, textColor.b,
+            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
+            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
+            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
+            x1, y2, texX1, 0,     textColor.r, textColor.g, textColor.b
+        );
+    }
+
+    TextBuffer.Upload(data);
+}
+
 void TextElement::Draw() {
     if (Opacity == 0.0f || Text == "") {
         return;
     }
 
-    TextBuffer.BufferShader->Upload(TextColorLoc, glm::vec4(Color, Opacity));
-
-    glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
-
-    float charX = X;
-    bool nextCharIsControl = false;
-
-    for (auto const &c : Text) {
-        if (c == '&') {
-            nextCharIsControl = true;
-        }
-
-        else if (nextCharIsControl) {
-            nextCharIsControl = false;
-            TextBuffer.BufferShader->Upload(TextColorLoc, glm::vec4(ColorCodes.at(c), Opacity));
-        }
-
-        else {
-            Character ch = Characters[c];
-
-            float xPos = charX + ch.Bearing.x * Scale;
-            float yPos = Y - (ch.Size.y - ch.Bearing.y) * Scale;
-
-            float w = ch.Size.x * Scale;
-            float h = ch.Size.y * Scale;
-
-            Data text_vertices = { xPos, yPos + h, 0, 0, xPos, yPos, 0, 1, xPos + w, yPos, 1, 1, xPos, yPos + h, 0, 0, xPos + w, yPos, 1, 1, xPos + w, yPos + h, 1, 0 };
-
-            glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-
-            TextBuffer.Upload(text_vertices, 0, true);
-            TextBuffer.Draw();
-
-            charX += (ch.Advance >> 6) * Scale;
-        }
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
+    TextBuffer.BufferShader->Upload("position", glm::vec2(X, Y));
+    TextBuffer.BufferShader->Upload("Opacity", Opacity);
+    TextBuffer.Draw();
 }
 
 float TextElement::Get_Width() {
     float width = 0;
 
     for (char const &c : Text) {
-        width += (Characters[c].Advance >> 6) * Scale;
+        width += Characters[c].Advance.x * Scale;
     }
 
     return width;
 }
 
 void UIElement::Draw() {
-    UIBackgroundShader->Upload(BgAlphaLoc, Opacity);
-    UIBackgroundShader->Upload(BgColorLoc, Color);
+    UIBackgroundShader->Upload("color", Color);
+    UIBackgroundShader->Upload("alpha", Opacity);
 
     BackgroundBuffer.Draw();
 
-    UIBorderShader->Upload(BorderColorLoc, glm::vec3(0));
+    UIBorderShader->Upload("color", glm::vec3(0));
     BorderBuffer.Draw();
 
     Text.Draw();
@@ -334,8 +370,12 @@ Button::Button(std::string text, float x, float y, float w, float h, Func &funct
     BackgroundBuffer.Init(UIBackgroundShader);
     BorderBuffer.Init(UIBorderShader);
 
-    BackgroundBuffer.Create(2, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
-    BorderBuffer.Create(2, Data {X, Y, X + Width, Y, X + Width, Y + Height, X, Y + Height});
+    BackgroundBuffer.Create(2, Data {
+        X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height
+    });
+    BorderBuffer.Create(2, Data {
+        X, Y, X + Width, Y, X + Width, Y + Height, X, Y + Height
+    });
 
     BorderBuffer.VertexType = GL_LINE_LOOP;
 }
@@ -345,7 +385,9 @@ inline void Button::Stop_Hover() { Color = BUTTON_COLOR; }
 inline void Button::Press() { Color = BUTTON_CLICK_COLOR; }
 inline void Button::Release() { Color = BUTTON_COLOR; Function(); }
 
-Slider::Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) : Value(value), Min(min), Max(max) {
+Slider::Slider(std::string text, float x, float y, float w, float h, float min,
+    float max, float value, Func &function) : Value(value), Min(min), Max(max) {
+
     X = x;
     Y = y;
     Width = w;
@@ -373,9 +415,15 @@ Slider::Slider(std::string text, float x, float y, float w, float h, float min, 
     HandleBuffer.Init(UIBackgroundShader);
     BorderBuffer.Init(UIBorderShader);
 
-    BackgroundBuffer.Create(2, Data {X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height});
-    BorderBuffer.Create(2, Data {X, Y, X + Width, Y, X + Width, Y + Height, X - 0.5f, Y + Height});
-    HandleBuffer.Create(2, Data {sx, Y + Height, sx, Y, sx + sw, Y, sx, Y + Height, sx + sw, Y, sx + sw, Y + Height});
+    BackgroundBuffer.Create(2, Data {
+        X, Y + Height, X, Y, X + Width, Y, X, Y + Height, X + Width, Y, X + Width, Y + Height
+    });
+    BorderBuffer.Create(2, Data {
+        X, Y, X + Width, Y, X + Width, Y + Height, X - 0.5f, Y + Height
+    });
+    HandleBuffer.Create(2, Data {
+        sx, Y + Height, sx, Y, sx + sw, Y, sx, Y + Height, sx + sw, Y, sx + sw, Y + Height
+    });
 
     BorderBuffer.VertexType = GL_LINE_LOOP;
 }
@@ -411,7 +459,12 @@ void Slider::Move(float position, bool setValue) {
         int oldValue = static_cast<int>(std::ceil(Value));
         Value = (Max - Min) * percentage;
 
-        Text.Text.replace(Text.Text.find(std::to_string(oldValue)), std::to_string(oldValue).length(), std::to_string(int(std::ceil(Value))));
+        Text.Text.replace(
+            Text.Text.find(std::to_string(oldValue)),
+            std::to_string(oldValue).length(),
+            std::to_string(static_cast<int>(std::ceil(Value)))
+        );
+        Text.Mesh();
     }
 
     HandleBuffer.Upload(Data {x, Y + Height, x, Y, x + w, Y,  x, Y + Height, x + w, Y, x + w, Y + Height});
@@ -421,13 +474,14 @@ void Slider::Move(float position, bool setValue) {
 void Slider::Draw() {
     UIElement::Draw();
 
-    UIBackgroundShader->Upload(BgAlphaLoc, HandleOpacity);
-    UIBackgroundShader->Upload(BgColorLoc, HandleColor);
+    UIBackgroundShader->Upload("color", HandleColor);
+    UIBackgroundShader->Upload("alpha", HandleOpacity);
 
     HandleBuffer.Draw();
 }
 
-Bar::Bar(std::string text, float x, float y, float w, float h, float min, float max, float value) : Value(value), Min(min), Max(max) {
+Bar::Bar(std::string text, float x, float y, float w, float h, float min, float max, float value)
+    : Value(value), Min(min), Max(max) {
     X = x;
     Y = y;
     Width = w;
@@ -464,14 +518,15 @@ void Bar::Move(float value) {
 void Bar::Draw() {
     UIElement::Draw();
 
-    UIBackgroundShader->Upload(BgAlphaLoc, BarOpacity);
-    UIBackgroundShader->Upload(BgColorLoc, BarColor);
+    UIBackgroundShader->Upload("color", BarColor);
+    UIBackgroundShader->Upload("alpha", BarOpacity);
 
     BarBuffer.Draw();
 }
 
-Image::Image(std::string file, int texID, float x, float y, float scale) : X(x), Y(y), Scale(scale), TexID(texID) {
-    glActiveTexture(GL_TEXTURE0 + TexID);
+Image::Image(std::string file, int texID, float x, float y, float scale)
+    : X(x), Y(y), Scale(scale), TexID(texID) {
+    glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TexID));
 
     std::tie(Texture, Width, Height) = Load_Texture(file);
     Width *= Scale;
@@ -493,7 +548,9 @@ void Image::Draw() {
     ImageBuffer.Draw();
 }
 
-Background::Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) : X(x), Y(y), Width(w), Height(h) {
+Background::Background(float x, float y, float w, float h, bool border,
+    glm::vec2 gridWidth, glm::vec2 pad) : X(x), Y(y), Width(w), Height(h) {
+
     Opacity = BACKGROUND_OPACITY;
     Color = BACKGROUND_COLOR;
     GridColor = BACKGROUND_BORDER_COLOR;
@@ -566,12 +623,12 @@ void Background::Move(float dx, float dy, bool absolute) {
 }
 
 void Background::Draw() {
-    UIBackgroundShader->Upload(BgColorLoc, Color);
-    UIBackgroundShader->Upload(BgAlphaLoc, Opacity);
+    UIBackgroundShader->Upload("color", Color);
+    UIBackgroundShader->Upload("alpha", Opacity);
     BackgroundBuffer.Draw();
 
     if (GridSet) {
-        UIBorderShader->Upload(BorderColorLoc, GridColor);
+        UIBorderShader->Upload("color", GridColor);
         GridBuffer.Draw();
     }
 }
@@ -633,92 +690,109 @@ void Interface::Init_Shaders() {
     UITextureShader = new Shader("uiTex");
     UI3DShader = new Shader("ortho");
 
-    BgColorLoc = UIBackgroundShader->Get_Location("color");
-    BgAlphaLoc = UIBackgroundShader->Get_Location("alpha");
-    BorderColorLoc = UIBorderShader->Get_Location("color");
-
     glm::mat4 model;
     model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1, 0, 0));
     model = glm::rotate(model, 45.0f, glm::vec3(0, 1, 0));
 
-    glm::mat4 projection = glm::ortho(0.0f, float(SCREEN_WIDTH), 0.0f, float(SCREEN_HEIGHT));
+    glm::mat4 projection = glm::ortho(
+        0.0f, static_cast<float>(SCREEN_WIDTH), 0.0f, static_cast<float>(SCREEN_HEIGHT)
+    );
 
     UIBackgroundShader->Upload("projection", projection);
 
     UIBorderShader->Upload("projection", projection);
-    UIBorderShader->Upload(BorderColorLoc, glm::vec3(0));
+    UIBorderShader->Upload("color", glm::vec3(0));
 
     UITextureShader->Upload("projection", projection);
     UITextureShader->Upload("tex", 0);
 
-    UI3DShader->Upload("projection", glm::ortho(0.0f, float(SCREEN_WIDTH), 0.0f, float(SCREEN_HEIGHT), -1000.0f, 1000.0f));
-    UI3DShader->Upload("model", model);
     UI3DShader->Upload("tex", 0);
+    UI3DShader->Upload("model", model);
+    UI3DShader->Upload("projection", glm::ortho(
+        0.0f, static_cast<float>(SCREEN_WIDTH), 0.0f,
+        static_cast<float>(SCREEN_HEIGHT), -1000.0f, 1000.0f
+    ));
 }
 
 void Interface::Init_Text() {
-    Shader* TextShader = new Shader("text");
-    TextColorLoc = TextShader->Get_Location("textColor");
+    TextShader = new Shader("text");
 
     FT_Library ft;
     FT_Face face;
 
-    int error = FT_Init_FreeType(&ft);
-
-    if (error) {
-        printf("Error: %i\n", error);
-    }
-
+    FT_Init_FreeType(&ft);
     FT_New_Face(ft, std::string("Fonts/" + FONT + ".ttf").c_str(), 0, &face);
     FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
 
+    FT_GlyphSlot g = face->glyph;
+
+    for (unsigned char c = 32; c < TEXT_GLYPHS; c++) {
+        FT_Load_Char(face, c, FT_LOAD_RENDER);
+        TEXT_ATLAS_WIDTH += g->bitmap.width;
+        TEXT_ATLAS_HEIGHT = std::max(TEXT_ATLAS_HEIGHT, static_cast<int>(g->bitmap.rows));
+    }
+
+    unsigned int textAtlas;
+    glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
+    glGenTextures(1, &textAtlas);
+    glBindTexture(GL_TEXTURE_2D, textAtlas);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    for (unsigned char c = 0; c < 128; c++) {
-        FT_Load_Char(face, c, FT_LOAD_RENDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RED,
+        TEXT_ATLAS_WIDTH, TEXT_ATLAS_HEIGHT,
+        0, GL_RED, GL_UNSIGNED_BYTE, NULL
+    );
+
+    int xOffset = 0;
+
+    for (unsigned char c = 32; c < TEXT_GLYPHS; ++c) {
+        CharacterInfo ch;
 
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-            std::cerr << "ERROR::FREETYPE: Failed to load Glyph " << c << std::endl;
             continue;
         }
 
-        unsigned int texture;
-        glGenTextures(1, &texture);
-        glActiveTexture(GL_TEXTURE0 + TEXT_TEXTURE_UNIT);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 0, xOffset, 0,
+            static_cast<int>(g->bitmap.width), static_cast<int>(g->bitmap.rows),
+            GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer
+        );
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, static_cast<int>(face->glyph->bitmap.width),
-        static_cast<int>(face->glyph->bitmap.rows), 0, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
+        ch.Advance = glm::vec2(
+            g->advance.x >> 6,
+            g->advance.y >> 6
+        );
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        ch.BitmapSize = glm::vec2(
+            g->bitmap.width,
+            g->bitmap.rows
+        );
 
-        Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            static_cast<unsigned int>(face->glyph->advance.x)
-        };
+        ch.BitmapOffset = glm::vec2(
+            g->bitmap_left,
+            g->bitmap_top
+        );
 
-        Characters.insert(std::pair<char, Character>(c, character));
+        ch.OffsetX = static_cast<float>(xOffset) / TEXT_ATLAS_WIDTH;
+        Characters[static_cast<char>(c)] = ch;
+
+        xOffset += g->bitmap.width;
     }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
 
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 
-    Data data;
-    data.resize(24);
-
-    TextBuffer.Init(TextShader);
-    TextBuffer.Create(2, 2, data);
-
-    TextShader->Upload("projection", glm::ortho(0.0f, static_cast<float>(SCREEN_WIDTH),
-                                                0.0f, static_cast<float>(SCREEN_HEIGHT)));
     TextShader->Upload("text", TEXT_TEXTURE_UNIT);
+    TextShader->Upload("projection", glm::ortho(
+        0.0f, static_cast<float>(SCREEN_WIDTH),
+        0.0f, static_cast<float>(SCREEN_HEIGHT)
+    ));
 }
 
 void Interface::Mouse_Handler(double x, double y) {
@@ -805,7 +879,7 @@ void Interface::Draw_Document(std::string document) {
 
 float Interface::Get_String_Width(std::string string) {
     float currentWidth = 0;
-    for (char const &c : string) { currentWidth += (Characters[c].Advance >> 6); }
+    for (char const &c : string) { currentWidth += Characters[c].Advance.x; }
     return currentWidth;
 }
 
@@ -824,7 +898,7 @@ std::vector<std::string> Interface::Get_Fitting_String(std::string string, int w
         }
 
         else {
-            currentWidth += (Characters[c].Advance >> 6);
+            currentWidth += Characters[c].Advance.x;
             addedString = currentWidth > width;
 
             if (addedString) {

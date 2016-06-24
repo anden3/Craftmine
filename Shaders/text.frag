@@ -1,11 +1,13 @@
 #version 410 core
 
 in vec2 TexCoords;
-out vec4 color;
+in vec3 TextColor;
+
+out vec4 FragColor;
 
 uniform sampler2D text;
-uniform vec4 textColor;
+uniform float Opacity = 1.0f;
 
 void main() {
-    color = textColor * vec4(1, 1, 1, texture(text, TexCoords).r);
+    FragColor = vec4(TextColor, texture(text, TexCoords).r * Opacity);
 }
