@@ -1,5 +1,6 @@
 #include "Chunk.h"
 
+#include <chrono>
 #include <random>
 #include <noise/noise.h>
 
@@ -91,19 +92,30 @@ static std::map<
 
 std::map<
     glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator
-> topBlocks;
+> TopBlocks;
 
 std::map<
     glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator
 > ChangedBlocks;
 
+static std::mt19937_64 rng;
+static std::uniform_real_distribution<double> rngVal(0, 1);
+
+double RNG() {
+    return rngVal(rng);
+}
+
 void Seed() {
     Seeded = true;
 
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> uni(0, 10000);
+    int64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::seed_seq ss {
+        static_cast<uint32_t>(timeSeed & 0xffffffff),
+        static_cast<uint32_t>(timeSeed >> 32)
+    };
+    rng.seed(ss);
 
+    std::uniform_int_distribution<int> uni(0, 10000);
     int seed = uni(rng);
 
     noiseModule.SetSeed(seed);
@@ -185,7 +197,7 @@ void Chunk::Generate() {
                               NOISE_DENSITY_BLOCK;
 
     if (Position.y == 3) {
-        topBlocks[topPos].clear();
+        TopBlocks[topPos].clear();
     }
 
     for (int x = -1; x <= CHUNK_SIZE; ++x) {
@@ -196,6 +208,11 @@ void Chunk::Generate() {
                     glm::greaterThan(block, glm::ivec3(-1)),
                     glm::lessThan(block, glm::ivec3(CHUNK_SIZE))
                 );
+                int height = static_cast<int>(Position.y) * CHUNK_SIZE + y;
+
+                if (Blocks.count(block)) {
+                    continue;
+                }
 
                 if (ChangedBlocks.count(Position) && ChangedBlocks[Position].count(block)) {
                     int type, data;
@@ -208,18 +225,14 @@ void Chunk::Generate() {
 
                     const Block* blockInstance = Blocks::Get_Block(type, data);
 
-                    if (!topBlocks[topPos].count(block.xz())) {
-                        topBlocks[topPos][block.xz()] = static_cast<int>(Position.y) * CHUNK_SIZE + y;
-                        TopBlocks.insert(block);
-
-                        Set_Type(block, type);
-                        Set_Data(block, data);
-                        Blocks.insert(block);
+                    if (!Top_Exists(block) || height > Get_Top(block)) {
+                        Set_Top(block, height);
+                        Set_Light(block, SUN_LIGHT_LEVEL);
+                        LightQueue.emplace(Position, block);
                     }
 
                     Set_Type(block, type);
                     Set_Data(block, data);
-                    Blocks.insert(block);
 
                     if (!blockInstance->FullBlock || blockInstance->Transparent) {
                         ContainsTransparentBlocks = true;
@@ -230,53 +243,165 @@ void Chunk::Generate() {
                         TransparentBlocks.insert(block);
                         Update_Transparency(block);
                     }
-                }
-                else {
-                    glm::dvec3 nPos = (positionOffset + glm::dvec3(x, y, z));
-                    nPos /= static_cast<double>(CHUNK_ZOOM);
-
-                    double noiseValue = underground ?
-                        ridgedNoise.GetValue(nPos.x, nPos.y, nPos.z) :
-                        (noiseModule.GetValue(nPos.x, nPos.y, nPos.z) - nPos.y * 2);
-
-                    if (noiseValue < densityThreshold) {
-                        Update_Air(block, inChunk);
-                        continue;
-                    }
-
-                    if (inChunk != glm::bvec3(true)) {
-                        continue;
-                    }
-
-                    if (!topBlocks[topPos].count(block.xz())) {
-                        topBlocks[topPos][block.xz()] = static_cast<int>(Position.y * CHUNK_SIZE + y);
-                        TopBlocks.insert(block);
-
-                        Set_Light(block, SUN_LIGHT_LEVEL);
-                        LightQueue.emplace(Position, block);
-
-                        Set_Type(block, 2);
-                    }
-                    else {
-                        int depth = std::abs(
-                            topBlocks[topPos][block.xz()] - static_cast<int>(Position.y * CHUNK_SIZE + y)
-                        );
-
-                        if (depth > 3) {
-                            underground ? Check_Ore(block, nPos) : Set_Type(block, 1);
-                        }
-                        else {
-                            Set_Type(block, 3);
-                        }
-                    }
 
                     Blocks.insert(block);
+                    continue;
                 }
+
+                glm::dvec3 nPos = (positionOffset + glm::dvec3(x, y, z));
+                nPos /= static_cast<double>(CHUNK_ZOOM);
+
+                double noiseValue = underground ?
+                    ridgedNoise.GetValue(nPos.x, nPos.y, nPos.z) :
+                    noiseModule.GetValue(nPos.x, nPos.y, nPos.z) - nPos.y * 2;
+
+                if (noiseValue < densityThreshold) {
+                    Update_Air(block, inChunk);
+                    continue;
+                }
+
+                if (inChunk != glm::bvec3(true)) {
+                    continue;
+                }
+
+                if (!Top_Exists(block) || height > Get_Top(block)) {
+                    Set_Top(block, height);
+                    Set_Light(block, SUN_LIGHT_LEVEL);
+                    LightQueue.emplace(Position, block);
+
+                    Set_Type(block, 2);
+                    // Generate_Tree(block);
+                }
+                else {
+                    int depth = std::abs(
+                        TopBlocks[topPos][block.xz()] - height
+                    );
+
+                    if (depth > 3) {
+                        underground ? Check_Ore(block, nPos) : Set_Type(block, 1);
+                    }
+                    else {
+                        Set_Type(block, 3);
+                    }
+                }
+
+                Blocks.insert(block);
             }
         }
     }
 
     Generated = true;
+}
+
+void Chunk::Generate_Tree(glm::vec3 tile) {
+    static std::map<glm::ivec3, std::pair<int, int>, VectorComparator> TreeModel = {
+        {{0, 1, 0}, {17, 0}},
+        {{0, 2, 0}, {17, 0}},
+        {{0, 3, 0}, {17, 0}},
+        {{0, 4, 0}, {17, 0}},
+        {{0, 5, 0}, {17, 0}},
+
+        {{-2, 4, -2}, {18, 0}},
+        {{-1, 4, -2}, {18, 0}},
+        {{ 0, 4, -2}, {18, 0}},
+        {{ 1, 4, -2}, {18, 0}},
+        {{ 2, 4, -2}, {18, 0}},
+
+        {{-2, 4, -1}, {18, 0}},
+        {{-1, 4, -1}, {18, 0}},
+        {{ 0, 4, -1}, {18, 0}},
+        {{ 1, 4, -1}, {18, 0}},
+        {{ 2, 4, -1}, {18, 0}},
+
+        {{-2, 4,  0}, {18, 0}},
+        {{-1, 4,  0}, {18, 0}},
+        {{ 1, 4,  0}, {18, 0}},
+        {{ 2, 4,  0}, {18, 0}},
+
+        {{-2, 4,  1}, {18, 0}},
+        {{-1, 4,  1}, {18, 0}},
+        {{ 0, 4,  1}, {18, 0}},
+        {{ 1, 4,  1}, {18, 0}},
+        {{ 2, 4,  1}, {18, 0}},
+
+        {{-2, 4,  2}, {18, 0}},
+        {{-1, 4,  2}, {18, 0}},
+        {{ 0, 4,  2}, {18, 0}},
+        {{ 1, 4,  2}, {18, 0}},
+        {{ 2, 4,  2}, {18, 0}},
+
+
+        {{-2, 5, -2}, {18, 0}},
+        {{-1, 5, -2}, {18, 0}},
+        {{ 0, 5, -2}, {18, 0}},
+        {{ 1, 5, -2}, {18, 0}},
+        {{ 2, 5, -2}, {18, 0}},
+
+        {{-2, 5, -1}, {18, 0}},
+        {{-1, 5, -1}, {18, 0}},
+        {{ 0, 5, -1}, {18, 0}},
+        {{ 1, 5, -1}, {18, 0}},
+        {{ 2, 5, -1}, {18, 0}},
+
+        {{-2, 5,  0}, {18, 0}},
+        {{-1, 5,  0}, {18, 0}},
+        {{ 1, 5,  0}, {18, 0}},
+        {{ 2, 5,  0}, {18, 0}},
+
+        {{-2, 5,  1}, {18, 0}},
+        {{-1, 5,  1}, {18, 0}},
+        {{ 0, 5,  1}, {18, 0}},
+        {{ 1, 5,  1}, {18, 0}},
+        {{ 2, 5,  1}, {18, 0}},
+
+        {{-2, 5,  2}, {18, 0}},
+        {{-1, 5,  2}, {18, 0}},
+        {{ 0, 5,  2}, {18, 0}},
+        {{ 1, 5,  2}, {18, 0}},
+        {{ 2, 5,  2}, {18, 0}},
+
+        {{-1, 6,  0}, {18, 0}},
+        {{ 1, 6,  0}, {18, 0}},
+        {{ 0, 6,  0}, {18, 0}},
+        {{ 0, 6, -1}, {18, 0}},
+        {{ 0, 6,  1}, {18, 0}},
+
+        {{-1, 7,  0}, {18, 0}},
+        {{ 1, 7,  0}, {18, 0}},
+        {{ 0, 7,  0}, {18, 0}},
+        {{ 0, 7, -1}, {18, 0}},
+        {{ 0, 7,  1}, {18, 0}}
+    };
+
+    if (RNG() <= 0.2) {
+        glm::ivec3 root = Get_World_Pos(Position, tile);
+
+        for (int y = 1; y <= 4; ++y) {
+            glm::ivec3 pos = root + glm::ivec3(0, y, 0);
+            glm::ivec3 chunkPos, tilePos;
+            std::tie(chunkPos, tilePos) = Get_Chunk_Pos(pos);
+
+            if (!Exists(chunkPos) || ChunkMap[chunkPos]->Get_Type(tilePos) != 0) {
+                return;
+            }
+        }
+
+        for (auto const &block : TreeModel) {
+            glm::ivec3 pos = root + block.first;
+            glm::ivec3 chunkPos, tilePos;
+            std::tie(chunkPos, tilePos) = Get_Chunk_Pos(pos);
+
+            if (!Exists(chunkPos)) {
+                continue;
+            }
+
+            if (ChunkMap[chunkPos]->Get_Type(tilePos) == 0) {
+                ChunkMap[chunkPos]->Set_Type(tilePos, block.second.first);
+                ChunkMap[chunkPos]->Set_Data(tilePos, block.second.second);
+                ChunkMap[chunkPos]->Blocks.insert(tilePos);
+            }
+        }
+    }
 }
 
 bool Check_If_Node(glm::vec3 chunk, glm::vec3 tile, int lightLevel, bool underground, bool down) {
@@ -585,9 +710,9 @@ void Chunk::Remove_Block(glm::ivec3 position, bool checkMulti) {
 
     bool lightBlocks = false;
 
-    if (topBlocks[Position.xz()][position.xz()] == Position.y * CHUNK_SIZE + position.y) {
+    if (TopBlocks[Position.xz()][position.xz()] == Position.y * CHUNK_SIZE + position.y) {
         lightBlocks = true;
-        topBlocks[Position.xz()][position.xz()]--;
+        TopBlocks[Position.xz()][position.xz()]--;
     }
 
     std::vector<Chunk*> meshingList;
@@ -652,8 +777,8 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData, bool ch
         ChangedBlocks[Position][position] = std::make_pair(blockType, blockData);
     }
 
-    if (Position.y * CHUNK_SIZE + position.y > topBlocks[Position.xz()][position.xz()]) {
-        topBlocks[Position.xz()][position.xz()] = static_cast<int>(Position.y * CHUNK_SIZE + position.y);
+    if (Position.y * CHUNK_SIZE + position.y > TopBlocks[Position.xz()][position.xz()]) {
+        TopBlocks[Position.xz()][position.xz()] = static_cast<int>(Position.y * CHUNK_SIZE + position.y);
         Set_Light(position, SUN_LIGHT_LEVEL);
     }
 

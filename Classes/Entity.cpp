@@ -127,7 +127,7 @@ void EntityInstance::Draw() {
     int lightLevel = ChunkMap[chunk]->Get_Light(tile);
 
     if (lightLevel == 0) {
-        if (Position.y >= topBlocks[chunk.xz()][tile.xz()]) {
+        if (Position.y >= ChunkMap[chunk]->Get_Top(tile)) {
             lightLevel = SUN_LIGHT_LEVEL;
         }
     }

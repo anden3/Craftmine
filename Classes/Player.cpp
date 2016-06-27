@@ -458,19 +458,20 @@ void Player::Update(bool update) {
         std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
 
         if (Exists(CurrentChunk)) {
-            if (ChunkMap[CurrentChunk]->Get_Type(CurrentTile - glm::vec3(0, 1, 0)) != 0) {
-                LightLevel = ChunkMap[CurrentChunk]->Get_Light(
-                    CurrentTile - glm::vec3(0, 1, 0)
+            glm::ivec3 lightCheckChunk, lightCheckTile;
+            std::tie(lightCheckChunk, lightCheckTile) = Get_Chunk_Pos(
+                WorldPos - glm::vec3(0, 1, 0)
+            );
+
+            if (ChunkMap[lightCheckChunk]->Get_Type(lightCheckTile) != 0) {
+                LightLevel = ChunkMap[lightCheckChunk]->Get_Light(
+                    lightCheckTile
                 );
 
                 if (LightLevel == 0) {
-                    if (WorldPos.y >= topBlocks[CurrentChunk.xz()][CurrentTile.xz()] - 1) {
+                    if (WorldPos.y >= ChunkMap[lightCheckChunk]->Get_Top(lightCheckTile) - 1) {
                         LightLevel = SUN_LIGHT_LEVEL;
                     }
-                }
-
-                if (LightLevel > SUN_LIGHT_LEVEL || LightLevel < 0) {
-                    printf("Light Level: %i\n", LightLevel);
                 }
 
                 modelShader->Upload("lightLevel", LightLevel);

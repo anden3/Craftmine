@@ -167,7 +167,9 @@ void Blocks::Init() {
     DIR* blockDir = opendir("BlockData");
     struct dirent* blockEnt;
 
-    std::vector<std::string> sides = {"left", "right", "down", "up", "back", "front"};
+    std::vector<std::string> sides = {
+        "left", "right", "down", "up", "back", "front"
+    };
 
     while ((blockEnt = readdir(blockDir)) != nullptr) {
         std::string fileName(blockEnt->d_name);
