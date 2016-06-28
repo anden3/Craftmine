@@ -4,7 +4,6 @@
 #include <array>
 #include <queue>
 #include <thread>
-#include <chrono>
 
 #include "Buffer.h"
 
@@ -55,33 +54,30 @@ struct LightNode {
     glm::vec3 Tile;
     int LightLevel;
     bool Down;
-    bool Underground;
 
-    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0, bool down = false, bool underground = false) {
+    LightNode(glm::vec3 chunk, glm::vec3 tile, int lightLevel = 0, bool down = false) {
         Chunk = chunk;
         Tile = tile;
         LightLevel = lightLevel;
         Down = down;
-        Underground = underground;
     }
 };
 
 class Chunk {
-  public:
-    glm::vec3 Position;
-    std::set<glm::vec3, Vec3Comparator> Blocks;
+public:
     Buffer buffer;
+    glm::vec3 Position;
 
     Data VBOData;
     std::queue<LightNode> LightQueue;
     std::queue<LightNode> LightRemovalQueue;
 
-    bool Generated = false;
-    bool Meshed = false;
-    bool DataUploaded = false;
-    bool Visible = true;
+    std::map<glm::ivec3, int, Vec3Comparator> ExtraTextures;
 
-    bool ContainsTransparentBlocks = false;
+    bool Meshed = false;
+    bool Visible = true;
+    bool Generated = false;
+    bool DataUploaded = false;
 
     Chunk(glm::vec3 position);
 
@@ -96,6 +92,7 @@ class Chunk {
     void Generate();
     void Light(bool flag = true);
     void Mesh();
+    void Draw(bool transparentPass = false);
 
     void Remove_Multiblock(glm::ivec3 position, const Block* block);
     void Add_Multiblock(glm::ivec3 position, const Block* block);
@@ -113,29 +110,31 @@ class Chunk {
     inline bool Top_Exists(glm::ivec3 tile) {
         return TopBlocks.count(Position.xz()) && TopBlocks[Position.xz()].count(tile.xz());
     }
-
     inline int Get_Top(glm::ivec3 tile) {
         return TopBlocks[Position.xz()][tile.xz()];
     }
-
     inline void Set_Top(glm::ivec3 tile, int value) {
         TopBlocks[Position.xz()][tile.xz()] = value;
     }
+private:
+    bool ContainsTransparentBlocks = false;
 
-  private:
     void Update_Air(glm::ivec3 pos, glm::bvec3 inChunk);
     void Update_Transparency(glm::ivec3 pos);
 
     void Generate_Tree(glm::vec3 tile);
     void Check_Ore(glm::ivec3 pos, glm::dvec3 noisePos);
+
     float GetAO(glm::vec3 block, int face, int offset);
+    int Get_Extra_Texture(glm::ivec3 tile);
 
-    Array3D<int, CHUNK_SIZE> BlockMap = {0};
+    Array3D<int, CHUNK_SIZE>           BlockMap = {0};
     Array3D<unsigned char, CHUNK_SIZE> LightMap = {0};
-    Array3D<unsigned char, CHUNK_SIZE> SeesAir = {0};
+    Array3D<unsigned char, CHUNK_SIZE> SeesAir  = {0};
 
-    std::set<glm::vec3, Vec3Comparator> TransparentBlocks;
+    std::set<glm::vec3, Vec3Comparator> Blocks;
     std::map<glm::vec3, int, Vec3Comparator> DataMap;
+    std::set<glm::vec3, Vec3Comparator> TransparentBlocks;
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);

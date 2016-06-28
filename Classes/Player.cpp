@@ -56,7 +56,6 @@ static int NumKeys[10] = {
 
 bool keys[1024] = {0};
 
-static Buffer DamageBuffer;
 static Buffer HoldingBuffer;
 
 static Buffer HeadBuffer;
@@ -103,10 +102,7 @@ void Player::Init() {
     modelShader->Upload("tex", 0);
 
     HoldingBuffer.Init(modelShader);
-    DamageBuffer.Init(modelShader);
-
     HoldingBuffer.Create(3, 3);
-    DamageBuffer.Create(3, 3);
 
     interface.Set_Document("playerUI");
     interface.Add_Bar("health", "HP", hpDims, hpRange);
@@ -180,7 +176,8 @@ void Player::Mesh_Holding() {
 }
 
 void Player::Mesh_Damage(int index) {
-    DamageBuffer.Upload(Blocks::Mesh(Blocks::Get_Block(255, index + 1)));
+    ChunkMap[LookingChunk]->ExtraTextures[LookingTile] = Blocks::Get_Block(255, index + 1)->Texture;
+    ChunkMap[LookingChunk]->Mesh();
 }
 
 void Player::Draw_Model() {
@@ -268,23 +265,6 @@ void Player::Draw_Holding() {
 
     modelShader->Upload("model", model);
     HoldingBuffer.Draw();
-}
-
-void Player::Draw_Damage() {
-    if (!LookingAtBlock || !MouseDown || Creative) {
-        return;
-    }
-
-    glm::mat4 model;
-    modelShader->Upload("model",
-        glm::translate(model, Get_World_Pos(LookingChunk, LookingTile))
-    );
-
-    // "Fix" for Z-Fighting
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-4.0f, -4.0f);
-    DamageBuffer.Draw();
-    glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void Player::Move() {
@@ -435,11 +415,12 @@ void Player::Update(bool update) {
             }
         }
         else {
+            float requiredTime = LookingBlockType->Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
+            int prevDamageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
             MouseTimer += static_cast<float>(DeltaTime);
 
-            float requiredTime = LookingBlockType->Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
-
             if (MouseTimer >= requiredTime) {
+                ChunkMap[LookingChunk]->ExtraTextures.erase(LookingTile);
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
                 MouseTimer = 0.0;
                 update = true;
@@ -449,8 +430,18 @@ void Player::Update(bool update) {
                 }
             }
             else {
-                Mesh_Damage(static_cast<int>(std::floor(MouseTimer / requiredTime * 10)));
+                int damageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
+
+                if (damageIndex != prevDamageIndex) {
+                    Mesh_Damage(damageIndex);
+                }
             }
+        }
+    }
+    else if (LookingAtBlock) {
+        if (ChunkMap[LookingChunk]->ExtraTextures.count(LookingTile)) {
+            ChunkMap[LookingChunk]->ExtraTextures.erase(LookingTile);
+            ChunkMap[LookingChunk]->Mesh();
         }
     }
 
@@ -458,25 +449,15 @@ void Player::Update(bool update) {
         std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
 
         if (Exists(CurrentChunk)) {
-            glm::ivec3 lightCheckChunk, lightCheckTile;
-            std::tie(lightCheckChunk, lightCheckTile) = Get_Chunk_Pos(
-                WorldPos - glm::vec3(0, 1, 0)
-            );
-
-            if (ChunkMap[lightCheckChunk]->Get_Type(lightCheckTile) != 0) {
-                LightLevel = ChunkMap[lightCheckChunk]->Get_Light(
-                    lightCheckTile
-                );
-
-                if (LightLevel == 0) {
-                    if (WorldPos.y >= ChunkMap[lightCheckChunk]->Get_Top(lightCheckTile) - 1) {
-                        LightLevel = SUN_LIGHT_LEVEL;
-                    }
-                }
-
-                modelShader->Upload("lightLevel", LightLevel);
-                mobShader->Upload("lightLevel", LightLevel);
+            if (WorldPos.y >= ChunkMap[CurrentChunk]->Get_Top(CurrentTile)) {
+                LightLevel = SUN_LIGHT_LEVEL;
             }
+            else {
+                LightLevel = ChunkMap[CurrentChunk]->Get_Light(CurrentTile);
+            }
+
+            modelShader->Upload("lightLevel", LightLevel);
+            mobShader->Upload("lightLevel", LightLevel);
         }
 
         // Update camera position
@@ -498,8 +479,6 @@ void Player::Update(bool update) {
 }
 
 void Player::Draw() {
-    Draw_Damage();
-
     if (!ThirdPerson) {
         glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -645,7 +624,8 @@ void Player::Check_Hit() {
         std::tie(airChunk, airTile) = Get_Chunk_Pos(lastPos);
         LookingAtBlock = true;
 
-        glm::vec3 prevTile = LookingTile;
+        glm::vec3 prevChunk = LookingChunk;
+        glm::vec3 prevTile  = LookingTile;
 
         LookingChunk = lookChunk;
         LookingTile = lookTile;
@@ -654,6 +634,11 @@ void Player::Check_Hit() {
 
         if (LookingTile != prevTile) {
             MouseTimer = 0.0f;
+
+            if (ChunkMap[prevChunk]->ExtraTextures.count(prevTile)) {
+                ChunkMap[prevChunk]->ExtraTextures.erase(prevTile);
+                ChunkMap[prevChunk]->Mesh();
+            }
 
             LookingBlockType = Blocks::Get_Block(
                 ChunkMap[LookingChunk]->Get_Type(LookingTile),
@@ -944,7 +929,7 @@ void Player::Queue_Chunks(bool regenerate) {
                     if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RENDER_DISTANCE) {
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
-                        ChunkMap[pos]->buffer.Create(3, 3, 1, 1);
+                        ChunkMap[pos]->buffer.Create(3, 3, 1, 1, 1);
                     }
                 }
             }

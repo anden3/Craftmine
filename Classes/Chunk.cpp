@@ -404,27 +404,21 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
     }
 }
 
-bool Check_If_Node(glm::vec3 chunk, glm::vec3 tile, int lightLevel, bool underground, bool down) {
-    Chunk* c = ChunkMap[chunk];
+bool Check_If_Node(LightNode node) {
+    Chunk* c = ChunkMap[node.Chunk];
 
-    if (c->Get_Type(tile) == 0 ||
-        c->Get_Light(tile) + 2 >= lightLevel ||
-        (c->Get_Air(tile) == 0 && underground))
-    {
+    if (c->Get_Light(node.Tile) + 1 >= node.LightLevel || !c->Get_Air(node.Tile)) {
         return false;
     }
 
-    c->Set_Light(tile, lightLevel - (!down));
+    c->Set_Light(node.Tile, node.LightLevel - (!node.Down));
     return true;
 }
 
 void Chunk::Light(bool flag) {
     if (UnloadedLightQueue.count(Position)) {
         for (auto node : UnloadedLightQueue[Position]) {
-            if (Check_If_Node(
-                Position, node.Tile, node.LightLevel + 1, node.Underground, node.Down
-            ))
-            {
+            if (Check_If_Node(node)) {
                 LightQueue.push(node);
             }
         }
@@ -433,6 +427,8 @@ void Chunk::Light(bool flag) {
     }
 
     while (!LightRemovalQueue.empty()) {
+        printf("yes\n");
+
         LightNode node = LightRemovalQueue.front();
         LightRemovalQueue.pop();
 
@@ -440,7 +436,9 @@ void Chunk::Light(bool flag) {
         glm::vec3 tile = node.Tile;
         int lightLevel = node.LightLevel;
 
-        bool underground = !ChunkMap[chunk]->Get_Air(tile);
+        if (!ChunkMap[chunk]->Get_Air(tile)) {
+            continue;
+        }
 
         for (auto const &neighbor : Get_Neighbors(chunk, tile)) {
             if (!Exists(neighbor.first)) {
@@ -449,19 +447,17 @@ void Chunk::Light(bool flag) {
 
             Chunk* neighborChunk = ChunkMap[neighbor.first];
 
-            if (neighborChunk->Get_Type(neighbor.second) == 0 ||
-                (neighborChunk->Get_Air(neighbor.second) == 0 && underground))
-            {
+            if (!neighborChunk->Get_Air(neighbor.second)) {
                 continue;
             }
 
             int neighborLight = neighborChunk->Get_Light(neighbor.second);
 
-            if (neighborLight == 0 && lightLevel != 0) {
+            if (neighborLight == 0 && lightLevel > 0) {
                 continue;
             }
 
-            if (neighborLight != 0 && neighborLight < lightLevel) {
+            if (neighborLight > 0 && neighborLight < lightLevel) {
                 neighborChunk->Set_Light(neighbor.second, 0);
                 neighborChunk->LightRemovalQueue.emplace(neighbor.first, neighbor.second, neighborLight);
             }
@@ -479,23 +475,25 @@ void Chunk::Light(bool flag) {
         LightQueue.pop();
 
         glm::vec3 tile = node.Tile;
-        bool underground = !Get_Air(tile);
         int lightLevel = Get_Light(tile);
+        bool visible = Get_Air(tile);
 
         int index = 0;
 
         for (auto const &neighbor : Get_Neighbors(Position, tile)) {
+            LightNode newNode(
+                neighbor.first, neighbor.second,
+                lightLevel, index == UP
+            );
+
             if (!ChunkMap.count(neighbor.first)) {
-                UnloadedLightQueue[neighbor.first].emplace(
-                    neighbor.first, neighbor.second,
-                    lightLevel, index == UP, underground
-                );
+                UnloadedLightQueue[neighbor.first].insert(newNode);
             }
 
-            else if (Check_If_Node(neighbor.first, neighbor.second,
-                                   lightLevel, underground, index == UP)) {
-
-                ChunkMap[neighbor.first]->LightQueue.emplace(neighbor.first, neighbor.second);
+            else if (visible && Check_If_Node(newNode)) {
+                ChunkMap[neighbor.first]->LightQueue.emplace(
+                    neighbor.first, neighbor.second
+                );
 
                 if (neighbor.first != Position && flag) {
                     ChunkMap[neighbor.first]->Meshed = false;
@@ -535,6 +533,14 @@ float Chunk::GetAO(glm::vec3 block, int face, int index) {
     return ao;
 }
 
+int Chunk::Get_Extra_Texture(glm::ivec3 tile) {
+    if (ExtraTextures.count(tile)) {
+        return ExtraTextures[tile];
+    }
+
+    return 0;
+}
+
 void Chunk::Mesh() {
     VBOData.clear();
 
@@ -560,6 +566,7 @@ void Chunk::Mesh() {
                         Extend(VBOData, element[i][j].second);
                         VBOData.push_back(lightValue);
                         VBOData.push_back(0);
+                        VBOData.push_back(Get_Extra_Texture(*block));
                     }
                 }
             }
@@ -590,6 +597,8 @@ void Chunk::Mesh() {
                     else {
                         VBOData.push_back(0);
                     }
+
+                    VBOData.push_back(Get_Extra_Texture(*block));
                 }
             }
         }
@@ -602,6 +611,23 @@ void Chunk::Mesh() {
     }
 
     DataUploaded = false;
+}
+
+void Chunk::Draw(bool transparentPass) {
+    if (!Meshed) {
+        return;
+    }
+
+    if (!DataUploaded) {
+        buffer.Upload(VBOData);
+        DataUploaded = true;
+    }
+
+    if (Visible) {
+        if (!transparentPass || ContainsTransparentBlocks) {
+            buffer.Draw();
+        }
+    }
 }
 
 void Chunk::Remove_Multiblock(glm::ivec3 position, const Block* block) {
