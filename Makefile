@@ -3,7 +3,7 @@ HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
 
 LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
-ITEMS_TO_COPY=Fonts Images Sounds Shaders BlockData ItemData config.conf
+ITEMS_TO_COPY=Fonts Images Sounds Shaders BlockData config.conf
 APP_DIRECTORIES=. MacOS Resources Frameworks
 
 LIBRARY_FLAGS=$(addprefix -l,$(LIBRARIES))
@@ -57,8 +57,7 @@ all: $(CPP_FILES) $(OBJ_FILES)
 	export CODESIGN_ALLOCATE=Build/Data/codesign_allocate
 	codesign --force --sign - --timestamp=none Build/Craftmine.app
 	\
-	$(info Registering app...)
-	/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister Build/Craftmine.app
+	$(info Done!)
 
 $(OBJECTS_FOLDER)/%.o: Classes/%.cpp
 	$(info Compiling $<...)
@@ -71,3 +70,5 @@ clean:
 	\
 	$(info Removing build data...)
 	rm -f $(OBJECTS_FOLDER)/*
+	\
+	$(info Done!)

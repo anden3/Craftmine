@@ -2,6 +2,7 @@
     "name": "Wooden Door",
     "id": 64,
     "hardness": 3,
+	"material": "wood",
     "sound": "wood",
     "fullBlock": false,
 	"multiBlock": true,

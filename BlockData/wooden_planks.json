@@ -2,6 +2,7 @@
     "name": "Wooden Planks",
     "id": 5,
     "hardness": 2.0,
+	"material": "wood",
     "sound": "wood",
     "texture": 4
 }

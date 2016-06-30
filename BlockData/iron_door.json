@@ -2,6 +2,7 @@
     "name": "Iron Door",
     "id": 71,
     "hardness": 5,
+	"material": "stone",
     "sound": "stone",
     "fullBlock": false,
     "multiBlock": true,

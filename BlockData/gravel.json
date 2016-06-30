@@ -2,6 +2,7 @@
     "name": "Gravel",
     "id": 13,
     "hardness": 0.6,
+	"material": "dirt",
     "sound": "gravel",
     "texture": 19
 }

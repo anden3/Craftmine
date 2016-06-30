@@ -2,6 +2,7 @@
     "name": "Bed",
     "id": 26,
     "hardness": 0.2,
+	"material": "wood",
     "sound": "wood",
     "fullBlock": false,
     "multiBlock": true,

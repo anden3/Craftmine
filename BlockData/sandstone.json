@@ -2,6 +2,7 @@
     "name": "Sandstone",
     "id": 24,
     "hardness": 0.8,
+	"material": "stone",
     "sound": "stone",
     
     "multiTexture": [208, 208, 192, 192, 208, 208]

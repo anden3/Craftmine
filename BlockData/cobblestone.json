@@ -2,6 +2,7 @@
     "name": "Cobblestone",
     "id": 4,
     "hardness": 2.0,
+	"material": "stone",
     "sound": "stone",
     "texture": 16
 }

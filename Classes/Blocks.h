@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 #include <utility>
@@ -19,19 +20,31 @@ struct Block {
     bool Transparent = false;
     bool Collision = true;
     bool Targetable = true;
+    bool Placeable = true;
+
     bool HasIcon = false;
     bool HasTexture = false;
     bool MultiTextures = false;
     bool HasCustomData = false;
 
-    bool MultiBlock = false;
-    bool IsMBRoot = false;
-    glm::ivec3 MBOffset = glm::vec3(0);
+    bool IsTool      = false;
+    int  Durability  = 0;
+    int  MiningSpeed = 0;
+    int  MiningLevel = 0;
 
-    float Hardness = 0;
-    int Luminosity = 0;
+    int RequiredMiningLevel = 0;
 
-    int Icon = 0;
+    std::string EffectiveMaterial = "";
+
+    bool       MultiBlock = false;
+    bool       IsMBRoot   = false;
+    glm::ivec3 MBOffset = glm::ivec3(0);
+
+    float Hardness   = 0;
+    int   Luminosity = 0;
+    std::string Material = "";
+
+    int Icon    = 0;
     int Texture = 0;
 
     glm::vec3 Scale = glm::vec3(1);
@@ -44,26 +57,15 @@ struct Block {
     std::map<int, Block> Types = {};
 };
 
-struct Item {
-    std::string Name = "";
-    std::map<int, Item> Types = {};
-
-    int ID = 0;
-    int Data = 0;
-    int Icon = 0;
-};
-
 namespace Blocks {
     void Init();
 
     const Block* Get_Block(int type, int data = 0);
-    const Item* Get_Item(int type, int data = 0);
-
-    const Block* Get_Block_From_Name(std::string name);
-    const Item* Get_Item_From_Name(std::string name);
+    const Block* Get_Block(std::string name);
 
     std::string Get_Name(int type, int data = 0);
     bool Exists(int type, int data = 0);
+    bool Exists(std::string name);
     std::vector<float> Mesh(const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {});
-    void Mesh(std::vector<float> &storage, const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {});
+    void Mesh(std::vector<float> &storage, const Block* block, glm::vec3 offset = glm::vec3(0), float scale = 1.0f, std::vector<float> data = {}, bool checkMulti = true);
 }  // namespace Blocks

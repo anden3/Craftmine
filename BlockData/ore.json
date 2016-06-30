@@ -1,23 +1,33 @@
 {
     "id": 15,
     "hardness": 3,
+	"material": "stone",
     "sound": "stone",
     
     "types": [
         {
             "name": "Coal Ore",
+			"requiredMiningLevel": 1,
             "texture": 34
         },
         {
             "name": "Iron Ore",
+			"requiredMiningLevel": 2,
             "texture": 33
         },
         {
             "name": "Gold Ore",
+			"requiredMiningLevel": 3,
             "texture": 32
         },
+		{
+			"name": "Diamond Ore",
+			"requiredMiningLevel": 3,
+			"texture": 50
+		},
         {
             "name": "Lapis Lazuli Ore",
+			"requiredMiningLevel": 3,
             "texture": 176
         }
     ]

@@ -8,10 +8,10 @@ out vec2 TexCoords;
 out vec3 TextColor;
 
 uniform mat4 projection;
-uniform vec2 position;
+uniform vec2 Position;
 
 void main() {
-    gl_Position = projection * vec4(vertex + position, 0, 1);
+    gl_Position = projection * vec4(vertex + Position, 0, 1);
     TexCoords = texCoords;
     TextColor = textColor;
 }

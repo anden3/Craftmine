@@ -390,7 +390,7 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
             name += parameters[p] + ((p < parameters.size() - (lastParameterIsSize + 1)) ? " " : "");
         }
 
-        int type;
+        int type = 0;
         int data = 0;
 
         unsigned long delimiterPos = parameters[1].find(':');
@@ -402,35 +402,29 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
             if (Blocks::Exists(type) && !Blocks::Exists(type, data)) {
                 return std::vector<std::string> {"&4Error! &fNo block exists with that data value."};
             }
+            else if (!Blocks::Exists(type)) {
+                return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
+            }
         }
         else {
             try {
                 type = std::stoi(name);
+                
+                if (!Blocks::Exists(type)) {
+                    return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
+                }
             }
             catch (std::invalid_argument) {
-                const Block* block = Blocks::Get_Block_From_Name(name);
+                const Block* block = Blocks::Get_Block(name);
 
                 if (block == nullptr) {
-                    const Item* item = Blocks::Get_Item_From_Name(name);
-
-                    if (item == nullptr) {
-                        return std::vector<std::string> {"&4Error! &fNo block exists with that name."};
-                    }
-
-                    name = item->Name;
-                    type = item->ID;
-                    data = item->Data;
+                    return std::vector<std::string> {"&4Error! &fNo block exists with that name."};
                 }
-                else {
-                    name = block->Name;
-                    type = block->ID;
-                    data = block->Data;
-                }
+
+                name = block->Name;
+                type = block->ID;
+                data = block->Data;
             }
-        }
-
-        if (!Blocks::Exists(type, data)) {
-            return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
         }
 
         name = Blocks::Get_Name(type, data);

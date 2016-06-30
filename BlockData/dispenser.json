@@ -2,6 +2,7 @@
     "name": "Dispenser",
     "id": 23,
     "hardness": 3.5,
+	"material": "stone",
     "sound": "stone",
     
     "multiTexture": [45, 45, 62, 62, 45, 46]

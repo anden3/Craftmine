@@ -21,24 +21,32 @@ typedef nlohmann::basic_json<
 > JSONValue;
 
 static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambdas = {
-    {"id",           BLOCK_LAMBDA(ID)           },
-    {"name",         BLOCK_LAMBDA(Name)         },
-    {"hardness",     BLOCK_LAMBDA(Hardness)     },
-    {"transparent",  BLOCK_LAMBDA(Transparent)  },
-    {"fullBlock",    BLOCK_LAMBDA(FullBlock)    },
-    {"collision",    BLOCK_LAMBDA(Collision)    },
-    {"targetable",   BLOCK_LAMBDA(Targetable)   },
-    {"luminosity",   BLOCK_LAMBDA(Luminosity)   },
-    {"sound",        BLOCK_LAMBDA(Sound)        },
-    {"multiBlock",   BLOCK_LAMBDA(MultiBlock)   },
-    {"isMBRoot",     BLOCK_LAMBDA(IsMBRoot)     },
-    {"mBOffset",     VECTOR_LAMBDA(MBOffset)    },
-    {"hitboxScale",  VECTOR_LAMBDA(Scale)       },
-    {"hitboxOffset", VECTOR_LAMBDA(ScaleOffset) }
+    {"id",                  BLOCK_LAMBDA(ID)                 },
+    {"name",                BLOCK_LAMBDA(Name)               },
+    {"hardness",            BLOCK_LAMBDA(Hardness)           },
+    {"material",            BLOCK_LAMBDA(Material)           },
+    {"transparent",         BLOCK_LAMBDA(Transparent)        },
+    {"fullBlock",           BLOCK_LAMBDA(FullBlock)          },
+    {"collision",           BLOCK_LAMBDA(Collision)          },
+    {"targetable",          BLOCK_LAMBDA(Targetable)         },
+    {"placeable",           BLOCK_LAMBDA(Placeable)          },
+    {"isTool",              BLOCK_LAMBDA(IsTool)             },
+    {"durability",          BLOCK_LAMBDA(Durability)         },
+    {"miningSpeed",         BLOCK_LAMBDA(MiningSpeed)        },
+    {"miningLevel",         BLOCK_LAMBDA(MiningLevel)        },
+    {"requiredMiningLevel", BLOCK_LAMBDA(RequiredMiningLevel)},
+    {"effectiveMat",        BLOCK_LAMBDA(EffectiveMaterial)  },
+    {"luminosity",          BLOCK_LAMBDA(Luminosity)         },
+    {"sound",               BLOCK_LAMBDA(Sound)              },
+    {"multiBlock",          BLOCK_LAMBDA(MultiBlock)         },
+    {"isMBRoot",            BLOCK_LAMBDA(IsMBRoot)           },
+    {"mBOffset",            VECTOR_LAMBDA(MBOffset)          },
+    {"hitboxScale",         VECTOR_LAMBDA(Scale)             },
+    {"hitboxOffset",        VECTOR_LAMBDA(ScaleOffset)       }
 };
 
 static std::map<int, Block> BlockTypes;
-static std::map<int, Item>  ItemTypes;
+static std::map<std::string, Block> BlockNames;
 
 bool Case_Insensitive_Cmp(const std::string &a, const std::string &b) {
     unsigned long sz = a.size();
@@ -157,19 +165,9 @@ void Process_Block(nlohmann::json::iterator it, Block &block) {
     }
 }
 
-void Process_Item(nlohmann::json::iterator it, Item &item) {
-    if      (it.key() == "id")   { item.ID   = it.value(); }
-    else if (it.key() == "name") { item.Name = it.value(); }
-    else if (it.key() == "icon") { item.Icon = it.value(); }
-}
-
 void Blocks::Init() {
     DIR* blockDir = opendir("BlockData");
     struct dirent* blockEnt;
-
-    std::vector<std::string> sides = {
-        "left", "right", "down", "up", "back", "front"
-    };
 
     while ((blockEnt = readdir(blockDir)) != nullptr) {
         std::string fileName(blockEnt->d_name);
@@ -187,6 +185,7 @@ void Blocks::Init() {
 
         if (!json.count("types")) {
             BlockTypes[block.ID] = block;
+            BlockNames[block.Name] = block;
             continue;
         }
 
@@ -201,52 +200,14 @@ void Blocks::Init() {
             }
 
             block.Types[subIndex++] = subType;
+            BlockNames[subType.Name] = subType;
         }
 
         BlockTypes[block.ID] = block;
+        BlockNames[block.Name] = block;
     }
 
     closedir(blockDir);
-
-    DIR* itemDir = opendir("ItemData");
-    struct dirent* itemEnt;
-
-    while ((itemEnt = readdir(itemDir)) != nullptr) {
-        std::string fileName(itemEnt->d_name);
-
-        if (fileName.find(".json") == std::string::npos) {
-            continue;
-        }
-
-        Item item;
-        nlohmann::json json = Parse_JSON("ItemData/" + fileName);
-
-        for (auto it = json.begin(); it != json.end(); ++it) {
-            Process_Item(it, item);
-        }
-
-        if (!json.count("types")) {
-            ItemTypes[item.ID] = item;
-            continue;
-        }
-
-        int subIndex = 1;
-
-        for (auto &type : json["types"]) {
-            Item subType = item;
-            subType.Data = subIndex;
-
-            for (auto it = type.begin(); it != type.end(); ++it) {
-                Process_Item(it, subType);
-            }
-
-            item.Types[subIndex++] = subType;
-        }
-
-        ItemTypes[item.ID] = item;
-    }
-
-    closedir(itemDir);
 }
 
 const Block* Blocks::Get_Block(int type, int data) {
@@ -255,43 +216,12 @@ const Block* Blocks::Get_Block(int type, int data) {
         &BlockTypes[type].Types[data];
 }
 
-const Item* Blocks::Get_Item(int type, int data) {
-    return (data == 0) ?
-        &ItemTypes[type] :
-        &ItemTypes[type].Types[data];
-}
-
-const Block* Blocks::Get_Block_From_Name(std::string name) {
-    for (auto const &block : BlockTypes) {
-        if (Case_Insensitive_Cmp(name, block.second.Name)) {
+const Block* Blocks::Get_Block(std::string name) {
+    for (auto const &block : BlockNames) {
+        if (Case_Insensitive_Cmp(name, block.first)) {
             return &block.second;
         }
-        else if (!block.second.Types.empty()) {
-            for (auto const &subBlock : block.second.Types) {
-                if (Case_Insensitive_Cmp(name, subBlock.second.Name)) {
-                    return &subBlock.second;
-                }
-            }
-        }
     }
-
-    return nullptr;
-}
-
-const Item* Blocks::Get_Item_From_Name(std::string name) {
-    for (auto const &item : ItemTypes) {
-        if (Case_Insensitive_Cmp(name, item.second.Name)) {
-            return &item.second;
-        }
-        else if (!item.second.Types.empty()) {
-            for (auto const &subItem : item.second.Types) {
-                if (Case_Insensitive_Cmp(name, subItem.second.Name)) {
-                    return &subItem.second;
-                }
-            }
-        }
-    }
-
     return nullptr;
 }
 
@@ -300,11 +230,6 @@ std::string Blocks::Get_Name(int type, int data) {
         Block &block = BlockTypes[type];
         return (data == 0) ? block.Name : block.Types[data].Name;
     }
-    else if (ItemTypes.count(type)) {
-        Item &item = ItemTypes[type];
-        return (data == 0) ? item.Name : item.Types[data].Name;
-    }
-
     return "";
 }
 
@@ -317,15 +242,11 @@ bool Blocks::Exists(int type, int data) {
         return true;
     }
 
-    else if (ItemTypes.count(type)) {
-        if (data != 0) {
-            return ItemTypes[type].Types.count(data);
-        }
-
-        return true;
-    }
-
     return false;
+}
+
+bool Blocks::Exists(std::string name) {
+    return BlockNames.count(name);
 }
 
 Data Blocks::Mesh(const Block* block, glm::vec3 offset, float scale, Data data) {
@@ -334,8 +255,24 @@ Data Blocks::Mesh(const Block* block, glm::vec3 offset, float scale, Data data) 
     return storage;
 }
 
-void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float scale, Data data) {
-    if (block->HasCustomData) {
+void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float scale, Data data, bool checkMulti) {
+    if (checkMulti && block->MultiBlock) {
+        for (auto const &element : block->Types) {
+            Mesh(storage, &element.second, offset + static_cast<glm::vec3>(element.second.MBOffset), scale, data, false);
+        }
+
+        return;
+    }
+
+    else if (!block->Placeable) {
+        for (unsigned long i = 0; i < 6; i++) {
+            Extend(storage, (vertices[UP][i] + offset) * scale);
+            Extend(storage, tex_coords[UP][i]);
+            storage.push_back(block->Icon);
+        }
+    }
+
+    else if (block->HasCustomData) {
         for (auto const &element : block->CustomData) {
             for (unsigned long i = 0; i < 6; i++) {
                 for (unsigned long j = 0; j < 6; j++) {
@@ -353,13 +290,12 @@ void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float sca
         for (unsigned long i = 0; i < 6; i++) {
             for (unsigned long j = 0; j < 6; j++) {
                 Extend(storage, (vertices[i][j] + offset) * scale);
+                Extend(storage, tex_coords[i][j]);
 
                 if (block->MultiTextures) {
-                    Extend(storage, tex_coords[i][j]);
                     storage.push_back(block->Textures[i]);
                 }
                 else if (block->HasTexture) {
-                    Extend(storage, tex_coords[i][j]);
                     storage.push_back(block->Texture);
                 }
             }

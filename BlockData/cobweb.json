@@ -2,6 +2,7 @@
     "name": "Cobweb",
     "id": 30,
     "hardness": 4,
+	"material": "cloth",
     "sound": "cloth",
     "texture": 11,
     "fullBlock": false,

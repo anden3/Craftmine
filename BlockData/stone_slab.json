@@ -2,6 +2,7 @@
     "name": "Stone Slab",
     "id": 44,
     "hardness": 2,
+	"material": "stone",
     "sound": "stone",
     "fullBlock": false,
     

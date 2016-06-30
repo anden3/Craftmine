@@ -258,10 +258,10 @@ void Player::Draw_Holding() {
 
     glm::mat4 model;
     model = glm::translate(model,
-        WorldPos + (Cam.Front + Cam.Right) * 0.5f + glm::vec3(0, 0.5, 0)
+        WorldPos + (Cam.Front + Cam.Right) * 0.5f + glm::vec3(0, 1.0, 0)
     );
     model = glm::rotate(model, float(glm::radians(270.0f - Cam.Yaw)), {0, 1, 0});
-    model = glm::rotate(model, float(glm::radians(Cam.Pitch)), {1, 0, 0});
+    model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
 
     modelShader->Upload("model", model);
     HoldingBuffer.Draw();
@@ -415,7 +415,7 @@ void Player::Update(bool update) {
             }
         }
         else {
-            float requiredTime = LookingBlockType->Hardness * 1.5f * 3.33f * (OnGround ? 1 : 5);
+            float requiredTime = Get_Block_Break_Time();
             int prevDamageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
             MouseTimer += static_cast<float>(DeltaTime);
 
@@ -489,6 +489,38 @@ void Player::Draw() {
 
     Draw_Model();
     interface.Draw_Document("playerUI");
+}
+
+float Player::Get_Block_Break_Time() {
+    float requiredTime = LookingBlockType->Hardness;
+
+    if (requiredTime == 0.0f) {
+        return 0.0f;
+    }
+
+    if (CurrentBlock != 0 && CurrentBlockType->IsTool) {
+        if (LookingBlockType->Material == CurrentBlockType->EffectiveMaterial) {
+            if (CurrentBlockType->MiningLevel >= LookingBlockType->RequiredMiningLevel) {
+                requiredTime *= 1.5f;
+            }
+            else {
+                requiredTime *= 5.0f;
+            }
+
+            requiredTime /= CurrentBlockType->MiningSpeed;
+        }
+        else {
+            requiredTime *= 1.5f * 3.33f;
+        }
+    }
+    else {
+        requiredTime *= 1.5f * 3.33f;
+    }
+
+    if (!OnGround) {
+        requiredTime *= 5.0f;
+    }
+    return requiredTime;
 }
 
 void Player::Check_Pickup() {
@@ -804,7 +836,7 @@ void Player::Click_Handler(int button, int action) {
         return;
     }
 
-    if (!LookingAtBlock || !CurrentBlock || CurrentBlock >= 255) {
+    if (!LookingAtBlock || !CurrentBlock || !CurrentBlockType->Placeable) {
         return;
     }
 
@@ -851,18 +883,12 @@ void Player::Break_Block(glm::vec3 pos) {
         blockType = 3;
     }
 
-    if (blockType == 64 && block->Data > 0) {
-        glm::vec3 chunk2, tile2;
-        std::tie(chunk2, tile2) = Get_Chunk_Pos(
-            pos + glm::vec3(0, ((block->Data == 1) ? -1 : 1), 0)
-        );
+    ChunkMap[chunk]->Remove_Block(tile);
 
-        ChunkMap[chunk]->Remove_Block(tile);
-        ChunkMap[chunk2]->Remove_Block(tile2);
-        Entity::Spawn(pos, blockType, 0);
+    if (block->MultiBlock) {
+        Entity::Spawn(pos, blockType);
     }
     else {
-        ChunkMap[chunk]->Remove_Block(tile);
         Entity::Spawn(pos, blockType, block->Data);
     }
 

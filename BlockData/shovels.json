@@ -1,0 +1,44 @@
+{
+	"id": 271,
+	"placeable": false,
+	"isTool": true,
+	"effectiveMat": "dirt",
+	
+	"types": [
+		{
+			"name": "Wooden Shovel",
+			"icon": 336,
+			"durability": 60,
+			"miningSpeed": 2,
+			"miningLevel": 0
+		},
+		{
+			"name": "Stone Shovel",
+			"icon": 337,
+			"durability": 132,
+			"miningSpeed": 4,
+			"miningLevel": 1
+		},
+		{
+			"name": "Iron Shovel",
+			"icon": 338,
+			"durability": 251,
+			"miningSpeed": 6,
+			"miningLevel": 2
+		},
+		{
+			"name": "Diamond Shovel",
+			"icon": 339,
+			"durability": 1562,
+			"miningSpeed": 8,
+			"miningLevel": 3
+		},
+		{
+			"name": "Gold Shovel",
+			"icon": 340,
+			"durability": 33,
+			"miningSpeed": 12,
+			"miningLevel": 2
+		}
+	]
+}

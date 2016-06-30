@@ -2,6 +2,7 @@
     "name": "Lapis Block",
     "id": 22,
     "hardness": 3,
+	"material": "stone",
     "sound": "stone",
     "texture": 160
 }

@@ -12,8 +12,8 @@
 #include "Blocks.h"
 #include "Shader.h"
 
-const std::string FONT = "Roboto";
-const int FONT_SIZE = 15;
+const std::string FONT      = "Roboto";
+const int         FONT_SIZE = 15;
 
 static Shader* TextShader;
 static Shader* UI3DShader;
@@ -192,17 +192,21 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
     glm::ivec2 subSize(width / subCount.x, height / subCount.y);
 
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, (mipmap > 0) ?
-        GL_NEAREST_MIPMAP_NEAREST :
-        GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY,
-                   mipmap + 1,
-                   GL_RGBA8,
-                   subSize.x, subSize.y, (width * height) / (subSize.x * subSize.y));
+    if (mipmap > 0) {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    }
+    else {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    }
+
+    glTexStorage3D(
+        GL_TEXTURE_2D_ARRAY, mipmap + 1, GL_RGBA8, 
+        subSize.x, subSize.y, (width * height) / (subSize.x * subSize.y)
+    );
 
     int layer = 0;
 
@@ -212,7 +216,8 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
                 layer++, subSize.x, subSize.y, 1, GL_BGRA, GL_UNSIGNED_BYTE,
                 reinterpret_cast<void*>(FreeImage_GetBits(
                     FreeImage_Copy(image, w, height - h, w + subSize.x, height - h - subSize.y)
-                )));
+                ))
+            );
         }
     }
 
@@ -284,14 +289,14 @@ void TextElement::Mesh() {
 
         CharacterInfo ch = Characters[c];
 
-        float x1 = charX + ch.BitmapOffset.x * Scale;
-        float y2 = charY + ch.BitmapOffset.y * Scale;
-
         float w = ch.BitmapSize.x * Scale;
         float h = ch.BitmapSize.y * Scale;
 
+        float x1 = charX + ch.BitmapOffset.x * Scale;
+        float y1 = charY + ch.BitmapOffset.y * Scale - h;
+
         float x2 = x1 + w;
-        float y1 = y2 - h;
+        float y2 = y1 + h;
 
         charX += ch.Advance.x * Scale;
         charY += ch.Advance.y * Scale;
@@ -322,8 +327,8 @@ void TextElement::Draw() {
         return;
     }
 
-    TextBuffer.BufferShader->Upload("position", glm::vec2(X, Y));
-    TextBuffer.BufferShader->Upload("Opacity", Opacity);
+    TextShader->Upload("Position", glm::vec2(X, Y));
+    TextShader->Upload("Opacity", Opacity);
     TextBuffer.Draw();
 }
 

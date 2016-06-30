@@ -86,6 +86,7 @@ class Player {
     void Col_Detection();
     void Check_Hit();
 
+    float Get_Block_Break_Time();
     void Check_Pickup();
 
     void Drop_Item();
