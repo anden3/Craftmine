@@ -27,20 +27,20 @@ void Chat::Init() {
     glm::vec2 messageDims = Scale(50, 70);
     glm::vec4 messageArea(Scale(50, 60), Scale(400, 20));
 
-    interface.Set_Document("chatFocused");
-    interface.Add_Text("newMessage", "", messageDims);
-    interface.Add_Text("cursor", "|", messageDims);
-    interface.Get_Text_Element("cursor")->Opacity = 0.0f;
+    Interface::Set_Document("chatFocused");
+    Interface::Add_Text("newMessage", "", messageDims);
+    Interface::Add_Text("cursor", "|", messageDims);
+    Interface::Get_Text_Element("cursor")->Opacity = 0.0f;
 
-    interface.Add_Background("bgChat", glm::vec4(chatDims.xy() - chatPad, chatDims.zw() + chatPad * 2.0f));
-    interface.Add_Background("bgMessage", glm::vec4(messageArea.xy() - chatPad, messageArea.zw() + chatPad * 2.0f));
-    interface.Get_Background("bgMessage")->Opacity = 0.8f;
+    Interface::Add_Background("bgChat", glm::vec4(chatDims.xy() - chatPad, chatDims.zw() + chatPad * 2.0f));
+    Interface::Add_Background("bgMessage", glm::vec4(messageArea.xy() - chatPad, messageArea.zw() + chatPad * 2.0f));
+    Interface::Get_Background("bgMessage")->Opacity = 0.8f;
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
 }
 
 void Chat::Write(std::string text) {
-    std::vector<std::string> strings = interface.Get_Fitting_String(text, static_cast<int>(chatDims.z));
+    std::vector<std::string> strings = Interface::Get_Fitting_String(text, static_cast<int>(chatDims.z));
     int index = 1;
 
     for (auto const &string : strings) {
@@ -49,9 +49,9 @@ void Chat::Write(std::string text) {
         ++MessageCount;
         Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, string, MESSAGE_TIME));
 
-        interface.Set_Document("chat");
-        interface.Add_Text(std::to_string(MessageCount), string, chatDims.xy());
-        interface.Set_Document("");
+        Interface::Set_Document("chat");
+        Interface::Add_Text(std::to_string(MessageCount), string, chatDims.xy());
+        Interface::Set_Document("");
     }
 }
 
@@ -146,10 +146,10 @@ void Chat::Scroll(int direction) {
             return;
         }
 
-        interface.Set_Document("chat");
+        Interface::Set_Document("chat");
 
         for (auto &message : Messages) {
-            TextElement* text = interface.Get_Text_Element(std::to_string(message.first));
+            TextElement* text = Interface::Get_Text_Element(std::to_string(message.first));
             message.second.Y += offset;
             text->Y += offset;
 
@@ -163,7 +163,7 @@ void Chat::Scroll(int direction) {
             }
         }
 
-        interface.Set_Document("");
+        Interface::Set_Document("");
     }
 }
 
@@ -212,30 +212,30 @@ void Chat::Toggle_Cursor(float opacity) {
     CursorVisible = !CursorVisible;
     opacity = (opacity == -1.0f) ? CursorVisible : 1.0f;
 
-    interface.Set_Document("chatFocused");
-    interface.Get_Text_Element("cursor")->Opacity = opacity;
-    interface.Set_Document("");
+    Interface::Set_Document("chatFocused");
+    Interface::Get_Text_Element("cursor")->Opacity = opacity;
+    Interface::Set_Document("");
 }
 
 void Chat::Update_Message() {
-    interface.Set_Document("chatFocused");
+    Interface::Set_Document("chatFocused");
 
-    TextElement* message = interface.Get_Text_Element("newMessage");
-    TextElement* cursor = interface.Get_Text_Element("cursor");
+    TextElement* message = Interface::Get_Text_Element("newMessage");
+    TextElement* cursor = Interface::Get_Text_Element("cursor");
 
     message->Text = NewMessage;
-    cursor->X = chatDims.x + interface.Get_String_Width(NewMessage.substr(0, CursorPos));
+    cursor->X = chatDims.x + Interface::Get_String_Width(NewMessage.substr(0, CursorPos));
     message->Mesh();
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
 }
 
 void Chat::Move_Up(float spacing) {
-    interface.Set_Document("chat");
+    Interface::Set_Document("chat");
 
     for (auto &message : Messages) {
         message.second.Y += spacing;
-        TextElement* text = interface.Get_Text_Element(std::to_string(message.first));
+        TextElement* text = Interface::Get_Text_Element(std::to_string(message.first));
         text->Y = message.second.Y;
 
         if (message.second.Y >= chatDims.y + chatDims.w) {
@@ -244,7 +244,7 @@ void Chat::Move_Up(float spacing) {
         }
     }
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
 }
 
 void Chat::Get_Prev() {
@@ -267,7 +267,7 @@ void Chat::Get_Next() {
 }
 
 void Chat::Update() {
-    interface.Set_Document("chat");
+    Interface::Set_Document("chat");
 
     for (auto &message : Messages) {
         std::string name = std::to_string(message.first);
@@ -276,7 +276,7 @@ void Chat::Update() {
             continue;
         }
 
-        TextElement* text = interface.Get_Text_Element(name);
+        TextElement* text = Interface::Get_Text_Element(name);
 
         if (FocusToggled) {
             if (Focused) {
@@ -304,7 +304,7 @@ void Chat::Update() {
         }
     }
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
 
     if (FocusToggled) {
         UI::Toggle_Mouse(Focused);
@@ -318,10 +318,10 @@ void Chat::Update() {
             LastCursorToggle = glfwGetTime();
         }
 
-        interface.Draw_Document("chatFocused");
+        Interface::Draw_Document("chatFocused");
     }
 
-    interface.Draw_Document("chat");
+    Interface::Draw_Document("chat");
 }
 
 std::vector<std::string> Chat::Process_Commands(std::string message) {

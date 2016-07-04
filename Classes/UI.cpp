@@ -26,6 +26,7 @@ const std::string BoolStrings[2] = {"False", "True"};
 
 void Init_Title();
 void Init_Menu();
+void Init_World_Select();
 void Init_Debug();
 
 void Draw_Debug();
@@ -39,12 +40,13 @@ void Toggle_Wireframe();
 void Change_Render_Distance();
 
 void UI::Init() {
-    interface.Init();
+    Interface::Init();
     inventory.Init();
     chat.Init();
 
     Init_Title();
     Init_Menu();
+    Init_World_Select();
     Init_Debug();
 }
 
@@ -53,14 +55,26 @@ void UI::Draw() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    if (ShowTitle) {
-        interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-        interface.Draw_Document(ShowOptions ? "titleOptions" : "title");
-    }
+    if (ShowTitle || ShowGameMenu) {
+        Interface::Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
 
-    else if (ShowGameMenu) {
-        interface.Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-        interface.Draw_Document(ShowOptions ? "options" : "mainMenu");
+        if (ShowTitle) {
+            if (ShowOptions) {
+                Interface::Draw_Document("titleOptions");
+            }
+            else {
+                Interface::Draw_Document("title");
+            }
+        }
+
+        else {
+            if (ShowOptions) {
+                Interface::Draw_Document("options");
+            }
+            else {
+                Interface::Draw_Document("gameMenu");
+            }
+        }
     }
 
     else {
@@ -84,24 +98,36 @@ void UI::Click(int action, int button) {
         inventory.Click_Handler(button, action);
     }
     else {
-        interface.Click(button, action);
+        Interface::Click(button, action);
     }
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
+
+    if (!GamePaused) {
+        player.Click_Handler(button, action);
+    }
 }
 
 void UI::Mouse_Handler(double x, double y) {
     Bind_Current_Document();
-    interface.Mouse_Handler(x, SCREEN_HEIGHT - y);
-    interface.Set_Document("");
+    Interface::Mouse_Handler(x, SCREEN_HEIGHT - y);
+    Interface::Set_Document("");
 
     if (chat.Focused && !chat.FocusToggled) {
         chat.Mouse_Handler(x, y);
+    }
+
+    if (!GamePaused && !chat.Focused) {
+        player.Mouse_Handler(x, y);
     }
 }
 
 void UI::Key_Handler(int key, int action) {
     if (action == GLFW_PRESS) {
+        if (Interface::HoveringType == "textBox") {
+            static_cast<TextBox*>(Interface::HoveringElement)->Key_Handler(key);
+        }
+
         switch (key) {
             case GLFW_KEY_ESCAPE:
                 if (ShowInventory) {
@@ -120,6 +146,17 @@ void UI::Key_Handler(int key, int action) {
             case GLFW_KEY_TAB:
                 Toggle_Inventory();
                 break;
+        }
+    }
+}
+
+void UI::Text_Handler(unsigned int codepoint) {
+    if (chat.Focused && !chat.FocusToggled) {
+        chat.Input(codepoint);
+    }
+    else {
+        if (Interface::HoveringType == "textBox") {
+            static_cast<TextBox*>(Interface::HoveringElement)->Input(codepoint);
         }
     }
 }
@@ -167,12 +204,26 @@ void UI::Toggle_Mouse(bool enable) {
 }
 
 void Bind_Current_Document() {
+    std::string name;
+
     if (ShowTitle) {
-        interface.Set_Document(ShowOptions ? "titleOptions" : "title");
+        if (ShowOptions) {
+            name = "titleOptions";
+        }
+        else {
+            name = "title";
+        }
     }
     else if (ShowGameMenu) {
-        interface.Set_Document(ShowOptions ? "options" : "mainMenu");
+        if (ShowOptions) {
+            name = "options";
+        }
+        else {
+            name = "gameMenu";
+        }
     }
+
+    Interface::Set_Document(name);
 }
 
 void Init_Title() {
@@ -181,45 +232,47 @@ void Init_Title() {
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glm::vec3 logoDims(Scale(0, 700), 0.5f);
 
-    glm::vec4 startButtonDims(Scale(620, 500), buttonSize);
+    glm::vec4 singleButtonDims(Scale(620, 500), buttonSize);
+    glm::vec4 multiButtonDims(Scale(620, 430), buttonSize);
+    glm::vec4 optionButtonDims(Scale(620, 300), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
 
-    glm::vec4 optionButtonDims(Scale(620, 400), buttonSize);
     glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
     glm::vec4 aoButtonDims(Scale(420, 400), buttonSize);
     glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
 
+    glm::vec4 textBoxDims(Scale(620, 100), buttonSize);
+
     glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
 
-    interface.Set_Document("title");
+    Interface::Set_Document("title");
+        Interface::Add_Background("titleBg", bgDims);
+        Interface::Get_Background("titleBg")->Color = glm::vec3(0.2f);
+        Interface::Get_Background("titleBg")->Opacity = 1.0f;
 
-    interface.Add_Background("titleBg", bgDims);
-    interface.Get_Background("titleBg")->Color = glm::vec3(0.2f);
-    interface.Get_Background("titleBg")->Opacity = 1.0f;
+        Interface::Add_Image("titleLogo", "logo.png", 3, logoDims);
+        Interface::Get_Image("titleLogo")->Center();
 
-    interface.Add_Image("titleLogo", "logo.png", 3, logoDims);
-    interface.Get_Image("titleLogo")->Center();
+        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, UI::Toggle_Title);
+        Interface::Add_Button("titleMulti", "Multi Player", multiButtonDims, UI::Toggle_Title);
+        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("titleExit", "Quit", exitButtonDims, Exit);
+        Interface::Add_Text_Box("test", textBoxDims);
+    Interface::Set_Document("");
 
-    interface.Add_Button("titleStart", "Start Game", startButtonDims, UI::Toggle_Title);
-    interface.Add_Button("titleExit", "Quit", exitButtonDims, Exit);
+    Interface::Set_Document("titleOptions");
+        Interface::Add_Background("menuBg", bgDims);
+        Interface::Get_Background("menuBg")->Color = glm::vec3(0.2f);
+        Interface::Get_Background("menuBg")->Opacity = 1.0f;
 
-    interface.Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-
-    interface.Set_Document("titleOptions");
-
-    interface.Add_Background("menuBg", bgDims);
-    interface.Get_Background("menuBg")->Color = glm::vec3(0.2f);
-    interface.Get_Background("menuBg")->Opacity = 1.0f;
-
-    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
-    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
-    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-    interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
-
-    interface.Set_Document("");
+        Interface::Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
+        Interface::Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+        Interface::Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+        Interface::Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
+        Interface::Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
+    Interface::Set_Document("");
 }
 
 void Init_Menu() {
@@ -237,34 +290,40 @@ void Init_Menu() {
 
     glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
 
-    interface.Set_Document("mainMenu");
+    Interface::Set_Document("gameMenu");
 
-    interface.Add_Background("menuBg", bgDims);
-    interface.Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-    interface.Add_Button("exit", "Quit to Menu", exitButtonDims, UI::Toggle_Title);
+    Interface::Add_Background("menuBg", bgDims);
+    Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+    Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, UI::Toggle_Title);
 
-    interface.Set_Document("options");
+    Interface::Set_Document("options");
 
-    interface.Add_Background("menuBg", bgDims);
-    interface.Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
-    interface.Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    interface.Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
-    interface.Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-    interface.Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
+    Interface::Add_Background("menuBg", bgDims);
+    Interface::Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
+    Interface::Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+    Interface::Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    Interface::Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
+    Interface::Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
+}
+
+void Init_World_Select() {
+    Interface::Set_Document("worlds");
+
+    Interface::Set_Document("");
 }
 
 void Init_Debug() {
     lastUIUpdate = glfwGetTime();
 
-    interface.Set_Document("debug");
+    Interface::Set_Document("debug");
 
-    interface.Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
-    interface.Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
-    interface.Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
+    Interface::Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
+    Interface::Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
+    Interface::Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
 
-    interface.Set_Document("");
+    Interface::Set_Document("");
 }
 
 int Get_Loaded() {
@@ -284,7 +343,7 @@ void Draw_Debug() {
         CPU.pop_front();
     }
 
-    interface.Set_Document("debug");
+    Interface::Set_Document("debug");
 
     if (LastFrame - lastUIUpdate >= UI_UPDATE_FREQUENCY) {
         lastUIUpdate = LastFrame;
@@ -295,20 +354,20 @@ void Draw_Debug() {
             cpu_sum += time;
         }
 
-        interface.Get_Text_Element("cpu")->Set_Text(
+        Interface::Get_Text_Element("cpu")->Set_Text(
             "CPU: " + std::to_string(int(cpu_sum / AVG_UPDATE_RANGE)) + "%"
         );
-        interface.Get_Text_Element("ram")->Set_Text(
+        Interface::Get_Text_Element("ram")->Set_Text(
             "RAM: " + System::GetPhysicalMemoryUsage()
         );
     }
 
-    interface.Get_Text_Element("chunkQueue")->Set_Text(
+    Interface::Get_Text_Element("chunkQueue")->Set_Text(
         "Chunks Queued: " + std::to_string(static_cast<int>(ChunkMap.size()) - Get_Loaded())
     );
 
-    interface.Set_Document("");
-    interface.Draw_Document("debug");
+    Interface::Set_Document("");
+    Interface::Draw_Document("debug");
 }
 
 void Toggle_Options_Menu() {
@@ -319,10 +378,10 @@ void Toggle_VSync() {
     VSYNC = !VSYNC;
 
     Bind_Current_Document();
-    interface.Get_Button("option_vsync")->Text.Set_Text(
+    Interface::Get_Button("option_vsync")->Text.Set_Text(
         "V-Sync: " + BoolStrings[VSYNC]
     );
-    interface.Set_Document("");
+    Interface::Set_Document("");
 
     glfwSwapInterval(VSYNC);
     Write_Config();
@@ -332,10 +391,10 @@ void Toggle_AO() {
     AMBIENT_OCCLUSION = !AMBIENT_OCCLUSION;
 
     Bind_Current_Document();
-    interface.Get_Button("option_ao")->Text.Set_Text(
+    Interface::Get_Button("option_ao")->Text.Set_Text(
         "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION]
     );
-    interface.Set_Document("");
+    Interface::Set_Document("");
 
     Write_Config();
     player.Queue_Chunks(true);
@@ -345,16 +404,16 @@ void Toggle_Wireframe() {
     ToggleWireframe = true;
 
     Bind_Current_Document();
-    interface.Get_Button("option_wireframe")->Text.Set_Text(
+    Interface::Get_Button("option_wireframe")->Text.Set_Text(
         "Wireframe: " + BoolStrings[!Wireframe]
     );
-    interface.Set_Document("");
+    Interface::Set_Document("");
 }
 
 void Change_Render_Distance() {
     Bind_Current_Document();
-    Slider* slider = interface.Get_Slider("option_renderDistance");
-    interface.Set_Document("");
+    Slider* slider = Interface::Get_Slider("option_renderDistance");
+    Interface::Set_Document("");
 
     int value = static_cast<int>(std::ceil(slider->Value));
 

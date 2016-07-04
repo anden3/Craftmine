@@ -1,5 +1,7 @@
+BIN=Craftmine
+
 HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
-	-isystem /usr/local/include/freetype2 -isystem /usr/local/opt/icu4c/include
+	-isystem /usr/local/include/freetype2
 
 LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
@@ -13,13 +15,13 @@ COMPILER_FLAGS=everything no-c++98-compat no-c++98-compat-pedantic no-float-equa
 	no-padded no-missing-braces
 
 OBJECTS_FOLDER=Build/Data/Objects
-APP_CONTENTS=Build/Craftmine.app/Contents
+APP_CONTENTS=Build/$(BIN).app/Contents
 
-CPP_FLAGS=-arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies
+CPP_FLAGS=-arch x86_64 -std=gnu++14 -F Build
 DEBUG_FLAGS=-O0 -g
 RELEASE_FLAGS=-O3
 
-LINKER_FLAGS=-arch x86_64 -o $(APP_CONTENTS)/MacOS/Craftmine -L Build -F Build \
+LINKER_FLAGS=-arch x86_64 -o $(APP_CONTENTS)/MacOS/$(BIN) -L Build -F Build \
 	-Xlinker -rpath -Xlinker $(APP_CONTENTS)/Frameworks -Xlinker -no_deduplicate \
 	-Xlinker -dependency_info
 
@@ -33,8 +35,8 @@ all: $(CPP_FILES) $(OBJ_FILES)
 	for dir in $(APP_DIRECTORIES); do mkdir -p $(APP_CONTENTS)/$$dir; done
 	\
 	$(info Linking executable...)
-	clang++ $(LINKER_FLAGS) -Xlinker $(OBJECTS_FOLDER)/Craftmine_dependency_info.dat \
-		-filelist Build/Data/Craftmine.LinkFileList -L /usr/local/lib $(LIBRARY_FLAGS) \
+	clang++ $(LINKER_FLAGS) -Xlinker $(OBJECTS_FOLDER)/$(BIN)_dependency_info.dat \
+		-filelist Build/Data/$(BIN).LinkFileList -L /usr/local/lib $(LIBRARY_FLAGS) \
 		$(FRAMEWORK_FLAGS)
 	\
 	$(info Copying libraries and files...)
@@ -44,29 +46,25 @@ all: $(CPP_FILES) $(OBJ_FILES)
 	$(info Signing libraries...)
 	for LIB in $(LIBRARIES); do \
 		install_name_tool -change /usr/local/lib/lib$$LIB.dylib \
-			$(APP_CONTENTS)/Frameworks/lib$$LIB.dylib $(APP_CONTENTS)/MacOS/Craftmine; \
+			$(APP_CONTENTS)/Frameworks/lib$$LIB.dylib $(APP_CONTENTS)/MacOS/$(BIN); \
 		\
 		codesign --force --sign - --preserve-metadata=identifier,entitlements \
 			$(APP_CONTENTS)/Frameworks/lib$$LIB.dylib; \
 	done
 	\
 	$(info Touching app...)
-	touch -c Build/Craftmine.app
-	\
-	$(info Signing app...)
-	export CODESIGN_ALLOCATE=Build/Data/codesign_allocate
-	codesign --force --sign - --timestamp=none Build/Craftmine.app
+	touch -c Build/$(BIN).app
 	\
 	$(info Done!)
 
 $(OBJECTS_FOLDER)/%.o: Classes/%.cpp
 	$(info Compiling $<...)
 	@clang++ $(addprefix -W,$(COMPILER_FLAGS)) $(CPP_FLAGS) $(HEADER_PATHS) \
-		$(DEBUG_FLAGS) -MF $(patsubst %.o,%.d,$@) -c $< -o $@
+		$(DEBUG_FLAGS) -c $< -o $@
 
 clean:
-	$(info Removing Craftmine.app...)
-	rm -rf Build/Craftmine.app
+	$(info Removing $(BIN).app...)
+	rm -rf Build/$(BIN).app
 	\
 	$(info Removing build data...)
 	rm -f $(OBJECTS_FOLDER)/*

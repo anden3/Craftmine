@@ -8,9 +8,25 @@
 #include <SOIL/SOIL.h>
 #include <FreeImagePlus.h>
 
+#include <unicode/ustream.h>
+
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
+
+std::string Interface::ActiveDocument  = "";
+std::string Interface::HoveringType    = "";
+void*       Interface::HoveringElement = nullptr;
+bool        Interface::Holding         = false;
+
+static std::map<std::string, std::map<std::string, Bar         >> Bars;
+static std::map<std::string, std::map<std::string, Image       >> Images;
+static std::map<std::string, std::map<std::string, Button      >> Buttons;
+static std::map<std::string, std::map<std::string, Slider      >> Sliders;
+static std::map<std::string, std::map<std::string, TextBox     >> TextBoxes;
+static std::map<std::string, std::map<std::string, Background  >> Backgrounds;
+static std::map<std::string, std::map<std::string, TextElement >> TextElements;
+static std::map<std::string, std::map<std::string, OrthoElement>> OrthoElements;
 
 const std::string FONT      = "Roboto";
 const int         FONT_SIZE = 15;
@@ -58,6 +74,8 @@ const glm::vec3 BAR_TEXT_COLOR            = glm::vec3(1.0f);
 const float     BACKGROUND_OPACITY        = 0.7f;
 const glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
 const glm::vec3 BACKGROUND_BORDER_COLOR   = glm::vec3(0.5f);
+
+const int       TEXT_BOX_HORZ_PADDING     = 10;
 
 const std::map<char, glm::vec3> ColorCodes = {
     {'0', {0.000, 0.000, 0.000} }, // Black
@@ -529,8 +547,10 @@ void Bar::Draw() {
     BarBuffer.Draw();
 }
 
-Image::Image(std::string file, int texID, float x, float y, float scale)
-    : X(x), Y(y), Scale(scale), TexID(texID) {
+Image::Image(std::string file, int texID, float x, float y, float scale) : Scale(scale), TexID(texID) {
+    X = x;
+    Y = y;
+
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TexID));
 
     std::tie(Texture, Width, Height) = Load_Texture(file);
@@ -553,8 +573,11 @@ void Image::Draw() {
     ImageBuffer.Draw();
 }
 
-Background::Background(float x, float y, float w, float h, bool border,
-    glm::vec2 gridWidth, glm::vec2 pad) : X(x), Y(y), Width(w), Height(h) {
+Background::Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
+    X = x;
+    Y = y;
+    Width = w;
+    Height = h;
 
     Opacity = BACKGROUND_OPACITY;
     Color = BACKGROUND_COLOR;
@@ -676,11 +699,75 @@ void OrthoElement::Draw() {
     }
 }
 
-enum ActiveElementType { NONE, BUTTON, SLIDER };
+TextBox::TextBox(float x, float y, float w, float h) {
+    X = x;
+    Y = y;
+    Width = w;
+    Height = h;
 
-static int ActiveElement = NONE;
-static Button* ActiveButton;
-static Slider* ActiveSlider;
+    BG = Background(x, y, w, h, true);
+
+    MaxWidth = Width - TEXT_BOX_HORZ_PADDING * 2;
+
+    int textPad = static_cast<int>((h - FONT_SIZE) / 2);
+
+    Cursor.Create("|", x + TEXT_BOX_HORZ_PADDING, y + textPad);
+    TextEl.Create(Text, x + TEXT_BOX_HORZ_PADDING, y + textPad);
+}
+
+void TextBox::Key_Handler(int key) {
+    if (key == GLFW_KEY_BACKSPACE && CursorPos > 0) {
+        --CursorPos;
+        Text.erase(CursorPos, 1);
+        Update();
+    }
+
+    else if (key == GLFW_KEY_LEFT && CursorPos > 0) {
+        --CursorPos;
+        Update();
+    }
+
+    else if (key == GLFW_KEY_RIGHT && CursorPos < Text.length()) {
+        ++CursorPos;
+        Update();
+    }
+}
+
+void TextBox::Input(unsigned int codepoint) {
+    UnicodeString string(static_cast<UChar32>(codepoint));
+    std::string str;
+    string.toUTF8String(str);
+
+    Text.insert(CursorPos, str);
+
+    ++CursorPos;
+    Update();
+}
+
+void TextBox::Set_Cursor_Visibility(bool cursorVisible) {
+    Cursor.Opacity = cursorVisible;
+}
+
+void TextBox::Update() {
+    TextWidth = Interface::Get_String_Width(Text);
+
+    if (TextWidth > MaxWidth) {        
+        --CursorPos;
+        Text.erase(CursorPos, 1);
+        return;
+    }
+
+    Cursor.X = X + TEXT_BOX_HORZ_PADDING + Interface::Get_String_Width(Text.substr(0, CursorPos));
+
+    TextEl.Set_Text(Text);
+    TextEl.Mesh();
+}
+
+void TextBox::Draw() {
+    BG.Draw();
+    Cursor.Draw();
+    TextEl.Draw();
+}
 
 void Interface::Init() {
     Init_Shaders();
@@ -805,8 +892,8 @@ void Interface::Mouse_Handler(double x, double y) {
         return;
     }
 
-    if (Holding && ActiveSlider != nullptr) {
-        ActiveSlider->Move(static_cast<float>(x));
+    if (Holding && HoveringType == "slider") {
+        static_cast<Slider*>(HoveringElement)->Move(static_cast<float>(x));
         return;
     }
 
@@ -815,9 +902,8 @@ void Interface::Mouse_Handler(double x, double y) {
             if (In_Range(y, glm::vec2(button.second.Y, button.second.Height))) {
                 Holding ? button.second.Press() : button.second.Hover();
 
-                ActiveElement = BUTTON;
-                ActiveButton = &button.second;
-                ActiveSlider = nullptr;
+                HoveringType = "button";
+                HoveringElement = &button.second;
                 return;
             }
         }
@@ -830,9 +916,8 @@ void Interface::Mouse_Handler(double x, double y) {
             if (In_Range(y, glm::vec2(slider.second.Y, slider.second.Height))) {
                 Holding ? slider.second.Press() : slider.second.Hover();
 
-                ActiveElement = SLIDER;
-                ActiveSlider = &slider.second;
-                ActiveButton = nullptr;
+                HoveringType = "slider";
+                HoveringElement = &slider.second;
                 return;
             }
         }
@@ -840,44 +925,58 @@ void Interface::Mouse_Handler(double x, double y) {
         slider.second.Stop_Hover();
     }
 
-    ActiveElement = NONE;
-    ActiveSlider = nullptr;
-    ActiveButton = nullptr;
+    for (auto &box : TextBoxes[ActiveDocument]) {
+        if (In_Range(x, glm::vec2(box.second.X, box.second.Width))) {
+            if (In_Range(y, glm::vec2(box.second.Y, box.second.Height))) {
+                HoveringType = "textBox";
+                HoveringElement = &box.second;
+                box.second.Set_Cursor_Visibility(true);
+                return;
+            }
+        }
+
+        box.second.Set_Cursor_Visibility(false);
+    }
+
+    HoveringType = "";
+    HoveringElement = nullptr;
 }
 
 void Interface::Click(int mouseButton, int action) {
-    if (ActiveElement == NONE || mouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
+    if (HoveringType == "" || mouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
         Holding = false;
         return;
     }
 
     Holding = (action == GLFW_PRESS);
 
-    if (ActiveElement == BUTTON) {
-        Holding ? ActiveButton->Press() : ActiveButton->Release();
+    if (HoveringType == "button") {
+        Button* button = static_cast<Button*>(HoveringElement);
+        Holding ? button->Press() : button->Release();
     }
 
-    else if (ActiveElement == SLIDER) {
-        Holding ? ActiveSlider->Press() : ActiveSlider->Release();
+    else if (HoveringType == "slider") {
+        Slider* slider = static_cast<Slider*>(HoveringElement);
+        Holding ? slider->Press() : slider->Release();
     }
 
     if (!Holding) {
-        ActiveElement = NONE;
-        ActiveSlider = nullptr;
-        ActiveButton = nullptr;
+        HoveringType = "";
+        HoveringElement = nullptr;
     }
 }
 
 void Interface::Draw_Document(std::string document) {
     glDisable(GL_DEPTH_TEST);
 
-    for (auto &bg : Backgrounds[document]) { bg.second.Draw(); }
-    for (auto &image : Images[document]) { image.second.Draw(); }
-    for (auto &button : Buttons[document]) { button.second.Draw(); }
-    for (auto &slider : Sliders[document]) { slider.second.Draw(); }
-    for (auto &bar : Bars[document]) { bar.second.Draw(); }
+    for (auto &bg     : Backgrounds  [document]) { bg    .second.Draw(); }
+    for (auto &image  : Images       [document]) { image .second.Draw(); }
+    for (auto &button : Buttons      [document]) { button.second.Draw(); }
+    for (auto &slider : Sliders      [document]) { slider.second.Draw(); }
+    for (auto &bar    : Bars         [document]) { bar   .second.Draw(); }
     for (auto &object : OrthoElements[document]) { object.second.Draw(); }
-    for (auto &text : TextElements[document]) { text.second.Draw(); }
+    for (auto &box    : TextBoxes    [document]) { box   .second.Draw(); }
+    for (auto &text   : TextElements [document]) { text  .second.Draw(); }
 
     glEnable(GL_DEPTH_TEST);
 }
@@ -940,3 +1039,53 @@ std::vector<std::string> Interface::Get_Fitting_String(std::string string, int w
 
     return partStrings;
 }
+
+namespace Interface {
+    void Set_Document(std::string document) {
+        ActiveDocument = document;
+    }
+
+    void Add_Text(std::string name, std::string text, float x, float y) {
+        TextElements[ActiveDocument].emplace(name, TextElement(text, std::floor(x), std::floor(y)));
+    }
+    void Add_Text_Box(std::string name, float x, float y, float w, float h) {
+        TextBoxes[ActiveDocument].emplace(name, TextBox(x, y, w, h));
+    }
+    void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
+        Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, h, function));
+    }
+    void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
+        Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, h, min, max, value, function));
+    }
+    void Add_Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value) {
+        Bars[ActiveDocument].emplace(name, Bar(text, x, y, w, h, min, max, value));
+    }
+    void Add_Image(std::string name, std::string path, int texID, float x, float y, float scale) {
+        Images[ActiveDocument].emplace(name, Image(path, texID, x, y, scale));
+    }
+    void Add_Background(std::string name, glm::vec4 dims, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
+        Backgrounds[ActiveDocument].emplace(
+            name, Background(dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad)
+        );
+    }
+    void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
+        OrthoElements[ActiveDocument].emplace(name, OrthoElement(type, data, x, y, scale));
+    }
+
+    void Delete_Bar       (std::string name) { Bars         [ActiveDocument].erase(name); }
+    void Delete_Text      (std::string name) { TextElements [ActiveDocument].erase(name); }
+    void Delete_Image     (std::string name) { Images       [ActiveDocument].erase(name); }
+    void Delete_Button    (std::string name) { Buttons      [ActiveDocument].erase(name); }
+    void Delete_Slider    (std::string name) { Sliders      [ActiveDocument].erase(name); }
+    void Delete_Text_Box  (std::string name) { TextBoxes    [ActiveDocument].erase(name); }
+    void Delete_Background(std::string name) { Backgrounds  [ActiveDocument].erase(name); }
+    void Delete_3D_Element(std::string name) { OrthoElements[ActiveDocument].erase(name); }
+
+    Image*        Get_Image       (std::string name) { return &Images       [ActiveDocument][name]; }
+    Button*       Get_Button      (std::string name) { return &Buttons      [ActiveDocument][name]; }
+    Slider*       Get_Slider      (std::string name) { return &Sliders      [ActiveDocument][name]; }
+    TextBox*      Get_Text_Box    (std::string name) { return &TextBoxes    [ActiveDocument][name]; }
+    Background*   Get_Background  (std::string name) { return &Backgrounds  [ActiveDocument][name]; }
+    OrthoElement* Get_3D_Element  (std::string name) { return &OrthoElements[ActiveDocument][name]; }
+    TextElement*  Get_Text_Element(std::string name) { return &TextElements [ActiveDocument][name]; }
+};

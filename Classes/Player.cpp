@@ -104,9 +104,9 @@ void Player::Init() {
     HoldingBuffer.Init(modelShader);
     HoldingBuffer.Create(3, 3);
 
-    interface.Set_Document("playerUI");
-    interface.Add_Bar("health", "HP", hpDims, hpRange);
-    interface.Set_Document("");
+    Interface::Set_Document("playerUI");
+    Interface::Add_Bar("health", "HP", hpDims, hpRange);
+    Interface::Set_Document("");
 
     Init_Model();
     Init_Sounds();
@@ -488,7 +488,7 @@ void Player::Draw() {
     }
 
     Draw_Model();
-    interface.Draw_Document("playerUI");
+    Interface::Draw_Document("playerUI");
 }
 
 float Player::Get_Block_Break_Time() {

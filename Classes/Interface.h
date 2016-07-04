@@ -10,7 +10,11 @@ typedef std::vector<float> Data;
 struct Block;
 
 inline std::string Format_Vector(glm::vec3 vector) {
-    return std::string("X: " + std::to_string(int(vector.x)) + "\t\tY: " + std::to_string(int(vector.y)) + "\t\tZ: " + std::to_string(int(vector.z)));
+    return std::string(
+        "X: " + std::to_string(int(vector.x)) + "\t\t" +
+        "Y: " + std::to_string(int(vector.y)) + "\t\t" +
+        "Z: " + std::to_string(int(vector.z))
+    );
 }
 
 template <typename T>
@@ -18,9 +22,26 @@ inline bool In_Range(T value, glm::dvec2 bounds) {
     return value >= bounds.x && value <= (bounds.x + bounds.y);
 }
 
-inline Data Get_Rect(float x1, float x2, float y1, float y2) { return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2}; }
-inline Data Get_Border(float x1, float x2, float y1, float y2) { return Data { x1, y1, x2, y1, x2, y1, x2, y2, x2, y2, x1, y2, x1, y2, x1, y1, x1 - 0.5f, y2, x1, y2 }; }
-inline Data Get_Tex_Rect(float x1, float x2, float y1, float y2) { return Data { x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0, x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0}; }
+template <typename T>
+inline Data Get_Rect(T x1, T x2, T y1, T y2) {
+    return Data {x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2};
+}
+
+template <typename T>
+inline Data Get_Border(T x1, T x2, T y1, T y2) {
+    return Data {
+        x1, y1, x2, y1, x2, y1, x2, y2, x2, y2,
+        x1, y2, x1, y2, x1, y1, x1 - 0.5f, y2, x1, y2
+    };
+}
+
+template <typename T>
+inline Data Get_Tex_Rect(T x1, T x2, T y1, T y2) {
+    return Data {
+        x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0,
+        x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0
+    }; 
+}
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
 
@@ -34,12 +55,36 @@ float Scale_Y(const float y);
 glm::vec2 Scale(const float t);
 glm::vec2 Scale(const float x, const float y);
 
-template <typename V, typename T> inline void Extend(std::vector<V> &storage, T t) { storage.push_back(V(t)); }
-template <typename V, typename T, typename... Args> inline void Extend(std::vector<V> &storage, T t, Args... args) { storage.push_back(V(t)); Extend(storage, args...); }
-template <typename T> inline void Extend(std::vector<T> &storage, std::vector<T> input) { for (T const &element : input) { storage.push_back(element); } }
-template <typename T> inline void Extend(std::vector<T> &storage, glm::vec2 input) { Extend(storage, T(input.x), T(input.y)); }
-template <typename T> inline void Extend(std::vector<T> &storage, glm::vec3 input) { Extend(storage, T(input.x), T(input.y), T(input.z)); }
-template <typename T> inline void Extend(std::vector<T> &storage, glm::vec4 input) { Extend(storage, T(input.x), T(input.y), T(input.z), T(input.w)); }
+template <typename V, typename T>
+inline void Extend(std::vector<V> &storage, T t) { storage.push_back(V(t)); }
+
+template <typename V, typename T, typename... Args>
+inline void Extend(std::vector<V> &storage, T t, Args... args) {
+    storage.push_back(V(t));
+    Extend(storage, args...);
+}
+
+template <typename T>
+inline void Extend(std::vector<T> &storage, std::vector<T> input) {
+    for (T const &element : input) {
+        storage.push_back(element);
+    }
+}
+
+template <typename T>
+inline void Extend(std::vector<T> &storage, glm::vec2 input) {
+    Extend(storage, T(input.x), T(input.y));
+}
+
+template <typename T>
+inline void Extend(std::vector<T> &storage, glm::vec3 input) {
+    Extend(storage, T(input.x), T(input.y), T(input.z));
+}
+
+template <typename T>
+inline void Extend(std::vector<T> &storage, glm::vec4 input) {
+    Extend(storage, T(input.x), T(input.y), T(input.z), T(input.w));
+}
 
 class TextElement {
 public:
@@ -155,7 +200,7 @@ private:
     Buffer BarBuffer;
 };
 
-class Image {
+class Image : public UIElement {
 public:
     Image() {}
     Image(std::string file, int texID, float x, float y, float scale);
@@ -164,10 +209,6 @@ public:
     void Draw();
 
 private:
-    float X;
-    float Y;
-    float Width;
-    float Height;
     float Scale;
 
     unsigned int Texture;
@@ -176,31 +217,50 @@ private:
     Buffer ImageBuffer;
 };
 
-class Background {
+class Background : public UIElement {
 public:
-    float Opacity;
-    glm::vec3 Color;
     glm::vec3 GridColor;
 
     Background() {}
-    Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad);
+    Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth = {0, 0}, glm::vec2 pad = {0, 0});
 
     inline void Move(glm::vec2 pos = glm::vec2(0, 0), bool absolute = false) { Move(pos.x, pos.y, absolute); }
     void Move(float dx = 0, float dy = 0, bool absolute = false);
     void Draw();
 
 private:
-    float X;
-    float Y;
-    float Width;
-    float Height;
-
     glm::vec2 GridWidth;
-
-    Buffer BackgroundBuffer;
     Buffer GridBuffer;
 
     bool GridSet = false;
+};
+
+class TextBox : public UIElement {
+public:
+    std::string Text = "";
+
+    TextBox() {}
+    TextBox(float x, float y, float w, float h);
+
+    void Set_Cursor_Visibility(bool cursorVisible);
+
+    void Key_Handler(int key);
+
+    void Input(unsigned int codepoint);
+    void Draw();
+
+private:
+    Background BG;
+    TextElement TextEl;
+    TextElement Cursor;
+
+    unsigned long CursorPos = 0;
+    bool CursorVisible = true;
+
+    float TextWidth = 0.0f;
+    float MaxWidth = 0.0f;
+
+    void Update();
 };
 
 class OrthoElement {
@@ -219,83 +279,76 @@ private:
     Buffer OrthoBuffer;
 };
 
-class Interface {
-public:
-    Interface(){}
+namespace Interface {
+    extern bool Holding;
+    extern void* HoveringElement;
+    extern std::string HoveringType;
+    extern std::string ActiveDocument;
 
     void Init();
-
-    inline void Set_Document(std::string document) { ActiveDocument = document; }
-    float Get_String_Width(std::string string);
-    std::vector<std::string> Get_Fitting_String(std::string string, int width);
-
-    inline void Add_Text(std::string name, std::string text, glm::vec2 pos) { Add_Text(name, text, pos.x, pos.y); }
-    inline void Add_Button(std::string name, std::string text, glm::vec4 dims, Func &function) { Add_Button(name, text, dims.x, dims.y, dims.z, dims.w, function); }
-    inline void Add_Slider(std::string name, std::string text, glm::vec4 dims, glm::vec3 range, Func &function) {
-        Add_Slider(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z, function); }
-    inline void Add_Bar(std::string name, std::string text, glm::vec4 dims, glm::vec3 range) {
-        Add_Bar(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z);
-    }
-    inline void Add_Image(std::string name, std::string path, int texID, glm::vec3 dims) { Add_Image(name, path, texID, dims.x, dims.y, dims.z); }
-    inline void Add_Background(std::string name, glm::vec4 dims, bool border = false, glm::vec2 gridWidth = glm::vec2(0), glm::vec2 pad = glm::vec2(0)) {
-        Add_Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad);
-    }
-    inline void Add_3D_Element(std::string name, int type, int data, glm::vec2 pos, float scale) { Add_3D_Element(name, type, data, pos.x, pos.y, scale); }
-
-    inline void Add_Text(std::string name, std::string text, float x, float y) {
-        TextElements[ActiveDocument].emplace(name, TextElement(text, std::floor(x), std::floor(y)));
-    }
-    inline void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
-        Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, h, function));
-    }
-    inline void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
-        Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, h, min, max, value, function));
-    }
-    inline void Add_Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value) {
-        Bars[ActiveDocument].emplace(name, Bar(text, x, y, w, h, min, max, value));
-    }
-    inline void Add_Image(std::string name, std::string path, int texID, float x, float y, float scale) {
-        Images[ActiveDocument].emplace(name, Image(path, texID, x, y, scale));
-    }
-    inline void Add_Background(std::string name, float x, float y, float w, float h, bool border = false, glm::vec2 gridWidth = glm::vec2(0), glm::vec2 pad = glm::vec2(0)) {
-        Backgrounds[ActiveDocument].emplace(name, Background(x, y, w, h, border, gridWidth, pad));
-    }
-    inline void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
-        OrthoElements[ActiveDocument].emplace(name, OrthoElement(type, data, x, y, scale));
-    }
-
-    inline void Delete_Text(std::string name) { TextElements[ActiveDocument].erase(name); }
-    inline void Delete_Button(std::string name) { Buttons[ActiveDocument].erase(name); }
-    inline void Delete_Slider(std::string name) { Sliders[ActiveDocument].erase(name); }
-    inline void Delete_Bar(std::string name) { Bars[ActiveDocument].erase(name); }
-    inline void Delete_Image(std::string name) { Images[ActiveDocument].erase(name); }
-    inline void Delete_Background(std::string name) { Backgrounds[ActiveDocument].erase(name); }
-    inline void Delete_3D_Element(std::string name) { OrthoElements[ActiveDocument].erase(name); }
-
-    inline TextElement* Get_Text_Element(std::string name) { return &TextElements[ActiveDocument][name]; }
-    inline Button* Get_Button(std::string name) { return &Buttons[ActiveDocument][name]; }
-    inline Slider* Get_Slider(std::string name) { return &Sliders[ActiveDocument][name]; }
-    inline Image* Get_Image(std::string name) { return &Images[ActiveDocument][name]; }
-    inline Background* Get_Background(std::string name) { return &Backgrounds[ActiveDocument][name]; }
-    inline OrthoElement* Get_3D_Element(std::string name) { return &OrthoElements[ActiveDocument][name]; }
+    void Init_Text();
+    void Init_Shaders();
 
     void Mouse_Handler(double x, double y);
     void Click(int mouseButton, int action);
 
+    void Set_Document(std::string document);
     void Draw_Document(std::string document);
 
-private:
-    std::map<std::string, std::map<std::string, TextElement >> TextElements;
-    std::map<std::string, std::map<std::string, Button      >> Buttons;
-    std::map<std::string, std::map<std::string, Slider      >> Sliders;
-    std::map<std::string, std::map<std::string, Bar         >> Bars;
-    std::map<std::string, std::map<std::string, Image       >> Images;
-    std::map<std::string, std::map<std::string, Background  >> Backgrounds;
-    std::map<std::string, std::map<std::string, OrthoElement>> OrthoElements;
+    float Get_String_Width(std::string string);
+    std::vector<std::string> Get_Fitting_String(std::string string, int width);
 
-    bool Holding = false;
-    std::string ActiveDocument = "";
+    void Add_Text      (std::string name, std::string text, float x, float y);
+    void Add_Text_Box  (std::string name, float x, float y, float w, float h);
+    void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale);
+    void Add_Image     (std::string name, std::string path, int texID, float x, float y, float scale);
+    void Add_Button    (std::string name, std::string text, float x, float y, float w, float h, Func &function);
+    void Add_Bar       (std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value);
+    void Add_Background(std::string name, glm::vec4 dims, bool border = false, glm::vec2 gridWidth = {0, 0}, glm::vec2 pad = {0, 0});
+    void Add_Slider    (std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
 
-    void Init_Shaders();
-    void Init_Text();
+    inline void Add_Text(std::string name, std::string text, glm::vec2 pos) {
+        Add_Text(name, text, pos.x, pos.y);
+    }
+
+    inline void Add_Text_Box(std::string name, glm::vec4 dims) {
+        Add_Text_Box(name, dims.x, dims.y, dims.z, dims.w);
+    }
+
+    inline void Add_Button(std::string name, std::string text, glm::vec4 dims, Func &function) {
+        Add_Button(name, text, dims.x, dims.y, dims.z, dims.w, function);
+    }
+
+    inline void Add_Slider(std::string name, std::string text, glm::vec4 dims, glm::vec3 range, Func &function) {
+        Add_Slider(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z, function);
+    }
+
+    inline void Add_Bar(std::string name, std::string text, glm::vec4 dims, glm::vec3 range) {
+        Add_Bar(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z);
+    }
+
+    inline void Add_Image(std::string name, std::string path, int texID, glm::vec3 dims) {
+        Interface::Add_Image(name, path, texID, dims.x, dims.y, dims.z);
+    }
+
+    inline void Add_3D_Element(std::string name, int type, int data, glm::vec2 pos, float scale) {
+        Add_3D_Element(name, type, data, pos.x, pos.y, scale);
+    }
+
+    void Delete_Bar       (std::string name);
+    void Delete_Text      (std::string name);
+    void Delete_Image     (std::string name);
+    void Delete_Button    (std::string name);
+    void Delete_Slider    (std::string name);
+    void Delete_Text_Box  (std::string name);
+    void Delete_Background(std::string name);
+    void Delete_3D_Element(std::string name);
+
+    Image*        Get_Image       (std::string name);
+    Button*       Get_Button      (std::string name);
+    Slider*       Get_Slider      (std::string name);
+    TextBox*      Get_Text_Box    (std::string name);
+    Background*   Get_Background  (std::string name);
+    OrthoElement* Get_3D_Element  (std::string name);
+    TextElement*  Get_Text_Element(std::string name);
 };
