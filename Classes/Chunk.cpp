@@ -6,6 +6,7 @@
 
 #include "main.h"
 #include "Blocks.h"
+#include "Worlds.h"
 #include "Interface.h"
 
 class LightNodeComparator {
@@ -87,15 +88,15 @@ static noise::module::RidgedMulti oreNoise;
 static noise::module::Perlin noiseModule;
 
 static std::map<
-    glm::vec3, std::set<LightNode, LightNodeComparator>, VectorComparator
+    glm::vec3, std::set<LightNode, LightNodeComparator>, ChunkPosComparator
 > UnloadedLightQueue;
 
 std::map<
-    glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator
+    glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator
 > TopBlocks;
 
 std::map<
-    glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator
+    glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorComparator>, ChunkPosComparator
 > ChangedBlocks;
 
 static std::mt19937_64 rng;
@@ -115,7 +116,7 @@ void Seed() {
     };
     rng.seed(ss);
 
-    std::uniform_int_distribution<int> uni(0, 10000);
+    std::uniform_int_distribution<int> uni(-2147483648, 2147483647);
     int seed = uni(rng);
 
     noiseModule.SetSeed(seed);
@@ -734,6 +735,8 @@ void Chunk::Remove_Block(glm::ivec3 position, bool checkMulti) {
         ChangedBlocks[Position][position] = std::make_pair(0, 0);
     }
 
+    Worlds::Save_Chunk(WORLD_NAME, Position);
+
     bool lightBlocks = false;
 
     if (TopBlocks[Position.xz()][position.xz()] == Position.y * CHUNK_SIZE + position.y) {
@@ -802,6 +805,8 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData, bool ch
     else {
         ChangedBlocks[Position][position] = std::make_pair(blockType, blockData);
     }
+
+    Worlds::Save_Chunk(WORLD_NAME, Position);
 
     if (Position.y * CHUNK_SIZE + position.y > TopBlocks[Position.xz()][position.xz()]) {
         TopBlocks[Position.xz()][position.xz()] = static_cast<int>(Position.y * CHUNK_SIZE + position.y);

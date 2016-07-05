@@ -1,11 +1,10 @@
 #pragma once
 
-#define GLM_SWIZZLE
-#include <glm/glm.hpp>
-
 #include <map>
 #include <string>
 #include <vector>
+
+#include "Comparators.h"
 
 // Check if program is running on Windows or OS X.
 #ifdef _WIN32
@@ -13,23 +12,6 @@
 #elif __APPLE__
     const bool Windows = false;
 #endif
-
-// Compares two vec3 objects, and returns the smallest one.
-class VectorComparator {
-  public:
-    bool operator () (const glm::vec3 &a, const glm::vec3 &b) const {
-        if (a.x != b.x) {
-            return a.x < b.x;
-        }
-        else if (a.z != b.z) {
-            return a.z < b.z;
-        }
-        else if (a.y != b.y) {
-            return a.y > b.y;
-        }
-        return false;
-    }
-};
 
 // Forward declaring classes.
 class Chat;
@@ -55,7 +37,9 @@ extern Listener listener;
 extern Inventory inventory;
 extern GLFWwindow* Window;
 
-extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
+
+const char WORLD_NAME[] = "Test";
 
 // TODO: Interpolate lighting by having different values for vertices per block.
 

@@ -6,7 +6,7 @@ HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
 
 LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
-ITEMS_TO_COPY=Fonts Images Sounds Shaders BlockData config.conf
+ITEMS_TO_COPY=BlockData Fonts Images Shaders Sounds Worlds config.conf
 APP_DIRECTORIES=. MacOS Resources Frameworks
 
 LIBRARY_FLAGS=$(addprefix -l,$(LIBRARIES))

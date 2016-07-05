@@ -12,6 +12,7 @@
 #include "Camera.h"
 #include "Entity.h"
 #include "Shader.h"
+#include "Worlds.h"
 #include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -953,6 +954,12 @@ void Player::Queue_Chunks(bool regenerate) {
 
                 if (!ChunkMap.count(pos)) {
                     if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RENDER_DISTANCE) {
+                        auto savedData = Worlds::Load_Chunk(WORLD_NAME, pos);
+
+                        if (savedData.size() > 0) {
+                            ChangedBlocks[pos] = savedData;
+                        }
+
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
                         ChunkMap[pos]->buffer.Create(3, 3, 1, 1, 1);
@@ -1001,6 +1008,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
                 }
                 else {
                     ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
+                    Worlds::Save_Chunk(WORLD_NAME, chunk);
                 }
             }
         }

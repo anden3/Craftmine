@@ -56,15 +56,15 @@ GLFWwindow* Window = nullptr;
 // The map where all the chunks are stored.
 // Keys are the chunk's 3D-position.
 // Values are pointers to the chunks.
-std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 
 // Defining options.
-int RENDER_DISTANCE = 0;
-int FULLSCREEN = 0;
-int SCREEN_WIDTH = 0;
-int SCREEN_HEIGHT = 0;
-int VSYNC = 0;
 int AMBIENT_OCCLUSION = 0;
+int RENDER_DISTANCE = 0;
+int SCREEN_HEIGHT = 0;
+int SCREEN_WIDTH = 0;
+int FULLSCREEN = 0;
+int VSYNC = 0;
 
 // Defining shaders.
 Shader* shader = nullptr;
@@ -509,20 +509,14 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
     }
 }
 // Proxy for receiving Unicode codepoints, very useful for getting text input.
-void Text_Proxy(GLFWwindow* window, unsigned int codepoint) {
-    UI::Text_Handler(codepoint);
-}
-void Mouse_Proxy(GLFWwindow* window, double posX, double posY) {
-    UI::Mouse_Handler(posX, posY);
-}
+void Text_Proxy(GLFWwindow* window, unsigned int codepoint) { UI::Text_Handler(codepoint); }
+void Mouse_Proxy(GLFWwindow* window, double posX, double posY) { UI::Mouse_Handler(posX, posY); }
 void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) {
     if (!GamePaused) {
         player.Scroll_Handler(offsetY);
     }
 }
-void Click_Proxy(GLFWwindow* window, int button, int action, int mods) {
-    UI::Click(action, button);
-}
+void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
 
 #ifdef __clang__
     #pragma clang diagnostic pop

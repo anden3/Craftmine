@@ -5,6 +5,7 @@
 #include "Chunk.h"
 #include "Player.h"
 #include "System.h"
+#include "Worlds.h"
 #include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -300,6 +301,10 @@ void Init_Menu() {
 
 void Init_World_Select() {
     Interface::Set_Document("worlds");
+
+    Worlds::Get_Worlds();
+
+    Worlds::Load_Chunk("Test", glm::vec3(0, 0, 0));
 
     Interface::Set_Document("");
 }
