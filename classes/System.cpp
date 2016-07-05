@@ -115,7 +115,7 @@ double System::GetCPUUsage() {
     unsigned long long totalTicks = 0;
 
     host_cpu_load_info_data_t cpuinfo;
-    mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
+    mach_msg_type_number_t count = static_cast<mach_msg_type_number_t>(sizeof(host_cpu_load_info_data_t) / sizeof(integer_t));
 
     host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, reinterpret_cast<host_info_t>(&cpuinfo), &count);
 
@@ -124,17 +124,17 @@ double System::GetCPUUsage() {
     }
 
     unsigned long long idleTicks = cpuinfo.cpu_ticks[CPU_STATE_IDLE];
-
     unsigned long long totalTicksSinceLastTime = totalTicks - previousTotalTicks;
-    unsigned long long idleTicksSinceLastTime  = idleTicks - previousIdleTicks;
+    unsigned long long idleTicksSinceLastTime  = idleTicks  - previousIdleTicks;
 
     previousTotalTicks = totalTicks;
     previousIdleTicks  = idleTicks;
 
     if (totalTicksSinceLastTime > 0) {
-        return (1.0 - double(idleTicksSinceLastTime) / totalTicksSinceLastTime) * 100.0;
+        return (1.0 - static_cast<double>(idleTicksSinceLastTime) / totalTicksSinceLastTime) * 100.0;
     }
-    return 100.0;
+
+    return 0.0;
 }
 
 #endif

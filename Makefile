@@ -1,4 +1,5 @@
 BIN=Craftmine
+DIRECTORY=$(shell pwd)
 
 HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
 	-isystem /usr/local/include/freetype2
@@ -31,6 +32,10 @@ OBJ_FILES=$(patsubst Classes/%.cpp,$(OBJECTS_FOLDER)/%.o,$(CPP_FILES))
 .SILENT: all clean
 
 all: $(CPP_FILES) $(OBJ_FILES)
+	$(info Creating object file list...)
+	:> Build/Data/$(BIN).LinkFileList
+	for OBJ in $(OBJ_FILES); do echo $(DIRECTORY)/$$OBJ >> Build/Data/$(BIN).LinkFileList; done
+	\
 	$(info Creating directories...)
 	for dir in $(APP_DIRECTORIES); do mkdir -p $(APP_CONTENTS)/$$dir; done
 	\

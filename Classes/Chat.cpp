@@ -195,7 +195,7 @@ void Chat::Submit() {
         }
 
         if (Multiplayer) {
-            Client.Send(NewMessage);
+            Network::Send(NewMessage);
         }
 
         History.push_back(NewMessage);

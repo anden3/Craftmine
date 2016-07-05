@@ -5,6 +5,7 @@
 #include "Chunk.h"
 #include "Player.h"
 #include "System.h"
+#include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
 
@@ -21,13 +22,22 @@ static bool ShowInventory = false;
 static bool ShowGameMenu = false;
 static bool ShowDebug = false;
 static bool ShowOptions = false;
+static bool ShowServers = false;
+static bool ShowWorlds = false;
 
 const std::string BoolStrings[2] = {"False", "True"};
 
 void Init_Title();
 void Init_Menu();
 void Init_World_Select();
+void Init_Server_Screen();
 void Init_Debug();
+
+void Toggle_Title();
+void Toggle_Game_Menu();
+void Toggle_Server_Screen();
+void Toggle_Inventory();
+void Toggle_Debug();
 
 void Draw_Debug();
 
@@ -39,6 +49,8 @@ void Toggle_AO();
 void Toggle_Wireframe();
 void Change_Render_Distance();
 
+void Connect_To_Server();
+
 void UI::Init() {
     Interface::Init();
     inventory.Init();
@@ -47,6 +59,7 @@ void UI::Init() {
     Init_Title();
     Init_Menu();
     Init_World_Select();
+    Init_Server_Screen();
     Init_Debug();
 }
 
@@ -61,6 +74,12 @@ void UI::Draw() {
         if (ShowTitle) {
             if (ShowOptions) {
                 Interface::Draw_Document("titleOptions");
+            }
+            else if (ShowServers) {
+                Interface::Draw_Document("servers");
+            }
+            else if (ShowWorlds) {
+                Interface::Draw_Document("worlds");
             }
             else {
                 Interface::Draw_Document("title");
@@ -123,11 +142,13 @@ void UI::Mouse_Handler(double x, double y) {
 }
 
 void UI::Key_Handler(int key, int action) {
-    if (action == GLFW_PRESS) {
+    if (action != GLFW_RELEASE) {
         if (Interface::HoveringType == "textBox") {
             static_cast<TextBox*>(Interface::HoveringElement)->Key_Handler(key);
         }
+    }
 
+    if (action == GLFW_PRESS) {
         switch (key) {
             case GLFW_KEY_ESCAPE:
                 if (ShowInventory) {
@@ -161,43 +182,6 @@ void UI::Text_Handler(unsigned int codepoint) {
     }
 }
 
-void UI::Toggle_Title() {
-    ShowGameMenu = false;
-    ShowOptions = false;
-    ShowInventory = false;
-    ShowDebug = false;
-
-    inventory.Is_Open = false;
-
-    ShowTitle = !ShowTitle;
-    GamePaused = ShowTitle;
-    Toggle_Mouse(ShowTitle);
-}
-
-void UI::Toggle_Game_Menu() {
-    if (!ShowTitle) {
-        ShowGameMenu = !ShowGameMenu;
-        ShowOptions = false;
-
-        if (!ShowInventory) {
-            Toggle_Mouse(ShowGameMenu);
-        }
-    }
-}
-
-void UI::Toggle_Debug() {
-    if (!ShowTitle) {
-        ShowDebug = !ShowDebug;
-    }
-}
-
-void UI::Toggle_Inventory() {
-    if (!ShowTitle) {
-        ShowInventory = !ShowInventory;
-        Toggle_Mouse(ShowInventory);
-    }
-}
-
 void UI::Toggle_Mouse(bool enable) {
     MouseEnabled = enable;
     glfwSetInputMode(Window, GLFW_CURSOR, enable ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
@@ -209,6 +193,12 @@ void Bind_Current_Document() {
     if (ShowTitle) {
         if (ShowOptions) {
             name = "titleOptions";
+        }
+        else if (ShowServers) {
+            name = "servers";
+        }
+        else if (ShowWorlds) {
+            name = "worlds";
         }
         else {
             name = "title";
@@ -243,8 +233,6 @@ void Init_Title() {
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
 
-    glm::vec4 textBoxDims(Scale(620, 100), buttonSize);
-
     glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
 
     Interface::Set_Document("title");
@@ -255,11 +243,10 @@ void Init_Title() {
         Interface::Add_Image("titleLogo", "logo.png", 3, logoDims);
         Interface::Get_Image("titleLogo")->Center();
 
-        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, UI::Toggle_Title);
-        Interface::Add_Button("titleMulti", "Multi Player", multiButtonDims, UI::Toggle_Title);
+        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, Toggle_Title);
+        Interface::Add_Button("titleMulti", "Multi Player", multiButtonDims, Toggle_Server_Screen);
         Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
         Interface::Add_Button("titleExit", "Quit", exitButtonDims, Exit);
-        Interface::Add_Text_Box("test", textBoxDims);
     Interface::Set_Document("");
 
     Interface::Set_Document("titleOptions");
@@ -294,14 +281,17 @@ void Init_Menu() {
 
     Interface::Add_Background("menuBg", bgDims);
     Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-    Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, UI::Toggle_Title);
+    Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, Toggle_Title);
 
     Interface::Set_Document("options");
 
     Interface::Add_Background("menuBg", bgDims);
     Interface::Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
     Interface::Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    Interface::Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+    Interface::Add_Slider(
+        "option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE),
+        renderDistSliderDims, renderDistSliderRange, Change_Render_Distance
+    );
     Interface::Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
     Interface::Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
 
@@ -311,6 +301,40 @@ void Init_Menu() {
 void Init_World_Select() {
     Interface::Set_Document("worlds");
 
+    Interface::Set_Document("");
+}
+
+void Init_Server_Screen() {
+    glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    glm::vec2 nameLabelPos(Scale(570, 640));
+    glm::vec4 nameDims(Scale(570, 600), Scale(300, 35));
+
+    glm::vec2 ipLabelPos(Scale(570, 540));
+    glm::vec4 ipDims(Scale(570, 500), Scale(300, 35));
+
+    glm::vec2 errMsgPos(Scale(570, 440));
+    float errMsgWidth = Scale_X(300);
+
+    glm::vec4 connectDims(Scale(620, 300), Scale(200, 40));
+    glm::vec4 backDims(Scale(620, 200), Scale(200, 40));
+
+    Interface::Set_Document("servers");
+        Interface::Add_Background("serverBg", bgDims);
+        Interface::Get_Background("serverBg")->Color = glm::vec3(0.2f);
+        Interface::Get_Background("serverBg")->Opacity = 1.0f;
+
+        Interface::Add_Text("nameLabel", "User Name", nameLabelPos);
+        Interface::Add_Text_Box("name", nameDims);
+
+        Interface::Add_Text("ipLabel", "Server Address", ipLabelPos);
+        Interface::Add_Text_Box("ip", ipDims);
+
+        Interface::Add_Text("errMsg", "", errMsgPos);
+        Interface::Get_Text_Element("errMsg")->Center(errMsgPos, errMsgWidth, glm::bvec2(true, false));
+
+        Interface::Add_Button("connectToServer", "Connect", connectDims, Connect_To_Server);
+        Interface::Add_Button("back", "Back", backDims, Toggle_Server_Screen);
     Interface::Set_Document("");
 }
 
@@ -324,6 +348,47 @@ void Init_Debug() {
     Interface::Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
 
     Interface::Set_Document("");
+}
+
+void Toggle_Title() {
+    ShowGameMenu = false;
+    ShowOptions = false;
+    ShowInventory = false;
+    ShowDebug = false;
+
+    inventory.Is_Open = false;
+
+    ShowTitle = !ShowTitle;
+    GamePaused = ShowTitle;
+    UI::Toggle_Mouse(ShowTitle);
+}
+
+void Toggle_Game_Menu() {
+    if (!ShowTitle) {
+        ShowGameMenu = !ShowGameMenu;
+        ShowOptions = false;
+
+        if (!ShowInventory) {
+            UI::Toggle_Mouse(ShowGameMenu);
+        }
+    }
+}
+
+void Toggle_Server_Screen() {
+    ShowServers = !ShowServers;
+}
+
+void Toggle_Inventory() {
+    if (!ShowTitle) {
+        ShowInventory = !ShowInventory;
+        UI::Toggle_Mouse(ShowInventory);
+    }
+}
+
+void Toggle_Debug() {
+    if (!ShowTitle) {
+        ShowDebug = !ShowDebug;
+    }
 }
 
 int Get_Loaded() {
@@ -422,5 +487,23 @@ void Change_Render_Distance() {
         Write_Config();
 
         player.Queue_Chunks();
+    }
+}
+
+void Connect_To_Server() {
+    Interface::Set_Document("servers");
+        TextElement* errMsg = Interface::Get_Text_Element("errMsg");
+        std::string name = Interface::Get_Text_Box("name")->Text;
+        std::string ip = Interface::Get_Text_Box("ip")->Text;
+    Interface::Set_Document("");
+
+    std::string connectionStatus = Network::Connect(name, ip);
+
+    if (connectionStatus == "") {
+        errMsg->Set_Text("");
+        Multiplayer = true;
+    }
+    else {
+        errMsg->Set_Text(connectionStatus);
     }
 }

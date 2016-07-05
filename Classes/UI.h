@@ -19,11 +19,6 @@ namespace UI {
     void Text_Handler(unsigned int codepoint);
 
     void Toggle_Mouse(bool enable);
-
-    void Toggle_Title();
-    void Toggle_Game_Menu();
-    void Toggle_Debug();
-    void Toggle_Inventory();
 };
 
 std::string Format_Vector(glm::vec3 vector);

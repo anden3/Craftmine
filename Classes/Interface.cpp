@@ -37,8 +37,7 @@ static Shader* UIBorderShader;
 static Shader* UITextureShader;
 static Shader* UIBackgroundShader;
 
-static int TEXT_ATLAS_WIDTH = 0;
-static int TEXT_ATLAS_HEIGHT = 0;
+static glm::ivec2 TEXT_ATLAS_SIZE = {0, 0};
 
 const int       TEXT_TEXTURE_UNIT         = 10;
 const int       TEXT_GLYPHS               = 128;
@@ -107,7 +106,7 @@ struct CharacterInfo {
   glm::vec2 BitmapSize;
   glm::vec2 BitmapOffset;
 
-  float OffsetX;
+  glm::vec2 Offset = {0, 0};
 };
 
 static std::map<char, CharacterInfo> Characters;
@@ -251,23 +250,20 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
 void Take_Screenshot() {
     SOIL_save_screenshot(
-        "/Users/mac/Desktop/screenshot.bmp",
-        SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+        "/Users/mac/Desktop/screenshot.bmp", SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
     );
 }
 
 void TextElement::Create(std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
-    Text = text;
-    Width = Get_Width();
+    OriginalX = x;
+    OriginalY = y;
 
-    Text = text;
     X = x;
     Y = y;
-
-    Opacity = opacity;
-    Scale = scale;
+    Text = text;
     Color = color;
-
+    Scale = scale;
+    Opacity = opacity;
     Width = Get_Width();
 
     TextBuffer.Init(TextShader);
@@ -276,64 +272,71 @@ void TextElement::Create(std::string text, float x, float y, float opacity, glm:
     Mesh();
 }
 
-void TextElement::Center(float x, float y, float width) {
-    X = std::floor(x + (width - Width) / 2);
-    Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
+void TextElement::Center(float x, float y, float width, glm::bvec2 axes) {
+    Centered = axes;
+    CenterWidth = width;
+
+    if (axes.x) {
+        X = std::floor(x + (width - Width) / 2);
+    }
+    
+    if (axes.y) {
+        Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
+    }
 }
 
 void TextElement::Set_Text(std::string newText) {
     Text = newText;
+    Width = Get_Width();
+
+    Center(OriginalX, OriginalY, CenterWidth, Centered);
     Mesh();
 }
 
 void TextElement::Mesh() {
-    float charX = 0;
-    float charY = 0;
-
     Data data;
 
-    bool SkipNext = false;
+    bool skipNext = false;
+    glm::vec2 charPos = {0, 0};
     glm::vec3 textColor = Color;
 
     for (char const &c : Text) {
-        if (c == '&' || SkipNext) {
-            if (SkipNext) {
-                textColor = ColorCodes.at(c);
+        if (c == '&' || skipNext) {
+            if (skipNext) {
+                try {
+                    textColor = ColorCodes.at(c);
+                }
+                catch (const std::out_of_range) {
+                    throw std::runtime_error("Error! Invalid color code in string \"" + Text + "\".");
+                }
             }
 
-            SkipNext = (c == '&');
+            skipNext = (c == '&');
             continue;
         }
 
         CharacterInfo ch = Characters[c];
 
-        float w = ch.BitmapSize.x * Scale;
-        float h = ch.BitmapSize.y * Scale;
+        glm::vec2 size = ch.BitmapSize * Scale;
+        glm::vec2 p1 = charPos + ch.BitmapOffset * Scale - glm::vec2(0, size.y);
+        glm::vec2 p2 = p1 + size;
 
-        float x1 = charX + ch.BitmapOffset.x * Scale;
-        float y1 = charY + ch.BitmapOffset.y * Scale - h;
+        charPos += ch.Advance * Scale;
 
-        float x2 = x1 + w;
-        float y2 = y1 + h;
-
-        charX += ch.Advance.x * Scale;
-        charY += ch.Advance.y * Scale;
-
-        if (w == 0 || h == 0) {
+        if (size.x == 0 || size.y == 0) {
             continue;
         }
 
-        float texX1 = ch.OffsetX;
-        float texX2 = ch.OffsetX + ch.BitmapSize.x / TEXT_ATLAS_WIDTH;
-        float texY2 = ch.BitmapSize.y / TEXT_ATLAS_HEIGHT;
+        glm::vec2 t1 = ch.Offset;
+        glm::vec2 t2 = t1 + ch.BitmapSize / static_cast<glm::vec2>(TEXT_ATLAS_SIZE);
 
         Extend(data,
-            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y1, texX2, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
-            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
-            x1, y2, texX1, 0,     textColor.r, textColor.g, textColor.b
+            p1.x, p1.y, t1.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p1.y, t2.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p2.y, t2.x, t1.y, EXPAND_VEC3(textColor),
+            p1.x, p1.y, t1.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p2.y, t2.x, t1.y, EXPAND_VEC3(textColor),
+            p1.x, p2.y, t1.x, t1.y, EXPAND_VEC3(textColor)
         );
     }
 
@@ -352,8 +355,14 @@ void TextElement::Draw() {
 
 float TextElement::Get_Width() {
     float width = 0;
+    bool skipNext = false;
 
     for (char const &c : Text) {
+        if (c == '&' || skipNext) {
+            skipNext = (c == '&');
+            continue;
+        }
+
         width += Characters[c].Advance.x * Scale;
     }
 
@@ -713,6 +722,8 @@ TextBox::TextBox(float x, float y, float w, float h) {
 
     Cursor.Create("|", x + TEXT_BOX_HORZ_PADDING, y + textPad);
     TextEl.Create(Text, x + TEXT_BOX_HORZ_PADDING, y + textPad);
+
+    Cursor.Opacity = 0;
 }
 
 void TextBox::Key_Handler(int key) {
@@ -820,8 +831,8 @@ void Interface::Init_Text() {
 
     for (unsigned char c = 32; c < TEXT_GLYPHS; c++) {
         FT_Load_Char(face, c, FT_LOAD_RENDER);
-        TEXT_ATLAS_WIDTH += g->bitmap.width;
-        TEXT_ATLAS_HEIGHT = std::max(TEXT_ATLAS_HEIGHT, static_cast<int>(g->bitmap.rows));
+        TEXT_ATLAS_SIZE.x += g->bitmap.width;
+        TEXT_ATLAS_SIZE.y = std::max(TEXT_ATLAS_SIZE.y, static_cast<int>(g->bitmap.rows));
     }
 
     unsigned int textAtlas;
@@ -837,7 +848,7 @@ void Interface::Init_Text() {
 
     glTexImage2D(
         GL_TEXTURE_2D, 0, GL_RED,
-        TEXT_ATLAS_WIDTH, TEXT_ATLAS_HEIGHT,
+        TEXT_ATLAS_SIZE.x, TEXT_ATLAS_SIZE.y,
         0, GL_RED, GL_UNSIGNED_BYTE, NULL
     );
 
@@ -871,7 +882,11 @@ void Interface::Init_Text() {
             g->bitmap_top
         );
 
-        ch.OffsetX = static_cast<float>(xOffset) / TEXT_ATLAS_WIDTH;
+        ch.Offset = glm::vec2(
+            static_cast<float>(xOffset) / TEXT_ATLAS_SIZE.x,
+            0
+        );
+
         Characters[static_cast<char>(c)] = ch;
 
         xOffset += g->bitmap.width;

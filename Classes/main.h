@@ -40,7 +40,6 @@ class Shader;
 class Listener;
 class Inventory;
 struct GLFWwindow;
-class NetworkClient;
 
 // Declaring shaders.
 extern Shader* shader;
@@ -55,7 +54,6 @@ extern Player player;
 extern Listener listener;
 extern Inventory inventory;
 extern GLFWwindow* Window;
-extern NetworkClient Client;
 
 extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
 

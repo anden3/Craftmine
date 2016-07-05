@@ -971,12 +971,12 @@ void Player::Request_Handler(std::string packet, bool sending) {
     if (sending) {
         if (packet == "blockBreak") {
             data["events"]["blockBreak"]["player"] = PLAYER_NAME;
-            data["events"]["blockBreak"]["pos"] = Client.Format_Vector(
+            data["events"]["blockBreak"]["pos"] = Network::Format_Vector(
                 Get_World_Pos(LookingChunk, LookingTile)
             );
         }
 
-        Client.Send(data.dump());
+        Network::Send(data.dump());
     }
     else {
         data = nlohmann::json::parse(packet);

@@ -4,6 +4,10 @@
 
 #include "Buffer.h"
 
+#define EXPAND_VEC2(V) V.x, V.y
+#define EXPAND_VEC3(V) V.x, V.y, V.z
+#define EXPAND_VEC4(V) V.x, V.y, V.z, V.w
+
 typedef void (Func)(void);
 typedef std::vector<float> Data;
 
@@ -101,15 +105,16 @@ public:
     glm::vec3 Color;
 
     TextElement() {}
-    TextElement(std::string text, float x, float y, float opacity = 1.0f,
-                glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f)
-    {
-        Create(text, x, y, opacity, color, scale);
-    }
+    TextElement(std::string text, float x, float y) { Create(text, x, y); }
 
     void Create(std::string text, float x, float y, float opacity = 1.0f,
-        glm::vec3 color = glm::vec3(1.0f), float scale = 1.0f);
-    void Center(float x, float y, float width);
+        glm::vec3 color = {1, 1, 1}, float scale = 1.0f);
+    
+    inline void Center(glm::vec2 pos, float width, glm::bvec2 axes = {true, true}) {
+        Center(pos.x, pos.y, width, axes);
+    }
+    void Center(float x, float y, float width, glm::bvec2 axes = {true, true});
+
     void Set_Text(std::string newText);
 
     void Mesh();
@@ -117,6 +122,12 @@ public:
 
 private:
     Buffer TextBuffer;
+
+    float OriginalX = 0;
+    float OriginalY = 0;
+    float CenterWidth = 0;
+    glm::bvec2 Centered = {false, false};
+
     float Get_Width();
 };
 
@@ -255,7 +266,7 @@ private:
     TextElement Cursor;
 
     unsigned long CursorPos = 0;
-    bool CursorVisible = true;
+    bool CursorVisible = false;
 
     float TextWidth = 0.0f;
     float MaxWidth = 0.0f;
@@ -308,31 +319,31 @@ namespace Interface {
     void Add_Slider    (std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
 
     inline void Add_Text(std::string name, std::string text, glm::vec2 pos) {
-        Add_Text(name, text, pos.x, pos.y);
+        Add_Text(name, text, EXPAND_VEC2(pos));
     }
 
     inline void Add_Text_Box(std::string name, glm::vec4 dims) {
-        Add_Text_Box(name, dims.x, dims.y, dims.z, dims.w);
+        Add_Text_Box(name, EXPAND_VEC4(dims));
     }
 
     inline void Add_Button(std::string name, std::string text, glm::vec4 dims, Func &function) {
-        Add_Button(name, text, dims.x, dims.y, dims.z, dims.w, function);
+        Add_Button(name, text, EXPAND_VEC4(dims), function);
     }
 
     inline void Add_Slider(std::string name, std::string text, glm::vec4 dims, glm::vec3 range, Func &function) {
-        Add_Slider(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z, function);
+        Add_Slider(name, text, EXPAND_VEC4(dims), EXPAND_VEC3(range), function);
     }
 
     inline void Add_Bar(std::string name, std::string text, glm::vec4 dims, glm::vec3 range) {
-        Add_Bar(name, text, dims.x, dims.y, dims.z, dims.w, range.x, range.y, range.z);
+        Add_Bar(name, text, EXPAND_VEC4(dims), EXPAND_VEC3(range));
     }
 
     inline void Add_Image(std::string name, std::string path, int texID, glm::vec3 dims) {
-        Interface::Add_Image(name, path, texID, dims.x, dims.y, dims.z);
+        Interface::Add_Image(name, path, texID, EXPAND_VEC3(dims));
     }
 
     inline void Add_3D_Element(std::string name, int type, int data, glm::vec2 pos, float scale) {
-        Add_3D_Element(name, type, data, pos.x, pos.y, scale);
+        Add_3D_Element(name, type, data, EXPAND_VEC2(pos), scale);
     }
 
     void Delete_Bar       (std::string name);

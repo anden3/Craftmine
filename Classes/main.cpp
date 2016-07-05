@@ -45,7 +45,6 @@ Camera Cam = Camera();
 Player player = Player();
 Listener listener = Listener();
 Inventory inventory = Inventory();
-NetworkClient Client = NetworkClient();
 
 // Defining buffers.
 static UniformBuffer UBO;
@@ -128,11 +127,7 @@ int main() {
     std::thread chunkGeneration(Background_Thread);
 
     player.Queue_Chunks();
-    Client.Init(PLAYER_NAME);
-
-    if (Multiplayer) {
-        Client.Connect("localhost", 1234);
-    }
+    Network::Init();
 
     // The main loop.
     // Runs until window is closed.
@@ -149,7 +144,7 @@ int main() {
         glfwPollEvents();
 
         if (Multiplayer) {
-            Client.Update();
+            Network::Update();
         }
 
         if (!GamePaused) {
@@ -177,8 +172,8 @@ int main() {
     }
 
     if (Multiplayer) {
-        Client.Disconnect();
-        Client.Update(1000);
+        Network::Disconnect();
+        Network::Update(1000);
     }
 
     // On shutting down, join the chunk generation thread with the main thread.

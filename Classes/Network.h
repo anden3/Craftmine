@@ -5,22 +5,22 @@
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
-class NetworkClient {
-  public:
-    void Init(std::string name);
+namespace Network {
+    void Init();
     void Update(unsigned int timeout = 0);
 
-    void Connect(std::string host, int port);
+    std::string Connect(std::string name, std::string host);
     void Disconnect();
 
-    void Send(std::string message, int channel = 0);
+    void Send(std::string message, unsigned char channel = 0);
 
-    inline std::string Format_Vector(glm::ivec2 vector) { return std::to_string(vector.x) + "," + std::to_string(vector.y); }
-    inline std::string Format_Vector(glm::ivec3 vector) { return std::to_string(vector.x) + "," + std::to_string(vector.y) + "," + std::to_string(vector.z); }
+    inline std::string Format_Vector(glm::ivec2 vector) {
+		return std::to_string(vector.x) + "," + std::to_string(vector.y);
+	}
+    inline std::string Format_Vector(glm::ivec3 vector) {
+		return std::to_string(vector.x) + "," + std::to_string(vector.y) + "," + std::to_string(vector.z);
+	}
     inline std::string Format_Vector(glm::ivec4 vector) {
         return std::to_string(vector.x) + "," + std::to_string(vector.y) + "," + std::to_string(vector.z) + "," + std::to_string(vector.w);
     }
-
-  private:
-    std::string ClientName = "";
 };
