@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 
 #include "main.h"
+#include "Blocks.h"
 #include "Interface.h"
 
 const int SLOTS_X = 10;
@@ -143,7 +144,7 @@ public:
             }
 
             else {
-                if (c != ' ' ) {
+                if (c != ' ') {
                     rgx += c;
                 }
                 else if (!ignoreNextSpace) {
@@ -173,48 +174,48 @@ static std::map<int, std::vector<Recipe>> Recipes = {
     // []  == Repeating n times, where n is any of the numbers in the set.
 
     {1, std::vector<Recipe> {
-        Recipe("% 17 %", Stack(5, 4)), // Wooden Planks
+        {"% 17 %", {5, 4}}, // Wooden Planks
     }},
 
     {2, std::vector<Recipe> {
-        Recipe("% 5 (0)2 5 %",     Stack(280, 4)), // Stick
-        Recipe("% 280 (0)2 4 %",   Stack(69)),     // Lever
-        Recipe("% 263 (0)2 280 %", Stack(50, 4)),  // Torch
+        {"% 5 (0)2 5 %",     {280, 4}}, // Stick
+        {"% 280 (0)2 4 %",   {69}},     // Lever
+        {"% 263 (0)2 280 %", {50, 4}},  // Torch
     }},
 
     {3, std::vector<Recipe> {
-        Recipe("% 265 (0 0 280)2 %", Stack(256)),   // Iron Shovel
-        Recipe("(0)[0,3,6] (1)3 %",  Stack(44, 6)), // Stone Slab
+        {"% 265 (0 0 280)2 %", {256}},   // Iron Shovel
+        {"(0)[0,3,6] (1)3 %",  {44, 6}}, // Stone Slab
     }},
 
     {4, std::vector<Recipe> {
-        Recipe("% (5)2 0 (5)2 %",   Stack(58)), // Crafting Table
-        Recipe("% (12)2 0 (12)2 %", Stack(24)), // Sandstone
+        {"% (5)2 0 (5)2 %",   {58}}, // Crafting Table
+        {"% (12)2 0 (12)2 %", {24}}, // Sandstone
     }},
 
     {5, std::vector<Recipe> {
-        Recipe("% (265)2 0 265 280 (0)2 280 %", Stack(258)), // Iron Axe
-        Recipe("(265)3 (0 280 0)2",             Stack(257)), // Iron Pickaxe
+        {"% (265)2 0 265 280 (0)2 280 %", {258}}, // Iron Axe
+        {"(265)3 (0 280 0)2",             {257}}, // Iron Pickaxe
     }},
 
     {6, std::vector<Recipe> {
-        Recipe("(0)[0,3] (35)3 (5)3 %", Stack(26)), // Bed
+        {"(0)[0,3] (35)3 (5)3 %", {26}}, // Bed
     }},
 
     {7, std::vector<Recipe> {
-        Recipe("265 0 (265)2 280 (265)2 0 265", Stack(66, 16)), // Rail
-        Recipe("280 0 (280)5 0 280",            Stack(65, 4)),  // Ladder
+        {"265 0 (265)2 280 (265)2 0 265", {66, 16}}, // Rail
+        {"280 0 (280)5 0 280",            {65, 4}},  // Ladder
     }},
 
     {8, std::vector<Recipe> {
-        Recipe("(4)4 0 (4)4", Stack(61)), // Furnace
-        Recipe("(5)4 0 (5)4", Stack(54)), // Chest
+        {"(4)4 0 (4)4", {61}}, // Furnace
+        {"(5)4 0 (5)4", {54}}, // Chest
     }},
 
     {9, std::vector<Recipe> {
-        Recipe("(264)9", Stack(57)), // Diamond Block
-        Recipe("(265)9", Stack(42)), // Iron Block
-        Recipe("(266)9", Stack(41)), // Gold Block
+        {"(264)9", {57}}, // Diamond Block
+        {"(265)9", {42}}, // Iron Block
+        {"(266)9", {41}}, // Gold Block
     }}
 };
 
@@ -247,8 +248,10 @@ void Inventory::Init() {
 
     for (int i = 0; i < INV_SIZE; i++) {
         std::string name = std::to_string(i);
-        glm::vec2 pos(std::floor(invDims.x + (i % SLOTS_X) * slotWidth.x),
-            std::floor((i < SLOTS_X) ? invBarDims.y : invDims.y + ((i / SLOTS_X) - 1) * slotWidth.y));
+        glm::vec2 pos(
+            std::floor(invDims.x + (i % SLOTS_X) * slotWidth.x),
+            std::floor((i < SLOTS_X) ? invBarDims.y : invDims.y + ((i / SLOTS_X) - 1) * slotWidth.y)
+        );
 
         Inv.push_back(Stack());
         Interface::Add_Text(name, "0", pos + slotPad);
@@ -284,10 +287,10 @@ void Inventory::Init() {
     Interface::Add_3D_Element("mouseStack", 0, 0, 0, 0, BLOCK_SCALE);
 
     Interface::Set_Document("toolbar");
-
-    Interface::Add_Background("bgToolbar", barDims, true, slotWidth / 2.0f);
-    Interface::Add_Background("selectToolbar", glm::vec4(barDims.xy(), slotWidth.x / 2.0f, barDims.w), true, slotWidth / 2.0f);
-    Interface::Get_Background("selectToolbar")->Color = glm::vec3(0.7f);
+        Interface::Add_Background("bgToolbar", barDims, true, slotWidth / 2.0f);
+        Interface::Add_Background("selectToolbar", glm::vec4(barDims.xy(), slotWidth.x / 2.0f, barDims.w), true, slotWidth / 2.0f);
+        Interface::Get_Background("selectToolbar")->Color = glm::vec3(0.7f);
+    Interface::Set_Document("");
 
     Switch_Slot();
 }
@@ -522,8 +525,12 @@ void Inventory::Check_Crafting() {
 
     for (auto const &recipe : Recipes[blocks]) {
         if (recipe.Check(grid)) {
-            CraftingOutput = recipe.Result;
-            Mesh();
+            // Checks if recipe result exists :P
+            if (Blocks::Exists(recipe.Result.Type, recipe.Result.Data)) {
+                CraftingOutput = recipe.Result;
+                Mesh();
+            }
+
             return;
         }
     }
@@ -674,8 +681,9 @@ void Inventory::Mouse_Handler(double x, double y) {
         mouseStack->Set_Text(std::to_string(HoldingStack.Size));
     }
 
-    Interface::Get_3D_Element("mouseStack")->Mesh(HoldingStack.Type, HoldingStack.Data,
-        static_cast<float>(x), static_cast<float>(mouseY));
+    Interface::Get_3D_Element("mouseStack")->Mesh(
+        HoldingStack.Type, HoldingStack.Data, static_cast<float>(x), static_cast<float>(mouseY)
+    );
     Interface::Set_Document("");
 }
 

@@ -39,10 +39,8 @@ extern GLFWwindow* Window;
 
 extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 
-extern int WORLD_SEED;
 extern std::string WORLD_NAME;
-
-// TODO: Interpolate lighting by having different values for vertices per block.
+extern int WORLD_SEED;
 
 // The color that the screen gets filled with when the color buffer is cleared.
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);

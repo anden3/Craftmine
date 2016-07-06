@@ -20,6 +20,7 @@ namespace Worlds {
     void Create_World(std::string name, int seed);
     void Delete_World(std::string name);
 
+    void Save_World();
     void Load_World(int seed);
 
     std::vector<World> Get_Worlds();

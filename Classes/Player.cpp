@@ -567,6 +567,8 @@ void Player::Teleport(glm::vec3 pos) {
     WorldPos = pos;
 
     std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
+    LookingChunk = CurrentChunk;
+    LookingTile = CurrentTile;
 
     Update(true);
     Queue_Chunks();

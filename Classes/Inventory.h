@@ -33,7 +33,7 @@ struct Stack {
 
     int Type;
     int Size;
-    int Data;
+    int Data = 0;
 };
 
 extern bool keys[1024];
@@ -71,7 +71,6 @@ public:
     void Mesh();
     void Draw();
 
-private:
     std::vector<Stack> Inv;
     std::vector<Stack> Craft;
     std::vector<Stack> Toolbar;
@@ -79,6 +78,7 @@ private:
     Stack CraftingOutput = Stack();
     Stack HoldingStack = Stack();
 
+private:
     glm::dvec2 MousePos = glm::dvec2(0);
 
     int HoveringSlot = -1;

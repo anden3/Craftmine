@@ -883,28 +883,12 @@ void Interface::Init_Text() {
             GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer
         );
 
-        ch.Advance = glm::vec2(
-            g->advance.x >> 6,
-            g->advance.y >> 6
-        );
-
-        ch.BitmapSize = glm::vec2(
-            g->bitmap.width,
-            g->bitmap.rows
-        );
-
-        ch.BitmapOffset = glm::vec2(
-            g->bitmap_left,
-            g->bitmap_top
-        );
-
-        ch.Offset = glm::vec2(
-            static_cast<float>(xOffset) / TEXT_ATLAS_SIZE.x,
-            0
-        );
+        ch.Advance = glm::vec2(g->advance.x >> 6, g->advance.y >> 6);
+        ch.BitmapSize = glm::vec2(g->bitmap.width, g->bitmap.rows);
+        ch.BitmapOffset = glm::vec2(g->bitmap_left, g->bitmap_top);
+        ch.Offset = glm::vec2(static_cast<float>(xOffset) / TEXT_ATLAS_SIZE.x, 0);
 
         Characters[static_cast<char>(c)] = ch;
-
         xOffset += g->bitmap.width;
     }
 
@@ -1095,9 +1079,7 @@ namespace Interface {
         Images[ActiveDocument].emplace(name, Image(name, path, texID, x, y, scale));
     }
     void Add_Background(std::string name, glm::vec4 dims, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
-        Backgrounds[ActiveDocument].emplace(
-            name, Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad)
-        );
+        Backgrounds[ActiveDocument].emplace(name, Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad));
     }
     void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
         OrthoElements[ActiveDocument].emplace(name, OrthoElement(name, type, data, x, y, scale));

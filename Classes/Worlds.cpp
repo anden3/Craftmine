@@ -2,7 +2,9 @@
 
 #include "main.h"
 #include "Chunk.h"
+#include "Camera.h"
 #include "Player.h"
+#include "Inventory.h"
 
 #include <fstream>
 #include <sstream>
@@ -54,7 +56,7 @@ void Worlds::Create_World(std::string name, int seed) {
     properties["name"] = name;
     properties["seed"] = seed;
 
-    std::ofstream propFile("Worlds/" + name + "/properties.json", std::fstream::out);
+    std::ofstream propFile("Worlds/" + name + "/Properties.json");
     propFile << properties;
 }
 
@@ -62,8 +64,101 @@ void Worlds::Delete_World(std::string name) {
     boost::filesystem::remove_all("Worlds/" + name);
 }
 
+void Add_Storage_Data(nlohmann::json &dest, std::string type, std::vector<Stack> &storage) {
+    int currentSlot = 0;
+
+    for (auto const &item : storage) {
+        if (!item.Type) {
+            ++currentSlot;
+            continue;
+        }
+
+        if (item.Data) {
+            dest["Storage"][type][std::to_string(currentSlot)] = { item.Type, item.Data, item.Size };
+        }
+        else {
+            dest["Storage"][type][std::to_string(currentSlot)] = { item.Type, item.Size };
+        }
+
+        ++currentSlot;
+    }
+}
+
+void Load_Storage_Data(nlohmann::json &src, std::string type, std::vector<Stack> &storage) {
+    if (!src.count("Storage") || !src["Storage"].count(type)) {
+        return;
+    }
+
+    for (auto it = src["Storage"][type].begin(); it != src["Storage"][type].end(); ++it) {
+        if (it.value().size() == 3) {
+            storage[std::stoul(it.key())] = {
+                it.value()[0], it.value()[1], it.value()[2]
+            };
+        }
+        else {
+            storage[std::stoul(it.key())] = Stack(
+                it.value()[0].get<int>(), it.value()[1]
+            );
+        }
+    }
+}
+
+void Worlds::Save_World() {
+    nlohmann::json playerData;
+
+    playerData["Position"] = {
+        player.WorldPos.x, player.WorldPos.y, player.WorldPos.z
+    };
+
+    playerData["Yaw"]   = Cam.Yaw;
+    playerData["Pitch"] = Cam.Pitch;
+
+    if (inventory.HoldingStack.Type) {
+        inventory.Add_Stack(inventory.HoldingStack);
+        inventory.HoldingStack.Clear();
+    }
+
+    Add_Storage_Data(playerData, "Inventory", inventory.Inv);
+    Add_Storage_Data(playerData, "Toolbar", inventory.Toolbar);
+    Add_Storage_Data(playerData, "Crafting", inventory.Craft);
+
+    if (inventory.CraftingOutput.Type) {
+        playerData["Storage"]["CraftingOutput"] = {
+            inventory.CraftingOutput.Type,
+            inventory.CraftingOutput.Data,
+            inventory.CraftingOutput.Size
+        };
+    }
+
+    std::ofstream dataFile("Worlds/" + WORLD_NAME + "/Player.json", std::ofstream::trunc);
+    dataFile << playerData;
+}
+
 void Worlds::Load_World(int seed) {
+    inventory.Clear();
     ChunkMap.clear();
+
+    std::ifstream dataFile("Worlds/" + WORLD_NAME + "/Player.json");
+
+    if (dataFile.good()) {
+        nlohmann::json playerData;
+        playerData << dataFile;
+
+        Cam.Yaw   = playerData["Yaw"];
+        Cam.Pitch = playerData["Pitch"];
+        Cam.UpdateCameraVectors();
+
+        player.Teleport(glm::vec3(
+            playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
+        ));
+
+        Load_Storage_Data(playerData, "Inventory", inventory.Inv);
+        Load_Storage_Data(playerData, "Toolbar", inventory.Toolbar);
+        Load_Storage_Data(playerData, "Crafting", inventory.Craft);
+
+        inventory.Mesh();
+    }
+
     Chunks::Seed(seed);
     player.Queue_Chunks(true);
 }
@@ -84,7 +179,7 @@ std::vector<World> Worlds::Get_Worlds() {
         nlohmann::json json;
         std::stringstream file_content;
 
-        std::ifstream file("Worlds/" + dirName + "/properties.json");
+        std::ifstream file("Worlds/" + dirName + "/Properties.json");
         file_content << file.rdbuf();
         file.close();
 

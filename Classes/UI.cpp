@@ -432,6 +432,10 @@ void Toggle_Title(void* caller) {
     ShowTitle = !ShowTitle;
     GamePaused = ShowTitle;
     UI::Toggle_Mouse(ShowTitle);
+
+    if (ShowTitle && WORLD_NAME != "") {
+        Worlds::Save_World();
+    }
 }
 
 void Toggle_Game_Menu() {

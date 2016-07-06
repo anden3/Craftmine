@@ -20,6 +20,7 @@
 #include "Entity.h"
 #include "Player.h"
 #include "Shader.h"
+#include "Worlds.h"
 #include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -29,8 +30,8 @@ const float Z_NEAR_LIMIT = 0.04f;
 const float Z_FAR_LIMIT = 1000.0f;
 
 // Setting default values for variables.
-int WORLD_SEED = 0;
 std::string WORLD_NAME = "";
+int WORLD_SEED = 0;
 
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
@@ -171,6 +172,10 @@ int main() {
 
         // Swap the newly rendered frame with the old one.
         glfwSwapBuffers(Window);
+    }
+
+    if (WORLD_NAME != "") {
+        Worlds::Save_World();
     }
 
     if (Multiplayer) {
