@@ -2,12 +2,17 @@
 
 #include "main.h"
 #include "Chunk.h"
+#include "Player.h"
 
 #include <fstream>
 #include <sstream>
 
 #include <dirent.h>
 #include <json.hpp>
+
+#include <boost/filesystem.hpp>
+
+static std::map<std::string, int> WorldList;
 
 // Only works for uppercase.
 constexpr int Hex_To_Dec(char hex) {
@@ -21,17 +26,74 @@ constexpr char Dec_To_Hex(int val) {
     return static_cast<char>(val + '0');
 }
 
-void Worlds::Get_Worlds() {
+int Worlds::Get_Seed(std::string name) {
+    if (WorldList.count(name)) {
+        return WorldList[name];
+    }
+    return 0;
+}
+
+std::string Worlds::Get_Name(int seed) {
+    for (auto const &world : WorldList) {
+        if (world.second == seed) {
+            return world.first;
+        }
+    }
+
+    return "";
+}
+
+void Worlds::Create_World(std::string name, int seed) {
+    boost::filesystem::path newWorld("Worlds/" + name);
+    boost::filesystem::create_directory(newWorld);
+
+    newWorld += "/Chunks";
+    boost::filesystem::create_directory(newWorld);
+
+    nlohmann::json properties;
+    properties["name"] = name;
+    properties["seed"] = seed;
+
+    std::ofstream propFile("Worlds/" + name + "/properties.json", std::fstream::out);
+    propFile << properties;
+}
+
+void Worlds::Delete_World(std::string name) {
+    boost::filesystem::remove_all("Worlds/" + name);
+}
+
+void Worlds::Load_World(int seed) {
+    ChunkMap.clear();
+    Chunks::Seed(seed);
+    player.Queue_Chunks(true);
+}
+
+std::vector<World> Worlds::Get_Worlds() {
+    std::vector<World> worlds;
+
     DIR* worldDir = opendir("Worlds");
     struct dirent* worldEnt;
 
     while ((worldEnt = readdir(worldDir)) != nullptr) {
-        std::string fileName(worldEnt->d_name);
+        std::string dirName(worldEnt->d_name);
 
-        if (fileName == "." || fileName == "..") {
+        if (dirName == "." || dirName == "..") {
             continue;
         }
+
+        nlohmann::json json;
+        std::stringstream file_content;
+
+        std::ifstream file("Worlds/" + dirName + "/properties.json");
+        file_content << file.rdbuf();
+        file.close();
+
+        json << file_content;
+        worlds.emplace_back(World(json["name"], json["seed"]));
+        WorldList[json["name"]] = json["seed"];
     }
+
+    return worlds;
 }
 
 void Worlds::Save_Chunk(std::string world, glm::vec3 chunkPos) {

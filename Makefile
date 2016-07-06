@@ -4,7 +4,7 @@ DIRECTORY=$(shell pwd)
 HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
 	-isystem /usr/local/include/freetype2
 
-LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
+LIBRARIES=boost_filesystem boost_system enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
 ITEMS_TO_COPY=BlockData Fonts Images Shaders Sounds Worlds config.conf
 APP_DIRECTORIES=. MacOS Resources Frameworks

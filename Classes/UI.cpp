@@ -10,6 +10,8 @@
 #include "Interface.h"
 #include "Inventory.h"
 
+#include <numeric>
+
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
 
@@ -28,29 +30,37 @@ static bool ShowWorlds = false;
 
 const std::string BoolStrings[2] = {"False", "True"};
 
-void Init_Title();
 void Init_Menu();
+void Init_Debug();
+void Init_Title();
 void Init_World_Select();
 void Init_Server_Screen();
-void Init_Debug();
 
-void Toggle_Title();
-void Toggle_Game_Menu();
-void Toggle_Server_Screen();
-void Toggle_Inventory();
+void Create_World_List();
+
 void Toggle_Debug();
+void Toggle_Inventory();
+void Toggle_Game_Menu();
+
+void Toggle_Title(void* caller);
+void Toggle_World_Screen(void* caller);
+void Toggle_Server_Screen(void* caller);
 
 void Draw_Debug();
 
 void Bind_Current_Document();
 
-void Toggle_Options_Menu();
-void Toggle_VSync();
-void Toggle_AO();
-void Toggle_Wireframe();
-void Change_Render_Distance();
+void Toggle_AO(void* caller);
+void Toggle_VSync(void* caller);
+void Toggle_Wireframe(void* caller);
+void Toggle_Options_Menu(void* caller);
+void Change_Render_Distance(void* caller);
 
-void Connect_To_Server();
+void Create_World(void* caller);
+void Load_World(void* caller);
+void Delete_World(void* caller);
+
+void Connect_To_Server(void* caller);
 
 void UI::Init() {
     Interface::Init();
@@ -244,7 +254,7 @@ void Init_Title() {
         Interface::Add_Image("titleLogo", "logo.png", 3, logoDims);
         Interface::Get_Image("titleLogo")->Center();
 
-        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, Toggle_Title);
+        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, Toggle_World_Screen);
         Interface::Add_Button("titleMulti", "Multi Player", multiButtonDims, Toggle_Server_Screen);
         Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
         Interface::Add_Button("titleExit", "Quit", exitButtonDims, Exit);
@@ -300,12 +310,60 @@ void Init_Menu() {
 }
 
 void Init_World_Select() {
+    glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    glm::vec2 newNameLabelDims(Scale(100, 840));
+    glm::vec4 newNameDims(Scale(100, 800), Scale(200, 35));
+
+    glm::vec2 newSeedLabelDims(Scale(100, 740));
+    glm::vec4 newSeedDims(Scale(100, 700), Scale(200, 35));
+
+    glm::vec4 newWorldDims(Scale(100, 600), Scale(200, 40));
+    glm::vec4 backButtonDims(Scale(620, 200), Scale(200, 40));
+
     Interface::Set_Document("worlds");
+        Interface::Add_Background("worldBg", bgDims);
+        Interface::Get_Background("worldBg")->Color = glm::vec3(0.2f);
+        Interface::Get_Background("worldBg")->Opacity = 1.0f;
 
-    Worlds::Get_Worlds();
+        Interface::Add_Text("worldNewNameLabel", "Name:", newNameLabelDims);
+        Interface::Add_Text_Box("worldNewName", newNameDims);
 
-    Worlds::Load_Chunk("Test", glm::vec3(0, 0, 0));
+        Interface::Add_Text("worldNewSeedLabel", "Seed:", newSeedLabelDims);
+        Interface::Add_Text_Box("worldNewSeed", newSeedDims);
 
+        Interface::Add_Button("worldCreate", "Create New World", newWorldDims, Create_World);
+        Interface::Add_Button("worldBack", "Back", backButtonDims, Toggle_World_Screen);
+    Interface::Set_Document("");
+
+    Create_World_List();
+}
+
+void Create_World_List() {
+    float worldStartY = 800;
+    float worldSpacing = 100;
+
+    float worldXPos = Scale_X(520);
+    glm::vec2 worldSize(Scale(350, 40));
+
+    float deleteButtonXPos = Scale_X(880);
+    glm::vec2 deleteButtonSize(Scale(40, 40));
+
+    Interface::Set_Document("worlds");
+        for (auto const &world : Worlds::Get_Worlds()) {
+            Interface::Delete_Button(world.Name);
+            Interface::Delete_Button("remove_" + world.Name);
+
+            Interface::Add_Button(
+                world.Name, world.Name, glm::vec4(worldXPos, Scale_Y(worldStartY), worldSize), Load_World
+            );
+
+            Interface::Add_Button(
+                "remove_" + world.Name, "X", glm::vec4(deleteButtonXPos, Scale_Y(worldStartY), deleteButtonSize), Delete_World
+            );
+
+            worldStartY -= worldSpacing;
+        }
     Interface::Set_Document("");
 }
 
@@ -355,7 +413,15 @@ void Init_Debug() {
     Interface::Set_Document("");
 }
 
-void Toggle_Title() {
+#ifdef __clang__
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wunused-parameter"
+#elif _MSC_VER
+    #pragma warning(push)
+    #pragma warning(disable: 4100)
+#endif
+
+void Toggle_Title(void* caller) {
     ShowGameMenu = false;
     ShowOptions = false;
     ShowInventory = false;
@@ -379,7 +445,11 @@ void Toggle_Game_Menu() {
     }
 }
 
-void Toggle_Server_Screen() {
+void Toggle_World_Screen(void* caller) {
+    ShowWorlds = !ShowWorlds;
+}
+
+void Toggle_Server_Screen(void* caller) {
     ShowServers = !ShowServers;
 }
 
@@ -440,52 +510,39 @@ void Draw_Debug() {
     Interface::Draw_Document("debug");
 }
 
-void Toggle_Options_Menu() {
+void Toggle_Options_Menu(void* caller) {
     ShowOptions = !ShowOptions;
 }
 
-void Toggle_VSync() {
+void Toggle_VSync(void* caller) {
     VSYNC = !VSYNC;
-
-    Bind_Current_Document();
-    Interface::Get_Button("option_vsync")->Text.Set_Text(
-        "V-Sync: " + BoolStrings[VSYNC]
-    );
-    Interface::Set_Document("");
+    static_cast<Button*>(caller)->Text.Set_Text("V-Sync: " + BoolStrings[VSYNC]);
 
     glfwSwapInterval(VSYNC);
     Write_Config();
 }
 
-void Toggle_AO() {
+void Toggle_AO(void* caller) {
     AMBIENT_OCCLUSION = !AMBIENT_OCCLUSION;
-
-    Bind_Current_Document();
-    Interface::Get_Button("option_ao")->Text.Set_Text(
-        "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION]
-    );
-    Interface::Set_Document("");
+    static_cast<Button*>(caller)->Text.Set_Text("Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION]);
 
     Write_Config();
     player.Queue_Chunks(true);
 }
 
-void Toggle_Wireframe() {
-    ToggleWireframe = true;
-
-    Bind_Current_Document();
-    Interface::Get_Button("option_wireframe")->Text.Set_Text(
-        "Wireframe: " + BoolStrings[!Wireframe]
-    );
-    Interface::Set_Document("");
+void Toggle_Wireframe(void* caller) {
+    if (ToggleWireframe) {
+        ToggleWireframe = false;
+        static_cast<Button*>(caller)->Text.Set_Text("Wireframe: False");
+    }
+    else {
+        ToggleWireframe = true;
+        static_cast<Button*>(caller)->Text.Set_Text("Wireframe: " + BoolStrings[!Wireframe]);
+    }
 }
 
-void Change_Render_Distance() {
-    Bind_Current_Document();
-    Slider* slider = Interface::Get_Slider("option_renderDistance");
-    Interface::Set_Document("");
-
-    int value = static_cast<int>(std::ceil(slider->Value));
+void Change_Render_Distance(void* caller) {
+    int value = static_cast<int>(std::ceil(static_cast<Slider*>(caller)->Value));
 
     if (value != RENDER_DISTANCE) {
         RENDER_DISTANCE = value;
@@ -495,7 +552,66 @@ void Change_Render_Distance() {
     }
 }
 
-void Connect_To_Server() {
+void Create_World(void* caller) {
+    Interface::Set_Document("worlds");
+        TextBox* name = Interface::Get_Text_Box("worldNewName");
+        TextBox* seed = Interface::Get_Text_Box("worldNewSeed");
+    Interface::Set_Document("");
+
+    std::string worldName = name->Text;
+    name->Clear();
+
+    std::string seedStr = seed->Text;
+    seed->Clear();
+
+    // Check if world already exists.
+    if (Worlds::Get_Seed(worldName) != 0) {
+        return;
+    }
+
+    if (seedStr.length() >= 20) {
+        seedStr = seedStr.substr(0, 19);
+    }
+    
+    int worldSeed;
+
+    try {
+        // Prevent integer overflow.
+        worldSeed = std::stoll(seedStr) % 2147483647;
+    }
+    catch (std::invalid_argument) {
+        unsigned long long stringSum = std::accumulate(seedStr.begin(), seedStr.end(), static_cast<unsigned long long>(0));
+        worldSeed = stringSum % 2147483647;
+    }
+    
+    Worlds::Create_World(worldName, worldSeed);
+    Create_World_List();
+}
+
+void Load_World(void* caller) {
+    WORLD_NAME = static_cast<Button*>(caller)->Text.Text;
+    Worlds::Load_World(Worlds::Get_Seed(WORLD_NAME));
+
+    ShowWorlds = false;
+    ShowTitle = false;
+    GamePaused = false;
+    UI::Toggle_Mouse(false);
+}
+
+void Delete_World(void* caller) {
+    // Remove remove_ prefix.
+    std::string worldName = static_cast<Button*>(caller)->Name.substr(7);
+
+    Interface::Set_Document("worlds");
+        Interface::Delete_Button(worldName);
+        Interface::Delete_Button("remove_" + worldName);
+    Interface::Set_Document("");
+
+    Worlds::Delete_World(worldName);
+    Create_World_List();
+}
+
+void Connect_To_Server(void* caller) {
     Interface::Set_Document("servers");
         TextElement* errMsg = Interface::Get_Text_Element("errMsg");
         std::string name = Interface::Get_Text_Box("name")->Text;
@@ -512,3 +628,9 @@ void Connect_To_Server() {
         errMsg->Set_Text(connectionStatus);
     }
 }
+
+#ifdef __clang__
+    #pragma clang diagnostic pop
+#elif _MSC_VER
+    #pragma warning(pop)
+#endif

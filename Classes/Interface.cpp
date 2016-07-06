@@ -254,12 +254,13 @@ void Take_Screenshot() {
     );
 }
 
-void TextElement::Create(std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
+void TextElement::Create(std::string name, std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
     OriginalX = x;
     OriginalY = y;
 
     X = x;
     Y = y;
+    Name = name;
     Text = text;
     Color = color;
     Scale = scale;
@@ -381,19 +382,20 @@ void UIElement::Draw() {
     Text.Draw();
 }
 
-Button::Button(std::string text, float x, float y, float w, float h, Func &function) {
+Button::Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
     Height = (Height != 0) ? h : BUTTON_PADDING * 2;
 
     X = x;
     Y = y;
     Width = w;
+    Name = name;
 
     Opacity = BUTTON_OPACITY;
     Color = BUTTON_COLOR;
 
     Function = function;
 
-    Text.Create(text, X, Y);
+    Text.Create(name, text, X, Y);
     Text.Center(X, Y, Width);
 
     Text.Opacity = BUTTON_TEXT_OPACITY;
@@ -415,14 +417,15 @@ Button::Button(std::string text, float x, float y, float w, float h, Func &funct
 inline void Button::Hover() { Color = BUTTON_HOVER_COLOR; }
 inline void Button::Stop_Hover() { Color = BUTTON_COLOR; }
 inline void Button::Press() { Color = BUTTON_CLICK_COLOR; }
-inline void Button::Release() { Color = BUTTON_COLOR; Function(); }
+inline void Button::Release() { Color = BUTTON_COLOR; Function(this); }
 
-Slider::Slider(std::string text, float x, float y, float w, float h, float min,
+Slider::Slider(std::string name, std::string text, float x, float y, float w, float h, float min,
     float max, float value, Func &function) : Value(value), Min(min), Max(max) {
 
     X = x;
     Y = y;
     Width = w;
+    Name = name;
     Height = (h == 0) ? SLIDER_PADDING * 2 : h;
 
     Opacity = SLIDER_OPACITY;
@@ -433,7 +436,7 @@ Slider::Slider(std::string text, float x, float y, float w, float h, float min,
 
     Function = function;
 
-    Text.Create(text, X, Y);
+    Text.Create(name, text, X, Y);
     Text.Center(X, Y, Width);
 
     Text.Opacity = SLIDER_TEXT_OPACITY;
@@ -467,7 +470,7 @@ inline void Slider::Press() { HandleColor = SLIDER_HANDLE_CLICK_COLOR; }
 void Slider::Release() {
     HandleColor = SLIDER_HANDLE_COLOR;
     Move(std::ceil(Value), true);
-    Function();
+    Function(this);
 }
 
 void Slider::Move(float position, bool setValue) {
@@ -512,11 +515,12 @@ void Slider::Draw() {
     HandleBuffer.Draw();
 }
 
-Bar::Bar(std::string text, float x, float y, float w, float h, float min, float max, float value)
+Bar::Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value)
     : Value(value), Min(min), Max(max) {
     X = x;
     Y = y;
     Width = w;
+    Name = name;
     Height = (h == 0) ? BAR_PADDING * 2 : h;
 
     Opacity = BAR_BACKGROUND_OPACITY;
@@ -525,7 +529,7 @@ Bar::Bar(std::string text, float x, float y, float w, float h, float min, float 
     BarOpacity = BAR_OPACITY;
     BarColor = BAR_COLOR;
 
-    Text.Create(text, x, y);
+    Text.Create(name, text, x, y);
     Text.Opacity = BAR_TEXT_OPACITY;
     Text.Color = BAR_TEXT_COLOR;
 
@@ -556,9 +560,10 @@ void Bar::Draw() {
     BarBuffer.Draw();
 }
 
-Image::Image(std::string file, int texID, float x, float y, float scale) : Scale(scale), TexID(texID) {
+Image::Image(std::string name, std::string file, int texID, float x, float y, float scale) : Scale(scale), TexID(texID) {
     X = x;
     Y = y;
+    Name = name;
 
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TexID));
 
@@ -582,18 +587,16 @@ void Image::Draw() {
     ImageBuffer.Draw();
 }
 
-Background::Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
+Background::Background(std::string name, float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
     X = x;
     Y = y;
+    Name = name;
     Width = w;
     Height = h;
 
     Opacity = BACKGROUND_OPACITY;
     Color = BACKGROUND_COLOR;
     GridColor = BACKGROUND_BORDER_COLOR;
-
-    Width = w;
-    Height = h;
 
     BackgroundBuffer.Init(UIBackgroundShader);
     BackgroundBuffer.Create(2, Get_Rect(X, X + Width, Y, Y + Height));
@@ -670,9 +673,10 @@ void Background::Draw() {
     }
 }
 
-OrthoElement::OrthoElement(int type, int data, float x, float y, float scale) {
+OrthoElement::OrthoElement(std::string name, int type, int data, float x, float y, float scale) {
     OrthoBuffer.Init(UI3DShader);
 
+    Name = name;
     Type = type;
     Scale = scale;
 
@@ -708,20 +712,21 @@ void OrthoElement::Draw() {
     }
 }
 
-TextBox::TextBox(float x, float y, float w, float h) {
+TextBox::TextBox(std::string name, float x, float y, float w, float h) {
     X = x;
     Y = y;
     Width = w;
+    Name = name;
     Height = h;
 
-    BG = Background(x, y, w, h, true);
+    BG = Background(name, x, y, w, h, true);
 
     MaxWidth = Width - TEXT_BOX_HORZ_PADDING * 2;
 
     int textPad = static_cast<int>((h - FONT_SIZE) / 2);
 
-    Cursor.Create("|", x + TEXT_BOX_HORZ_PADDING, y + textPad);
-    TextEl.Create(Text, x + TEXT_BOX_HORZ_PADDING, y + textPad);
+    Cursor.Create(name, "|", x + TEXT_BOX_HORZ_PADDING, y + textPad);
+    TextEl.Create(name, Text, x + TEXT_BOX_HORZ_PADDING, y + textPad);
 
     Cursor.Opacity = 0;
 }
@@ -774,10 +779,21 @@ void TextBox::Update() {
     TextEl.Mesh();
 }
 
+void TextBox::Clear() {
+    Text = "";
+    TextWidth = 0;
+    CursorPos = 0;
+    Cursor.X = X + TEXT_BOX_HORZ_PADDING;
+    TextEl.Set_Text("");
+    TextEl.Mesh();
+}
+
 void TextBox::Draw() {
-    BG.Draw();
-    Cursor.Draw();
-    TextEl.Draw();
+    if (Visible) {
+        BG.Draw();
+        Cursor.Draw();
+        TextEl.Draw();
+    }
 }
 
 void Interface::Init() {
@@ -1061,30 +1077,30 @@ namespace Interface {
     }
 
     void Add_Text(std::string name, std::string text, float x, float y) {
-        TextElements[ActiveDocument].emplace(name, TextElement(text, std::floor(x), std::floor(y)));
+        TextElements[ActiveDocument].emplace(name, TextElement(name, text, std::floor(x), std::floor(y)));
     }
     void Add_Text_Box(std::string name, float x, float y, float w, float h) {
-        TextBoxes[ActiveDocument].emplace(name, TextBox(x, y, w, h));
+        TextBoxes[ActiveDocument].emplace(name, TextBox(name, x, y, w, h));
     }
     void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
-        Buttons[ActiveDocument].emplace(name, Button(text, x, y, w, h, function));
+        Buttons[ActiveDocument].emplace(name, Button(name, text, x, y, w, h, function));
     }
     void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
-        Sliders[ActiveDocument].emplace(name, Slider(text, x, y, w, h, min, max, value, function));
+        Sliders[ActiveDocument].emplace(name, Slider(name, text, x, y, w, h, min, max, value, function));
     }
     void Add_Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value) {
-        Bars[ActiveDocument].emplace(name, Bar(text, x, y, w, h, min, max, value));
+        Bars[ActiveDocument].emplace(name, Bar(name, text, x, y, w, h, min, max, value));
     }
     void Add_Image(std::string name, std::string path, int texID, float x, float y, float scale) {
-        Images[ActiveDocument].emplace(name, Image(path, texID, x, y, scale));
+        Images[ActiveDocument].emplace(name, Image(name, path, texID, x, y, scale));
     }
     void Add_Background(std::string name, glm::vec4 dims, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
         Backgrounds[ActiveDocument].emplace(
-            name, Background(dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad)
+            name, Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad)
         );
     }
     void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
-        OrthoElements[ActiveDocument].emplace(name, OrthoElement(type, data, x, y, scale));
+        OrthoElements[ActiveDocument].emplace(name, OrthoElement(name, type, data, x, y, scale));
     }
 
     void Delete_Bar       (std::string name) { Bars         [ActiveDocument].erase(name); }

@@ -11,7 +11,7 @@
 
 class LightNodeComparator {
   public:
-    bool operator () (const LightNode &a, const LightNode &b) const {
+    bool operator() (const LightNode &a, const LightNode &b) const {
         for (int i = 0; i < 3; ++i) {
             if (a.Chunk[i] != b.Chunk[i]) {
                 return a.Chunk[i] < b.Chunk[i];
@@ -81,8 +81,6 @@ const glm::vec3 AOOffsets[6][2][2][3] = {
         { { {0, -1, 1}, {1, 0, 1}, {1, -1, 1} }, { {0, 1, 1}, {1, 0, 1}, {1, 1, 1} } } }
 };
 
-static bool Seeded = false;
-
 static noise::module::RidgedMulti ridgedNoise;
 static noise::module::RidgedMulti oreNoise;
 static noise::module::Perlin noiseModule;
@@ -106,18 +104,20 @@ double RNG() {
     return rngVal(rng);
 }
 
-void Seed() {
-    Seeded = true;
+void Chunks::Seed(int seed) {
+    if (seed == 0) {
+        int64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+        std::seed_seq ss {
+            static_cast<uint32_t>(timeSeed & 0xffffffff),
+            static_cast<uint32_t>(timeSeed >> 32)
+        };
+        rng.seed(ss);
 
-    int64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::seed_seq ss {
-        static_cast<uint32_t>(timeSeed & 0xffffffff),
-        static_cast<uint32_t>(timeSeed >> 32)
-    };
-    rng.seed(ss);
+        std::uniform_int_distribution<int> uni(-2147483648, 2147483647);
+        seed = uni(rng);
+    }
 
-    std::uniform_int_distribution<int> uni(-2147483648, 2147483647);
-    int seed = uni(rng);
+    WORLD_SEED = seed;
 
     noiseModule.SetSeed(seed);
     noiseModule.SetPersistence(0.5);
@@ -127,16 +127,8 @@ void Seed() {
     ridgedNoise.SetOctaveCount(2);
     ridgedNoise.SetFrequency(5.0);
 
-    oreNoise.SetSeed(uni(rng));
+    oreNoise.SetSeed(seed);
     oreNoise.SetFrequency(2.0);
-}
-
-Chunk::Chunk(glm::vec3 position) {
-    if (!Seeded) {
-        Seed();
-    }
-
-    Position = position;
 }
 
 void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {
@@ -428,8 +420,6 @@ void Chunk::Light(bool flag) {
     }
 
     while (!LightRemovalQueue.empty()) {
-        printf("yes\n");
-
         LightNode node = LightRemovalQueue.front();
         LightRemovalQueue.pop();
 

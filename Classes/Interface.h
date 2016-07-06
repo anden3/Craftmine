@@ -8,7 +8,7 @@
 #define EXPAND_VEC3(V) V.x, V.y, V.z
 #define EXPAND_VEC4(V) V.x, V.y, V.z, V.w
 
-typedef void (Func)(void);
+typedef void (Func)(void*);
 typedef std::vector<float> Data;
 
 struct Block;
@@ -92,6 +92,7 @@ inline void Extend(std::vector<T> &storage, glm::vec4 input) {
 
 class TextElement {
 public:
+    std::string Name;
     std::string Text = "";
 
     float X;
@@ -105,9 +106,9 @@ public:
     glm::vec3 Color;
 
     TextElement() {}
-    TextElement(std::string text, float x, float y) { Create(text, x, y); }
+    TextElement(std::string name, std::string text, float x, float y) { Create(name, text, x, y); }
 
-    void Create(std::string text, float x, float y, float opacity = 1.0f,
+    void Create(std::string name, std::string text, float x, float y, float opacity = 1.0f,
         glm::vec3 color = {1, 1, 1}, float scale = 1.0f);
     
     inline void Center(glm::vec2 pos, float width, glm::bvec2 axes = {true, true}) {
@@ -133,6 +134,8 @@ private:
 
 class UIElement {
 public:
+    std::string Name;
+
     float X;
     float Y;
     float Opacity;
@@ -155,7 +158,7 @@ public:
 class Button : public UIElement {
 public:
     Button() {}
-    Button(std::string text, float x, float y, float w, float h, Func &function);
+    Button(std::string name, std::string text, float x, float y, float w, float h, Func &function);
 
     inline void Hover();
     inline void Stop_Hover();
@@ -170,7 +173,7 @@ public:
     float Value;
 
     Slider() {}
-    Slider(std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
+    Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function);
 
     inline void Hover();
     inline void Stop_Hover();
@@ -199,7 +202,7 @@ public:
     float Value;
 
     Bar() {}
-    Bar(std::string text, float x, float y, float w, float h, float min, float max, float value);
+    Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value);
 
     void Move(float value);
     void Draw();
@@ -214,7 +217,7 @@ private:
 class Image : public UIElement {
 public:
     Image() {}
-    Image(std::string file, int texID, float x, float y, float scale);
+    Image(std::string name, std::string file, int texID, float x, float y, float scale);
 
     void Center();
     void Draw();
@@ -233,7 +236,7 @@ public:
     glm::vec3 GridColor;
 
     Background() {}
-    Background(float x, float y, float w, float h, bool border, glm::vec2 gridWidth = {0, 0}, glm::vec2 pad = {0, 0});
+    Background(std::string name, float x, float y, float w, float h, bool border, glm::vec2 gridWidth = {0, 0}, glm::vec2 pad = {0, 0});
 
     inline void Move(glm::vec2 pos = glm::vec2(0, 0), bool absolute = false) { Move(pos.x, pos.y, absolute); }
     void Move(float dx = 0, float dy = 0, bool absolute = false);
@@ -248,10 +251,11 @@ private:
 
 class TextBox : public UIElement {
 public:
+    bool Visible = true;
     std::string Text = "";
 
     TextBox() {}
-    TextBox(float x, float y, float w, float h);
+    TextBox(std::string name, float x, float y, float w, float h);
 
     void Set_Cursor_Visibility(bool cursorVisible);
 
@@ -259,6 +263,8 @@ public:
 
     void Input(unsigned int codepoint);
     void Draw();
+
+    void Clear();
 
 private:
     Background BG;
@@ -276,11 +282,13 @@ private:
 
 class OrthoElement {
 public:
+    std::string Name;
+
     int Type;
     float Scale;
 
     OrthoElement() {}
-    OrthoElement(int type, int data, float x, float y, float scale);
+    OrthoElement(std::string name, int type, int data, float x, float y, float scale);
 
     inline void Mesh(int type, int data, glm::vec2 pos) { Mesh(type, data, pos.x, pos.y); }
     void Mesh(int type, int data, float x, float y);

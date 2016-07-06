@@ -29,6 +29,9 @@ const float Z_NEAR_LIMIT = 0.04f;
 const float Z_FAR_LIMIT = 1000.0f;
 
 // Setting default values for variables.
+int WORLD_SEED = 0;
+std::string WORLD_NAME = "";
+
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
 
@@ -126,7 +129,6 @@ int main() {
     // Start the background thread.
     std::thread chunkGeneration(Background_Thread);
 
-    player.Queue_Chunks();
     Network::Init();
 
     // The main loop.
@@ -518,12 +520,10 @@ void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) {
 }
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
 
+void Exit(void* caller) { glfwSetWindowShouldClose(Window, GL_TRUE); }
+
 #ifdef __clang__
     #pragma clang diagnostic pop
 #elif _MSC_VER
     #pragma warning(pop)
 #endif
-
-void Exit() {
-    glfwSetWindowShouldClose(Window, GL_TRUE);
-}

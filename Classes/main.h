@@ -39,7 +39,8 @@ extern GLFWwindow* Window;
 
 extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 
-const char WORLD_NAME[] = "Test";
+extern int WORLD_SEED;
+extern std::string WORLD_NAME;
 
 // TODO: Interpolate lighting by having different values for vertices per block.
 
@@ -146,4 +147,4 @@ extern bool ChunkMapBusy;
 extern bool Multiplayer;
 
 void Write_Config();
-void Exit();
+void Exit(void* caller);

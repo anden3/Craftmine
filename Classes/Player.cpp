@@ -959,6 +959,9 @@ void Player::Queue_Chunks(bool regenerate) {
                         if (savedData.size() > 0) {
                             ChangedBlocks[pos] = savedData;
                         }
+                        else {
+                            ChangedBlocks.erase(pos);
+                        }
 
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);

@@ -29,6 +29,10 @@ using Array3D = typename ArrayHelper<T, A...>::type;
 extern std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorComparator>, ChunkPosComparator> ChangedBlocks;
 extern std::map<glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator> TopBlocks;
 
+namespace Chunks {
+    void Seed(int seed);
+};
+
 struct Block;
 
 struct LightNode {
@@ -61,7 +65,9 @@ public:
     bool Generated = false;
     bool DataUploaded = false;
 
-    Chunk(glm::vec3 position);
+    Chunk(glm::vec3 position) {
+        Position = position;
+    }
 
     inline int Get_Type(glm::uvec3 pos) { return BlockMap[pos.x][pos.y][pos.z]; }
     inline void Set_Type(glm::uvec3 pos, int value) { BlockMap[pos.x][pos.y][pos.z] = value; }
