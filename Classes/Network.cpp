@@ -5,6 +5,7 @@
 
 #include "Chat.h"
 #include "main.h"
+#include "Camera.h"
 #include "Player.h"
 
 #include <json.hpp>
@@ -16,6 +17,18 @@ static std::string ClientName = "";
 
 static const int DEFAULT_PORT = 1234;
 
+static glm::vec3 LastPos = {0, 0, 0};
+static float LastPitch = 0.0f;
+static float LastYaw = 0.0f;
+
+struct PlayerChar {
+    glm::vec3 Position;
+    float Pitch;
+    float Yaw;
+};
+
+static std::map<std::string, PlayerChar> Players;
+
 void Network::Init() {
     enet_initialize();
     atexit(enet_deinitialize);
@@ -24,7 +37,31 @@ void Network::Init() {
 }
 
 void Network::Update(unsigned int timeout) {
+    nlohmann::json message;
     ENetEvent event;
+
+    message["event"] = "update";
+
+    if (player.WorldPos != LastPos) {
+        LastPos = player.WorldPos;
+        message["pos"] = {
+            player.WorldPos.x, player.WorldPos.y, player.WorldPos.z
+        };
+    }
+
+    if (std::abs(Cam.Pitch - LastPitch) >= 1.0f) {
+        LastPitch = Cam.Pitch;
+        message["pitch"] = Cam.Pitch;
+    }
+
+    if (std::abs(Cam.Yaw - LastYaw) >= 1.0f) {
+        LastYaw = Cam.Yaw;
+        message["yaw"] = Cam.Yaw;
+    }
+
+    if (message.size() > 1) {
+        Send(message.dump());
+    }
 
     while (enet_host_service(client, &event, timeout) > 0) {
         if (event.type == ENET_EVENT_TYPE_NONE) {
@@ -32,20 +69,42 @@ void Network::Update(unsigned int timeout) {
         }
 
         if (event.type == ENET_EVENT_TYPE_CONNECT) {
-            printf("Connected to %x:%u.\n\n", event.peer->address.host, event.peer->address.port);
-
             nlohmann::json j;
-            j["events"]["connect"]["name"] = PLAYER_NAME;
+            j["event"] = "connect";
+            j["name"] = ClientName;
             Send(j.dump());
         }
         else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
-            player.Request_Handler(
-                std::string(reinterpret_cast<char*>(event.packet->data)), false
-            );
+            std::string data(reinterpret_cast<char*>(event.packet->data));
+            nlohmann::json j = nlohmann::json::parse(data);
+
+            if (j["event"] == "update") {
+                if (!Players.count(j["name"])) {
+                    Players[j["name"]] = PlayerChar();
+                }
+
+                PlayerChar &p = Players[j["name"]];
+
+                if (j.count("pos")) {
+                    p.Position = glm::vec3(
+                        j["pos"][0], j["pos"][1], j["pos"][2]
+                    );
+                }
+
+                if (j.count("pitch")) {
+                    p.Pitch = j["pitch"];
+                }
+
+                if (j.count("yaw")) {
+                    p.Yaw = j["yaw"];
+                }
+            }
+
+            else {
+                player.Request_Handler(data, false);
+            }
+
             enet_packet_destroy(event.packet);
-        }
-        else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
-            puts("Disconnected from server!\n");
         }
     }
 }
@@ -93,7 +152,7 @@ std::string Network::Connect(std::string name, std::string host) {
             return "&cError! &fMissing IP value.";
         }
 
-        if (part.front() == '0') {
+        if (part.length() > 1 && part.front() == '0') {
             return "&cError! &fPlease remove leading zeroes from IP values.";
         }
 
@@ -117,10 +176,9 @@ std::string Network::Connect(std::string name, std::string host) {
     peer = enet_host_connect(client, &address, 2, 0);
 
     if (enet_host_service(client, &event, 500) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-        printf("Connected to %x:%u.\n\n", event.peer->address.host, event.peer->address.port);
-
         nlohmann::json j;
-        j["events"]["connect"]["name"] = ClientName;
+        j["event"] = "connect";
+        j["name"] = ClientName;
         Send(j.dump());
 
         return "";

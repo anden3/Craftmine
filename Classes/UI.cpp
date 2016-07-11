@@ -20,13 +20,13 @@ const std::string FONT = "Roboto";
 static double lastUIUpdate;
 static std::deque<int> CPU;
 
-static bool ShowTitle = true;
-static bool ShowInventory = false;
-static bool ShowGameMenu = false;
-static bool ShowDebug = false;
-static bool ShowOptions = false;
-static bool ShowServers = false;
-static bool ShowWorlds = false;
+bool UI::ShowTitle = true;
+bool UI::ShowInventory = false;
+bool UI::ShowGameMenu = false;
+bool UI::ShowDebug = false;
+bool UI::ShowOptions = false;
+bool UI::ShowServers = false;
+bool UI::ShowWorlds = false;
 
 const std::string BoolStrings[2] = {"False", "True"};
 
@@ -138,6 +138,15 @@ void UI::Click(int action, int button) {
     }
 }
 
+void UI::Load_World(int seed) {
+    Worlds::Load_World(seed);
+
+    ShowWorlds = false;
+    ShowTitle = false;
+    GamePaused = false;
+    UI::Toggle_Mouse(false);
+}
+
 void UI::Mouse_Handler(double x, double y) {
     Bind_Current_Document();
     Interface::Mouse_Handler(x, SCREEN_HEIGHT - y);
@@ -201,22 +210,22 @@ void UI::Toggle_Mouse(bool enable) {
 void Bind_Current_Document() {
     std::string name;
 
-    if (ShowTitle) {
-        if (ShowOptions) {
+    if (UI::ShowTitle) {
+        if (UI::ShowOptions) {
             name = "titleOptions";
         }
-        else if (ShowServers) {
+        else if (UI::ShowServers) {
             name = "servers";
         }
-        else if (ShowWorlds) {
+        else if (UI::ShowWorlds) {
             name = "worlds";
         }
         else {
             name = "title";
         }
     }
-    else if (ShowGameMenu) {
-        if (ShowOptions) {
+    else if (UI::ShowGameMenu) {
+        if (UI::ShowOptions) {
             name = "options";
         }
         else {
@@ -422,51 +431,57 @@ void Init_Debug() {
 #endif
 
 void Toggle_Title(void* caller) {
-    ShowGameMenu = false;
-    ShowOptions = false;
-    ShowInventory = false;
-    ShowDebug = false;
+    UI::ShowGameMenu = false;
+    UI::ShowOptions = false;
+    UI::ShowInventory = false;
+    UI::ShowDebug = false;
 
     inventory.Is_Open = false;
 
-    ShowTitle = !ShowTitle;
-    GamePaused = ShowTitle;
-    UI::Toggle_Mouse(ShowTitle);
+    UI::ShowTitle = !UI::ShowTitle;
+    GamePaused = UI::ShowTitle;
+    UI::Toggle_Mouse(UI::ShowTitle);
 
-    if (ShowTitle && WORLD_NAME != "") {
+    if (UI::ShowTitle) {
         Worlds::Save_World();
+
+        if (Multiplayer) {
+            Network::Disconnect();
+            Network::Update(1000);
+            Multiplayer = false;
+        }
     }
 }
 
 void Toggle_Game_Menu() {
-    if (!ShowTitle) {
-        ShowGameMenu = !ShowGameMenu;
-        ShowOptions = false;
+    if (!UI::ShowTitle) {
+        UI::ShowGameMenu = !UI::ShowGameMenu;
+        UI::ShowOptions = false;
 
-        if (!ShowInventory) {
-            UI::Toggle_Mouse(ShowGameMenu);
+        if (!UI::ShowInventory) {
+            UI::Toggle_Mouse(UI::ShowGameMenu);
         }
     }
 }
 
 void Toggle_World_Screen(void* caller) {
-    ShowWorlds = !ShowWorlds;
+    UI::ShowWorlds = !UI::ShowWorlds;
 }
 
 void Toggle_Server_Screen(void* caller) {
-    ShowServers = !ShowServers;
+    UI::ShowServers = !UI::ShowServers;
 }
 
 void Toggle_Inventory() {
-    if (!ShowTitle) {
-        ShowInventory = !ShowInventory;
-        UI::Toggle_Mouse(ShowInventory);
+    if (!UI::ShowTitle) {
+        UI::ShowInventory = !UI::ShowInventory;
+        UI::Toggle_Mouse(UI::ShowInventory);
     }
 }
 
 void Toggle_Debug() {
-    if (!ShowTitle) {
-        ShowDebug = !ShowDebug;
+    if (!UI::ShowTitle) {
+        UI::ShowDebug = !UI::ShowDebug;
     }
 }
 
@@ -515,7 +530,7 @@ void Draw_Debug() {
 }
 
 void Toggle_Options_Menu(void* caller) {
-    ShowOptions = !ShowOptions;
+    UI::ShowOptions = !UI::ShowOptions;
 }
 
 void Toggle_VSync(void* caller) {
@@ -596,8 +611,8 @@ void Load_World(void* caller) {
     WORLD_NAME = static_cast<Button*>(caller)->Text.Text;
     Worlds::Load_World(Worlds::Get_Seed(WORLD_NAME));
 
-    ShowWorlds = false;
-    ShowTitle = false;
+    UI::ShowWorlds = false;
+    UI::ShowTitle = false;
     GamePaused = false;
     UI::Toggle_Mouse(false);
 }
@@ -618,18 +633,17 @@ void Delete_World(void* caller) {
 void Connect_To_Server(void* caller) {
     Interface::Set_Document("servers");
         TextElement* errMsg = Interface::Get_Text_Element("errMsg");
-        std::string name = Interface::Get_Text_Box("name")->Text;
-        std::string ip = Interface::Get_Text_Box("ip")->Text;
+        std::string  name   = Interface::Get_Text_Box("name")->Text;
+        std::string  ip     = Interface::Get_Text_Box("ip")->Text;
     Interface::Set_Document("");
 
+    PLAYER_NAME = name;
+
     std::string connectionStatus = Network::Connect(name, ip);
+    errMsg->Set_Text(connectionStatus);
 
     if (connectionStatus == "") {
-        errMsg->Set_Text("");
         Multiplayer = true;
-    }
-    else {
-        errMsg->Set_Text(connectionStatus);
     }
 }
 

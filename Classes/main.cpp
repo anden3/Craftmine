@@ -33,6 +33,8 @@ const float Z_FAR_LIMIT = 1000.0f;
 std::string WORLD_NAME = "";
 int WORLD_SEED = 0;
 
+std::string PLAYER_NAME = "Player";
+
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
 
@@ -42,6 +44,10 @@ bool Multiplayer = false;
 bool MouseEnabled = false;
 bool ChunkMapBusy = false;
 bool ToggleWireframe = false;
+
+static bool WindowMinimized = false;
+
+static double LastNetworkUpdate = 0.0;
 
 // Initializing objects.
 Chat chat = Chat();
@@ -111,6 +117,8 @@ void Mouse_Proxy(GLFWwindow* window, double posX, double posY);
 void Scroll_Proxy(GLFWwindow* window, double xoffset, double yoffset);
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods);
 
+void Window_Minimized(GLFWwindow* window, int iconified);
+
 int main() {
     // Initialize GLFW, the library responsible for windowing, events, etc...
     glfwInit();
@@ -135,6 +143,10 @@ int main() {
     // The main loop.
     // Runs until window is closed.
     while (!glfwWindowShouldClose(Window)) {
+        if (WindowMinimized) {
+            glfwWaitEvents();
+        }
+
         // Clear the screen buffer from the last frame.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -147,7 +159,10 @@ int main() {
         glfwPollEvents();
 
         if (Multiplayer) {
-            Network::Update();
+            if (currentFrame - LastNetworkUpdate >= 0.1) {
+                LastNetworkUpdate = currentFrame;
+                Network::Update();
+            }
         }
 
         if (!GamePaused) {
@@ -280,6 +295,7 @@ void Init_GL() {
     glfwSetScrollCallback(Window, Scroll_Proxy);
     glfwSetMouseButtonCallback(Window, Click_Proxy);
     glfwSetCharCallback(Window, Text_Proxy);
+    glfwSetWindowIconifyCallback(Window, Window_Minimized);
 
     // Enable Blending, which makes transparency work.
     glEnable(GL_BLEND);
@@ -524,6 +540,10 @@ void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) {
     }
 }
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
+
+void Window_Minimized(GLFWwindow* window, int iconified) {
+    WindowMinimized = iconified > 0;
+}
 
 void Exit(void* caller) { glfwSetWindowShouldClose(Window, GL_TRUE); }
 

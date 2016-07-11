@@ -4,6 +4,7 @@
 #include <sstream>
 #include <dirent.h>
 
+#include "UI.h"
 #include "Chat.h"
 #include "main.h"
 #include "Chunk.h"
@@ -73,6 +74,8 @@ static float PunchingAngle = 0.0f;
 static float MovementAngle = 0.0f;
 
 static std::map<std::string, std::vector<Sound>> Sounds;
+
+void Load_Player_Data(nlohmann::json &data);
 
 std::vector<std::string> Split(const std::string &s, const char delim) {
     std::vector<std::string> elements;
@@ -982,10 +985,9 @@ void Player::Request_Handler(std::string packet, bool sending) {
 
     if (sending) {
         if (packet == "blockBreak") {
-            data["events"]["blockBreak"]["player"] = PLAYER_NAME;
-            data["events"]["blockBreak"]["pos"] = Network::Format_Vector(
-                Get_World_Pos(LookingChunk, LookingTile)
-            );
+            data["event"] = "blockBreak";
+            data["player"] = PLAYER_NAME;
+            data["pos"] = Network::Format_Vector(Get_World_Pos(LookingChunk, LookingTile));
         }
 
         Network::Send(data.dump());
@@ -993,33 +995,77 @@ void Player::Request_Handler(std::string packet, bool sending) {
     else {
         data = nlohmann::json::parse(packet);
 
-        for (auto it = data["events"].begin(); it != data["events"].end(); ++it) {
-            if (it.key() == "breakBlock") {
-                if (it.value()["player"] == PLAYER_NAME) {
-                    return;
-                }
-
-                std::vector<std::string> coords = Split(it.value(), ',');
-                glm::vec3 pos, chunk, tile;
-
-                for (unsigned long i = 0; i < 3; i++) {
-                    pos[static_cast<int>(i)] = std::stoi(coords[i]);
-                }
-
-                std::tie(chunk, tile) = Get_Chunk_Pos(pos);
-
-                if (Exists(chunk)) {
-                    Break_Block(pos);
-                }
-                else {
-                    ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
-                    Worlds::Save_Chunk(WORLD_NAME, chunk);
-                }
+        if (data["event"] == "blockBreak") {
+            if (data["player"] == PLAYER_NAME) {
+                return;
             }
+
+            std::vector<std::string> coords = Split(data["pos"], ',');
+            glm::vec3 pos, chunk, tile;
+
+            for (unsigned long i = 0; i < 3; i++) {
+                pos[static_cast<int>(i)] = std::stoi(coords[i]);
+            }
+
+            std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+
+            if (Exists(chunk)) {
+                Break_Block(pos);
+            }
+            else {
+                ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
+                Worlds::Save_Chunk(WORLD_NAME, chunk);
+            }
+        }
+
+        else if (data["event"] == "message") {
+            if (data["player"] == PLAYER_NAME) {
+                return;
+            }
+
+            chat.Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
+        }
+
+        else if (data["event"] == "config") {
+            WORLD_NAME = data["world"];
+            Worlds::Load_World(data["seed"]);
+            UI::ShowWorlds = false;
+            UI::ShowTitle = false;
+            GamePaused = false;
+            UI::Toggle_Mouse(false);
+        }
+
+        else if (data["event"] == "load") {
+            Load_Data(packet);
         }
     }
 }
 
 void Player::Clear_Keys() {
     std::fill_n(keys, 1024, false);
+}
+
+void Player::Load_Data(const std::string data) {
+    inventory.Clear();
+    ChunkMap.clear();
+
+    nlohmann::json playerData = nlohmann::json::parse(data);
+
+    Cam.Yaw   = playerData["Yaw"];
+    Cam.Pitch = playerData["Pitch"];
+    Cam.UpdateCameraVectors();
+
+    Teleport(glm::vec3(
+        playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
+    ));
+
+    if (playerData.count("Storage")) {
+        if (playerData["Storage"].count("Inventory")) {
+            inventory.Load(playerData["Storage"]["Inventory"], inventory.Inv);
+        }
+
+        if (playerData["Storage"].count("Crafting")) {
+            inventory.Load(playerData["Storage"]["Crafting"], inventory.Craft);
+        }
+    }
 }

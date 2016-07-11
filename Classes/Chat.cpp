@@ -1,6 +1,7 @@
 #include "Chat.h"
 
 #include <unicode/ustream.h>
+#include <json.hpp>
 
 #include "UI.h"
 #include "Blocks.h"
@@ -184,28 +185,33 @@ void Chat::Input(unsigned int key) {
 }
 
 void Chat::Submit() {
-    if (NewMessage.length() > 0) {
-        if (NewMessage.front() == '/') {
-            for (auto const &message : Process_Commands(NewMessage.substr(1))) {
-                Write(message);
-            }
-        }
-        else {
-            Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
-        }
-
-        if (Multiplayer) {
-            Network::Send(NewMessage);
-        }
-
-        History.push_back(NewMessage);
-        HistoryIndex = static_cast<unsigned int>(History.size());
-
-        NewMessage.clear();
-
-        Toggle_Cursor(0);
-        Update_Message();
+    if (NewMessage.length() == 0) {
+        return;
     }
+
+    if (NewMessage.front() == '/') {
+        for (auto const &message : Process_Commands(NewMessage.substr(1))) {
+            Write(message);
+        }
+    }
+    else {
+        Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
+    }
+
+    if (Multiplayer) {
+        nlohmann::json j;
+        j["event"] = "message";
+        j["message"] = NewMessage;
+        Network::Send(j.dump());
+    }
+
+    History.push_back(NewMessage);
+    HistoryIndex = static_cast<unsigned int>(History.size());
+
+    NewMessage.clear();
+
+    Toggle_Cursor(0);
+    Update_Message();
 }
 
 void Chat::Toggle_Cursor(float opacity) {

@@ -4,6 +4,7 @@
 #include "Chunk.h"
 #include "Camera.h"
 #include "Player.h"
+#include "Network.h"
 #include "Inventory.h"
 
 #include <fstream>
@@ -84,25 +85,6 @@ void Add_Storage_Data(nlohmann::json &dest, std::string type, std::vector<Stack>
     }
 }
 
-void Load_Storage_Data(nlohmann::json &src, std::string type, std::vector<Stack> &storage) {
-    if (!src.count("Storage") || !src["Storage"].count(type)) {
-        return;
-    }
-
-    for (auto it = src["Storage"][type].begin(); it != src["Storage"][type].end(); ++it) {
-        if (it.value().size() == 3) {
-            storage[std::stoul(it.key())] = {
-                it.value()[0], it.value()[1], it.value()[2]
-            };
-        }
-        else {
-            storage[std::stoul(it.key())] = Stack(
-                it.value()[0].get<int>(), it.value()[1]
-            );
-        }
-    }
-}
-
 void Worlds::Save_World() {
     nlohmann::json playerData;
 
@@ -119,7 +101,6 @@ void Worlds::Save_World() {
     }
 
     Add_Storage_Data(playerData, "Inventory", inventory.Inv);
-    Add_Storage_Data(playerData, "Toolbar", inventory.Toolbar);
     Add_Storage_Data(playerData, "Crafting", inventory.Craft);
 
     if (inventory.CraftingOutput.Type) {
@@ -130,33 +111,29 @@ void Worlds::Save_World() {
         };
     }
 
-    std::ofstream dataFile("Worlds/" + WORLD_NAME + "/Player.json", std::ofstream::trunc);
-    dataFile << playerData;
+    if (Multiplayer) {
+        playerData["event"] = "save";
+        Network::Send(playerData.dump());
+        Network::Update();
+    }
+    else {
+        std::ofstream dataFile("Worlds/" + WORLD_NAME + "/Player.json", std::ofstream::trunc);
+        dataFile << playerData;
+    }
 }
 
 void Worlds::Load_World(int seed) {
     inventory.Clear();
     ChunkMap.clear();
 
-    std::ifstream dataFile("Worlds/" + WORLD_NAME + "/Player.json");
+    if (!Multiplayer) {
+        std::ifstream dataFile("Worlds/" + WORLD_NAME + "/Player.json");
 
-    if (dataFile.good()) {
-        nlohmann::json playerData;
-        playerData << dataFile;
-
-        Cam.Yaw   = playerData["Yaw"];
-        Cam.Pitch = playerData["Pitch"];
-        Cam.UpdateCameraVectors();
-
-        player.Teleport(glm::vec3(
-            playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
-        ));
-
-        Load_Storage_Data(playerData, "Inventory", inventory.Inv);
-        Load_Storage_Data(playerData, "Toolbar", inventory.Toolbar);
-        Load_Storage_Data(playerData, "Crafting", inventory.Craft);
-
-        inventory.Mesh();
+        if (dataFile.good()) {
+            std::stringstream ss;
+            ss << dataFile.rdbuf();
+            player.Load_Data(ss.str());
+        }
     }
 
     Chunks::Seed(seed);

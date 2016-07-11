@@ -42,6 +42,8 @@ extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 extern std::string WORLD_NAME;
 extern int WORLD_SEED;
 
+extern std::string PLAYER_NAME;
+
 // The color that the screen gets filled with when the color buffer is cleared.
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
 
@@ -66,8 +68,6 @@ const double NOISE_DENSITY_CAVE = -0.85;
 
 // The file to load settings from.
 const char CONFIG_FILE[] = "config.conf";
-
-const char PLAYER_NAME[] = "anden3";
 
 // Vertex coordinates for a 3D-block.
 // Side order is: Left - Right - Down - Up - Back - Front.

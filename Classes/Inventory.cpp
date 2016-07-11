@@ -687,6 +687,23 @@ void Inventory::Mouse_Handler(double x, double y) {
     Interface::Set_Document("");
 }
 
+void Inventory::Load(const JSONValue &data, std::vector<Stack> &storage) {
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        if (it.value().size() == 3) {
+            storage[std::stoul(it.key())] = {
+                it.value()[0], it.value()[1], it.value()[2]
+            };
+        }
+        else {
+            storage[std::stoul(it.key())] = {
+                it.value()[0].get<int>(), it.value()[1]
+            };
+        }
+    }
+
+    Mesh();
+}
+
 void Inventory::Mesh() {
     int index = 0;
 
