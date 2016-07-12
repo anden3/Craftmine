@@ -6,11 +6,12 @@
 
 #include "main.h"
 #include "Blocks.h"
+#include "Worlds.h"
 #include "Interface.h"
 
 class LightNodeComparator {
   public:
-    bool operator () (const LightNode &a, const LightNode &b) const {
+    bool operator() (const LightNode &a, const LightNode &b) const {
         for (int i = 0; i < 3; ++i) {
             if (a.Chunk[i] != b.Chunk[i]) {
                 return a.Chunk[i] < b.Chunk[i];
@@ -60,42 +61,35 @@ const std::map<int, glm::dvec2> OreRanges = {
     {2, { 1.20,  1.30}}, // Iron Ore
 };
 
-const glm::vec3 AOOffsets[6][2][2][3] = {
-    { { { {-1, -1, 0}, {-1, 0, -1}, {-1, -1, -1} }, { {-1, 1, 0}, {-1, 0, -1}, {-1, 1, -1} } },
-        { { {-1, -1, 0}, {-1, 0, 1}, {-1, -1, 1} }, { {-1, 1, 0}, {-1, 0, 1}, {-1, 1, 1} } } },
-
-    { { { {1, -1, 0}, {1, 0, -1}, {1, -1, -1} }, { {1, 1, 0}, {1, 0, -1}, {1, 1, -1} } },
-        { { {1, -1, 0}, {1, 0, 1}, {1, -1, 1} }, { {1, 1, 0}, {1, 0, 1}, {1, 1, 1} } } },
-
-    { { { {-1, -1, 0}, {0, -1, -1}, {-1, -1, -1} }, { {-1, -1, 0}, {0, -1, 1}, {-1, -1, 1} } },
-        { { {1, -1, 0}, {0, -1, -1}, {1, -1, -1} }, { {1, -1, 0}, {0, -1, 1}, {1, -1, 1} } } },
-
-    { { { {-1, 1, 0}, {0, 1, -1}, {-1, 1, -1} }, { {-1, 1, 0}, {0, 1, 1}, {-1, 1, 1} } },
-        { { {1, 1, 0}, {0, 1, -1}, {1, 1, -1} }, { {1, 1, 0}, {0, 1, 1}, {1, 1, 1} } } },
-
-    { { { {0, -1, -1}, {-1, 0, -1}, {-1, -1, -1} }, { {0, 1, -1}, {-1, 0, -1}, {-1, 1, -1} } },
-        { { {0, -1, -1}, {1, 0, -1}, {1, -1, -1} }, { {0, 1, -1}, {1, 0, -1}, {1, 1, -1} } } },
-
-    { { { {0, -1, 1}, {-1, 0, 1}, {-1, -1, 1} }, { {0, 1, 1}, {-1, 0, 1}, {-1, 1, 1} } },
-        { { {0, -1, 1}, {1, 0, 1}, {1, -1, 1} }, { {0, 1, 1}, {1, 0, 1}, {1, 1, 1} } } }
+const glm::vec3 AOOffsets[6][2][2][3]={
+    {{{{-1,-1,0},{-1,0,-1},{-1,-1,-1}},{{-1,1,0},{-1,0,-1},{-1,1,-1}}},
+    {{{-1,-1,0},{-1,0,1},{-1,-1,1}},{{-1,1,0},{-1,0,1},{-1,1,1}}}},
+    {{{{1,-1,0},{1,0,-1},{1,-1,-1}},{{1,1,0},{1,0,-1},{1,1,-1}}},
+    {{{1,-1,0},{1,0,1},{1,-1,1}},{{1,1,0},{1,0,1},{1,1,1}}}},
+    {{{{-1,-1,0},{0,-1,-1},{-1,-1,-1}},{{-1,-1,0},{0,-1,1},{-1,-1,1}}},
+    {{{1,-1,0},{0,-1,-1},{1,-1,-1}},{{1,-1,0},{0,-1,1},{1,-1,1}}}},
+    {{{{-1,1,0},{0,1,-1},{-1,1,-1}},{{-1,1,0},{0,1,1},{-1,1,1}}},
+    {{{1,1,0},{0,1,-1},{1,1,-1}},{{1,1,0},{0,1,1},{1,1,1}}}},
+    {{{{0,-1,-1},{-1,0,-1},{-1,-1,-1}},{{0,1,-1},{-1,0,-1},{-1,1,-1}}},
+    {{{0,-1,-1},{1,0,-1},{1,-1,-1}},{{0,1,-1},{1,0,-1},{1,1,-1}}}},
+    {{{{0,-1,1},{-1,0,1},{-1,-1,1}},{{0,1,1},{-1,0,1},{-1,1,1}}},
+    {{{0,-1,1},{1,0,1},{1,-1,1}},{{0,1,1},{1,0,1},{1,1,1}}}}
 };
-
-static bool Seeded = false;
 
 static noise::module::RidgedMulti ridgedNoise;
 static noise::module::RidgedMulti oreNoise;
 static noise::module::Perlin noiseModule;
 
 static std::map<
-    glm::vec3, std::set<LightNode, LightNodeComparator>, VectorComparator
+    glm::vec3, std::set<LightNode, LightNodeComparator>, ChunkPosComparator
 > UnloadedLightQueue;
 
 std::map<
-    glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator
+    glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator
 > TopBlocks;
 
 std::map<
-    glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator
+    glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorComparator>, ChunkPosComparator
 > ChangedBlocks;
 
 static std::mt19937_64 rng;
@@ -105,18 +99,20 @@ double RNG() {
     return rngVal(rng);
 }
 
-void Seed() {
-    Seeded = true;
+void Chunks::Seed(int seed) {
+    if (seed == 0) {
+        int64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+        std::seed_seq ss {
+            static_cast<uint32_t>(timeSeed & 0xffffffff),
+            static_cast<uint32_t>(timeSeed >> 32)
+        };
+        rng.seed(ss);
 
-    int64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::seed_seq ss {
-        static_cast<uint32_t>(timeSeed & 0xffffffff),
-        static_cast<uint32_t>(timeSeed >> 32)
-    };
-    rng.seed(ss);
+        std::uniform_int_distribution<int> uni(-2147483648, 2147483647);
+        seed = uni(rng);
+    }
 
-    std::uniform_int_distribution<int> uni(0, 10000);
-    int seed = uni(rng);
+    WORLD_SEED = seed;
 
     noiseModule.SetSeed(seed);
     noiseModule.SetPersistence(0.5);
@@ -126,16 +122,8 @@ void Seed() {
     ridgedNoise.SetOctaveCount(2);
     ridgedNoise.SetFrequency(5.0);
 
-    oreNoise.SetSeed(uni(rng));
+    oreNoise.SetSeed(seed);
     oreNoise.SetFrequency(2.0);
-}
-
-Chunk::Chunk(glm::vec3 position) {
-    if (!Seeded) {
-        Seed();
-    }
-
-    Position = position;
 }
 
 void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {
@@ -427,8 +415,6 @@ void Chunk::Light(bool flag) {
     }
 
     while (!LightRemovalQueue.empty()) {
-        printf("yes\n");
-
         LightNode node = LightRemovalQueue.front();
         LightRemovalQueue.pop();
 
@@ -734,6 +720,8 @@ void Chunk::Remove_Block(glm::ivec3 position, bool checkMulti) {
         ChangedBlocks[Position][position] = std::make_pair(0, 0);
     }
 
+    Worlds::Save_Chunk(WORLD_NAME, Position);
+
     bool lightBlocks = false;
 
     if (TopBlocks[Position.xz()][position.xz()] == Position.y * CHUNK_SIZE + position.y) {
@@ -802,6 +790,8 @@ void Chunk::Add_Block(glm::ivec3 position, int blockType, int blockData, bool ch
     else {
         ChangedBlocks[Position][position] = std::make_pair(blockType, blockData);
     }
+
+    Worlds::Save_Chunk(WORLD_NAME, Position);
 
     if (Position.y * CHUNK_SIZE + position.y > TopBlocks[Position.xz()][position.xz()]) {
         TopBlocks[Position.xz()][position.xz()] = static_cast<int>(Position.y * CHUNK_SIZE + position.y);

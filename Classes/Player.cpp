@@ -4,6 +4,7 @@
 #include <sstream>
 #include <dirent.h>
 
+#include "UI.h"
 #include "Chat.h"
 #include "main.h"
 #include "Chunk.h"
@@ -12,6 +13,7 @@
 #include "Camera.h"
 #include "Entity.h"
 #include "Shader.h"
+#include "Worlds.h"
 #include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -73,6 +75,8 @@ static float MovementAngle = 0.0f;
 
 static std::map<std::string, std::vector<Sound>> Sounds;
 
+void Load_Player_Data(nlohmann::json &data);
+
 std::vector<std::string> Split(const std::string &s, const char delim) {
     std::vector<std::string> elements;
     std::stringstream ss(s);
@@ -104,9 +108,9 @@ void Player::Init() {
     HoldingBuffer.Init(modelShader);
     HoldingBuffer.Create(3, 3);
 
-    interface.Set_Document("playerUI");
-    interface.Add_Bar("health", "HP", hpDims, hpRange);
-    interface.Set_Document("");
+    Interface::Set_Document("playerUI");
+    Interface::Add_Bar("health", "HP", hpDims, hpRange);
+    Interface::Set_Document("");
 
     Init_Model();
     Init_Sounds();
@@ -488,7 +492,7 @@ void Player::Draw() {
     }
 
     Draw_Model();
-    interface.Draw_Document("playerUI");
+    Interface::Draw_Document("playerUI");
 }
 
 float Player::Get_Block_Break_Time() {
@@ -566,6 +570,8 @@ void Player::Teleport(glm::vec3 pos) {
     WorldPos = pos;
 
     std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
+    LookingChunk = CurrentChunk;
+    LookingTile = CurrentTile;
 
     Update(true);
     Queue_Chunks();
@@ -953,6 +959,15 @@ void Player::Queue_Chunks(bool regenerate) {
 
                 if (!ChunkMap.count(pos)) {
                     if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RENDER_DISTANCE) {
+                        auto savedData = Worlds::Load_Chunk(WORLD_NAME, pos);
+
+                        if (savedData.size() > 0) {
+                            ChangedBlocks[pos] = savedData;
+                        }
+                        else {
+                            ChangedBlocks.erase(pos);
+                        }
+
                         ChunkMap[pos] = new Chunk(pos);
                         ChunkMap[pos]->buffer.Init(shader);
                         ChunkMap[pos]->buffer.Create(3, 3, 1, 1, 1);
@@ -970,43 +985,87 @@ void Player::Request_Handler(std::string packet, bool sending) {
 
     if (sending) {
         if (packet == "blockBreak") {
-            data["events"]["blockBreak"]["player"] = PLAYER_NAME;
-            data["events"]["blockBreak"]["pos"] = Client.Format_Vector(
-                Get_World_Pos(LookingChunk, LookingTile)
-            );
+            data["event"] = "blockBreak";
+            data["player"] = PLAYER_NAME;
+            data["pos"] = Network::Format_Vector(Get_World_Pos(LookingChunk, LookingTile));
         }
 
-        Client.Send(data.dump());
+        Network::Send(data.dump());
     }
     else {
         data = nlohmann::json::parse(packet);
 
-        for (auto it = data["events"].begin(); it != data["events"].end(); ++it) {
-            if (it.key() == "breakBlock") {
-                if (it.value()["player"] == PLAYER_NAME) {
-                    return;
-                }
-
-                std::vector<std::string> coords = Split(it.value(), ',');
-                glm::vec3 pos, chunk, tile;
-
-                for (unsigned long i = 0; i < 3; i++) {
-                    pos[static_cast<int>(i)] = std::stoi(coords[i]);
-                }
-
-                std::tie(chunk, tile) = Get_Chunk_Pos(pos);
-
-                if (Exists(chunk)) {
-                    Break_Block(pos);
-                }
-                else {
-                    ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
-                }
+        if (data["event"] == "blockBreak") {
+            if (data["player"] == PLAYER_NAME) {
+                return;
             }
+
+            std::vector<std::string> coords = Split(data["pos"], ',');
+            glm::vec3 pos, chunk, tile;
+
+            for (unsigned long i = 0; i < 3; i++) {
+                pos[static_cast<int>(i)] = std::stoi(coords[i]);
+            }
+
+            std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+
+            if (Exists(chunk)) {
+                Break_Block(pos);
+            }
+            else {
+                ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
+                Worlds::Save_Chunk(WORLD_NAME, chunk);
+            }
+        }
+
+        else if (data["event"] == "message") {
+            if (data["player"] == PLAYER_NAME) {
+                return;
+            }
+
+            chat.Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
+        }
+
+        else if (data["event"] == "config") {
+            WORLD_NAME = data["world"];
+            Worlds::Load_World(data["seed"]);
+            UI::ShowWorlds = false;
+            UI::ShowTitle = false;
+            GamePaused = false;
+            UI::Toggle_Mouse(false);
+        }
+
+        else if (data["event"] == "load") {
+            Load_Data(packet);
         }
     }
 }
 
 void Player::Clear_Keys() {
     std::fill_n(keys, 1024, false);
+}
+
+void Player::Load_Data(const std::string data) {
+    inventory.Clear();
+    ChunkMap.clear();
+
+    nlohmann::json playerData = nlohmann::json::parse(data);
+
+    Cam.Yaw   = playerData["Yaw"];
+    Cam.Pitch = playerData["Pitch"];
+    Cam.UpdateCameraVectors();
+
+    Teleport(glm::vec3(
+        playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
+    ));
+
+    if (playerData.count("Storage")) {
+        if (playerData["Storage"].count("Inventory")) {
+            inventory.Load(playerData["Storage"]["Inventory"], inventory.Inv);
+        }
+
+        if (playerData["Storage"].count("Crafting")) {
+            inventory.Load(playerData["Storage"]["Crafting"], inventory.Craft);
+        }
+    }
 }

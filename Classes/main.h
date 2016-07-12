@@ -1,11 +1,10 @@
 #pragma once
 
-#define GLM_SWIZZLE
-#include <glm/glm.hpp>
-
 #include <map>
 #include <string>
 #include <vector>
+
+#include "Comparators.h"
 
 // Check if program is running on Windows or OS X.
 #ifdef _WIN32
@@ -14,23 +13,6 @@
     const bool Windows = false;
 #endif
 
-// Compares two vec3 objects, and returns the smallest one.
-class VectorComparator {
-  public:
-    bool operator () (const glm::vec3 &a, const glm::vec3 &b) const {
-        if (a.x != b.x) {
-            return a.x < b.x;
-        }
-        else if (a.z != b.z) {
-            return a.z < b.z;
-        }
-        else if (a.y != b.y) {
-            return a.y > b.y;
-        }
-        return false;
-    }
-};
-
 // Forward declaring classes.
 class Chat;
 class Chunk;
@@ -38,10 +20,8 @@ class Camera;
 class Player;
 class Shader;
 class Listener;
-class Interface;
 class Inventory;
 struct GLFWwindow;
-class NetworkClient;
 
 // Declaring shaders.
 extern Shader* shader;
@@ -54,14 +34,15 @@ extern Chat chat;
 extern Camera Cam;
 extern Player player;
 extern Listener listener;
-extern Interface interface;
 extern Inventory inventory;
 extern GLFWwindow* Window;
-extern NetworkClient Client;
 
-extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 
-// TODO: Interpolate lighting by having different values for vertices per block.
+extern std::string WORLD_NAME;
+extern int WORLD_SEED;
+
+extern std::string PLAYER_NAME;
 
 // The color that the screen gets filled with when the color buffer is cleared.
 const glm::vec3 CLEAR_COLOR = glm::vec3(0.529f, 0.808f, 0.922f);
@@ -87,8 +68,6 @@ const double NOISE_DENSITY_CAVE = -0.85;
 
 // The file to load settings from.
 const char CONFIG_FILE[] = "config.conf";
-
-const char PLAYER_NAME[] = "anden3";
 
 // Vertex coordinates for a 3D-block.
 // Side order is: Left - Right - Down - Up - Back - Front.
@@ -166,4 +145,4 @@ extern bool ChunkMapBusy;
 extern bool Multiplayer;
 
 void Write_Config();
-void Exit();
+void Exit(void* caller);

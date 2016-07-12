@@ -20,6 +20,7 @@
 #include "Entity.h"
 #include "Player.h"
 #include "Shader.h"
+#include "Worlds.h"
 #include "Network.h"
 #include "Interface.h"
 #include "Inventory.h"
@@ -29,6 +30,11 @@ const float Z_NEAR_LIMIT = 0.04f;
 const float Z_FAR_LIMIT = 1000.0f;
 
 // Setting default values for variables.
+std::string WORLD_NAME = "";
+int WORLD_SEED = 0;
+
+std::string PLAYER_NAME = "Player";
+
 double DeltaTime = 0.0;
 double LastFrame = 0.0;
 
@@ -39,14 +45,16 @@ bool MouseEnabled = false;
 bool ChunkMapBusy = false;
 bool ToggleWireframe = false;
 
+static bool WindowMinimized = false;
+
+static double LastNetworkUpdate = 0.0;
+
 // Initializing objects.
 Chat chat = Chat();
 Camera Cam = Camera();
 Player player = Player();
 Listener listener = Listener();
-Interface interface = Interface();
 Inventory inventory = Inventory();
-NetworkClient Client = NetworkClient();
 
 // Defining buffers.
 static UniformBuffer UBO;
@@ -58,15 +66,15 @@ GLFWwindow* Window = nullptr;
 // The map where all the chunks are stored.
 // Keys are the chunk's 3D-position.
 // Values are pointers to the chunks.
-std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
 
 // Defining options.
-int RENDER_DISTANCE = 0;
-int FULLSCREEN = 0;
-int SCREEN_WIDTH = 0;
-int SCREEN_HEIGHT = 0;
-int VSYNC = 0;
 int AMBIENT_OCCLUSION = 0;
+int RENDER_DISTANCE = 0;
+int SCREEN_HEIGHT = 0;
+int SCREEN_WIDTH = 0;
+int FULLSCREEN = 0;
+int VSYNC = 0;
 
 // Defining shaders.
 Shader* shader = nullptr;
@@ -103,11 +111,13 @@ void Render_Scene();
 void Background_Thread();
 
 // Proxy functions that send events to other functions.
-void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
-void text_proxy(GLFWwindow* window, unsigned int codepoint);
-void mouse_proxy(GLFWwindow* window, double posX, double posY);
-void scroll_proxy(GLFWwindow* window, double xoffset, double yoffset);
-void click_proxy(GLFWwindow* window, int button, int action, int mods);
+void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
+void Text_Proxy(GLFWwindow* window, unsigned int codepoint);
+void Mouse_Proxy(GLFWwindow* window, double posX, double posY);
+void Scroll_Proxy(GLFWwindow* window, double xoffset, double yoffset);
+void Click_Proxy(GLFWwindow* window, int button, int action, int mods);
+
+void Window_Minimized(GLFWwindow* window, int iconified);
 
 int main() {
     // Initialize GLFW, the library responsible for windowing, events, etc...
@@ -128,16 +138,15 @@ int main() {
     // Start the background thread.
     std::thread chunkGeneration(Background_Thread);
 
-    player.Queue_Chunks();
-    Client.Init(PLAYER_NAME);
-
-    if (Multiplayer) {
-        Client.Connect("localhost", 1234);
-    }
+    Network::Init();
 
     // The main loop.
     // Runs until window is closed.
     while (!glfwWindowShouldClose(Window)) {
+        if (WindowMinimized) {
+            glfwWaitEvents();
+        }
+
         // Clear the screen buffer from the last frame.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -150,7 +159,10 @@ int main() {
         glfwPollEvents();
 
         if (Multiplayer) {
-            Client.Update();
+            if (currentFrame - LastNetworkUpdate >= 0.1) {
+                LastNetworkUpdate = currentFrame;
+                Network::Update();
+            }
         }
 
         if (!GamePaused) {
@@ -177,9 +189,13 @@ int main() {
         glfwSwapBuffers(Window);
     }
 
+    if (WORLD_NAME != "") {
+        Worlds::Save_World();
+    }
+
     if (Multiplayer) {
-        Client.Disconnect();
-        Client.Update(1000);
+        Network::Disconnect();
+        Network::Update(1000);
     }
 
     // On shutting down, join the chunk generation thread with the main thread.
@@ -274,11 +290,12 @@ void Init_GL() {
     glewInit();
 
     // Set all the callback functions for events to the appropiate proxy functions.
-    glfwSetKeyCallback(Window, key_proxy);
-    glfwSetCursorPosCallback(Window, mouse_proxy);
-    glfwSetScrollCallback(Window, scroll_proxy);
-    glfwSetMouseButtonCallback(Window, click_proxy);
-    glfwSetCharCallback(Window, text_proxy);
+    glfwSetKeyCallback(Window, Key_Proxy);
+    glfwSetCursorPosCallback(Window, Mouse_Proxy);
+    glfwSetScrollCallback(Window, Scroll_Proxy);
+    glfwSetMouseButtonCallback(Window, Click_Proxy);
+    glfwSetCharCallback(Window, Text_Proxy);
+    glfwSetWindowIconifyCallback(Window, Window_Minimized);
 
     // Enable Blending, which makes transparency work.
     glEnable(GL_BLEND);
@@ -496,7 +513,7 @@ void Background_Thread() {
     #pragma warning(disable: 4100)
 #endif
 
-void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (GamePaused) {
         UI::Key_Handler(key, action);
     }
@@ -515,37 +532,23 @@ void key_proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
     }
 }
 // Proxy for receiving Unicode codepoints, very useful for getting text input.
-void text_proxy(GLFWwindow* window, unsigned int codepoint) {
-    if (chat.Focused && !chat.FocusToggled) {
-        chat.Input(codepoint);
-    }
-}
-void mouse_proxy(GLFWwindow* window, double posX, double posY) {
-    UI::Mouse_Handler(posX, posY);
-
-    if (!GamePaused && !chat.Focused) {
-        player.Mouse_Handler(posX, posY);
-    }
-}
-void scroll_proxy(GLFWwindow* window, double offsetX, double offsetY) {
+void Text_Proxy(GLFWwindow* window, unsigned int codepoint) { UI::Text_Handler(codepoint); }
+void Mouse_Proxy(GLFWwindow* window, double posX, double posY) { UI::Mouse_Handler(posX, posY); }
+void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) {
     if (!GamePaused) {
         player.Scroll_Handler(offsetY);
     }
 }
-void click_proxy(GLFWwindow* window, int button, int action, int mods) {
-    UI::Click(action, button);
+void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
 
-    if (!GamePaused) {
-        player.Click_Handler(button, action);
-    }
+void Window_Minimized(GLFWwindow* window, int iconified) {
+    WindowMinimized = iconified > 0;
 }
+
+void Exit(void* caller) { glfwSetWindowShouldClose(Window, GL_TRUE); }
 
 #ifdef __clang__
     #pragma clang diagnostic pop
 #elif _MSC_VER
     #pragma warning(pop)
 #endif
-
-void Exit() {
-    glfwSetWindowShouldClose(Window, GL_TRUE);
-}

@@ -48,6 +48,7 @@ class Player {
     void Teleport(glm::vec3 pos);
 
     void Queue_Chunks(bool regenerate = false);
+    void Load_Data(const std::string data);
     void Clear_Keys();
 
     void Key_Handler(int key, int action);
