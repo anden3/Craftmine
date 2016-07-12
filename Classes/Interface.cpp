@@ -1,5 +1,7 @@
 #include "Interface.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <freetype2/ft2build.h>
@@ -11,6 +13,9 @@
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
+
+#undef min
+#undef max
 
 const std::string FONT      = "Roboto";
 const int         FONT_SIZE = 15;

@@ -1,4 +1,4 @@
-#include "Time.h"
+#include "Timer.h"
 
 #include <iostream>
 
@@ -115,6 +115,7 @@ uint64_t Time::Get_Max() {
 }
 
 #ifdef _WIN32
+
 #include <Windows.h>
 
 LARGE_INTEGER Frequency;
@@ -146,6 +147,10 @@ void Time::Add() {
         T0 = (T0 == 0) ? t.QuadPart : 0;
     }
 }
+
+#undef min
+#undef max
+#undef time
 
 #elif __APPLE__
 #include <mach/mach_time.h>

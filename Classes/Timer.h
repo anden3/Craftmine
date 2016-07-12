@@ -17,8 +17,8 @@ public:
     void Get(std::string type);
 
 private:
-    uint64_t T0 = 0;
-    int Count = 0;
+    uint64_t T0    = 0;
+    int      Count = 0;
     bool BegunLast = false;
 
     std::map<int, uint64_t> Timings;

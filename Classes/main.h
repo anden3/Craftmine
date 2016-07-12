@@ -2,10 +2,14 @@
 
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
+
+#undef interface
 
 // Check if program is running on Windows or OS X.
 #ifdef _WIN32
@@ -29,6 +33,14 @@ class VectorComparator {
         }
         return false;
     }
+};
+
+class VectorHasher {
+public:
+	template <typename T>
+	size_t operator() (const glm::tvec3<T> &v) const {
+		return std::hash<glm::tvec3<T>>()(v);
+	}
 };
 
 // Forward declaring classes.
@@ -59,7 +71,7 @@ extern Inventory inventory;
 extern GLFWwindow* Window;
 extern NetworkClient Client;
 
-extern std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+extern std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 // TODO: Interpolate lighting by having different values for vertices per block.
 

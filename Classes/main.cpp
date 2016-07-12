@@ -12,7 +12,7 @@
 
 #include "UI.h"
 #include "Chat.h"
-#include "Time.h"
+#include "Timer.h"
 #include "Sound.h"
 #include "Chunk.h"
 #include "Blocks.h"
@@ -58,13 +58,13 @@ GLFWwindow* Window = nullptr;
 // The map where all the chunks are stored.
 // Keys are the chunk's 3D-position.
 // Values are pointers to the chunks.
-std::map<glm::vec3, Chunk*, VectorComparator> ChunkMap;
+std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 // Defining options.
 int RENDER_DISTANCE = 0;
 int FULLSCREEN = 0;
-int SCREEN_WIDTH = 0;
-int SCREEN_HEIGHT = 0;
+int SCREEN_WIDTH = 1920;
+int SCREEN_HEIGHT = 1080;
 int VSYNC = 0;
 int AMBIENT_OCCLUSION = 0;
 

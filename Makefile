@@ -1,5 +1,5 @@
 HEADER_PATHS=-iquote Build/Classes -I /usr/local/include \
-	-isystem /usr/local/include/freetype2 -isystem /usr/local/opt/icu4c/include
+	-isystem /usr/local/include/freetype2
 
 LIBRARIES=enet freeimage freetype GLEW glfw3 icuuc noise SOIL vorbisfile
 FRAMEWORKS=CoreFoundation OpenAL OpenGL
