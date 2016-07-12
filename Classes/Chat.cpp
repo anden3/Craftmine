@@ -45,7 +45,7 @@ void Chat::Write(std::string text) {
     int index = 1;
 
     for (auto const &string : strings) {
-        Move_Up((index++ == 1) ? 30 : 20);
+        Move_Up((index++ == 1) ? 30.0f : 20.0f);
 
         ++MessageCount;
         Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, string, MESSAGE_TIME));
@@ -399,7 +399,7 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         int type = 0;
         int data = 0;
 
-        unsigned long delimiterPos = parameters[1].find(':');
+        size_t delimiterPos = parameters[1].find(':');
 
         if (delimiterPos != std::string::npos) {
             type = std::stoi(parameters[1].substr(0, delimiterPos));

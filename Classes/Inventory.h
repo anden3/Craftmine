@@ -22,7 +22,7 @@ struct Stack {
     }
 
     Stack(std::string type, int size = 1) : Size(size) {
-        unsigned long delimPos = type.find(':');
+        size_t delimPos = type.find(':');
         Type = std::stoi(type.substr(0, delimPos));
 
         if (delimPos != std::string::npos) {

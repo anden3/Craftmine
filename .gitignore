@@ -1,3 +1,7 @@
 .vscode/
 Build/
+CMakeFiles/
 Worlds/*
+
+Craftmine.exe
+Craftmine.pdb

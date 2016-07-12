@@ -1,5 +1,7 @@
 #include "Interface.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <freetype2/ft2build.h>
@@ -13,6 +15,11 @@
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
+
+#ifdef WIN32
+    #undef min
+    #undef max
+#endif
 
 std::string Interface::ActiveDocument  = "";
 std::string Interface::HoveringType    = "";
@@ -122,7 +129,7 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
             for (int j = 0; j < 6; j++) {
                 Extend(data, vertices[i][j]);
                 Extend(data, tex_coords[i][j]);
-                data.push_back(block->Icon);
+                data.push_back(static_cast<float>(block->Icon));
 
                 if (offsets) {
                     Extend(data, x, y);
@@ -153,11 +160,11 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
 
                 if (block->MultiTextures) {
                     Extend(data, tex_coords[i][j]);
-                    data.push_back(block->Textures[i]);
+                    data.push_back(static_cast<float>(block->Textures[i]));
                 }
                 else if (block->HasTexture) {
                     Extend(data, tex_coords[i][j]);
-                    data.push_back(block->Texture);
+                    data.push_back(static_cast<float>(block->Texture));
                 }
 
                 if (offsets) {
@@ -633,7 +640,7 @@ Background::Background(std::string name, float x, float y, float w, float h, boo
 void Background::Move(float dx, float dy, bool absolute) {
     if (absolute) {
         X = dx;
-        Y = dy;
+		Y = dy;
     }
     else {
         X += dx;
@@ -1005,7 +1012,7 @@ float Interface::Get_String_Width(std::string string) {
 std::vector<std::string> Interface::Get_Fitting_String(std::string string, int width) {
     float currentWidth = 0;
     unsigned long index = 0;
-    unsigned long prevIndex = 0;
+    size_t prevIndex = 0;
     bool addedString = false;
     bool ignoreNext = false;
 
@@ -1022,7 +1029,7 @@ std::vector<std::string> Interface::Get_Fitting_String(std::string string, int w
 
             if (addedString) {
                 if (c != ' ') {
-                    unsigned long lastSpacePos = string.substr(prevIndex, index).rfind(' ');
+                    size_t lastSpacePos = string.substr(prevIndex, index).rfind(' ');
 
                     if (lastSpacePos != std::string::npos) {
                         partStrings.push_back(string.substr(prevIndex, lastSpacePos));

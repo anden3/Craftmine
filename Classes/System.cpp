@@ -137,4 +137,8 @@ double System::GetCPUUsage() {
     return 0.0;
 }
 
+#undef min
+#undef max
+#undef time
+
 #endif

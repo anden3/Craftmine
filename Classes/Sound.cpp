@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-const int MAX_SOUND_BUFFER_SIZE = 1048576; // 1 MiB
+const int MAX_SOUND_BUFFER_SIZE = 10240;
+static char SOUND_BUFFER[MAX_SOUND_BUFFER_SIZE]; // 10 KiB
 
 Listener::Listener() {
     Device = alcOpenDevice(NULL);
@@ -66,7 +67,8 @@ Sound::Sound(std::string sound) {
 }
 
 std::vector<char> Sound::Load_OGG(std::string path) {
-    FILE* file = fopen(path.c_str(), "rb");
+	FILE *file;
+    errno_t err = fopen_s(&file, path.c_str(), "rb");
 
     if (!file) {
         std::cout << "ERROR::SOUND::FILE_NOT_FOUND\n" << path << std::endl;
@@ -85,13 +87,12 @@ std::vector<char> Sound::Load_OGG(std::string path) {
 
     int bitStream;
     long bytes;
-    char array[MAX_SOUND_BUFFER_SIZE];
 
     std::vector<char> buffer;
 
     do {
-        bytes = ov_read(&oggFile, array, MAX_SOUND_BUFFER_SIZE, 0, 2, 1, &bitStream);
-        buffer.insert(buffer.end(), array, array + bytes);
+        bytes = ov_read(&oggFile, SOUND_BUFFER, MAX_SOUND_BUFFER_SIZE, 0, 2, 1, &bitStream);
+        buffer.insert(buffer.end(), SOUND_BUFFER, SOUND_BUFFER + bytes);
     } while (bytes > 0);
 
     Frequency = int(pInfo->rate);
@@ -100,6 +101,8 @@ std::vector<char> Sound::Load_OGG(std::string path) {
 
     ov_clear(&oggFile);
     fclose(file);
+
+	std::fill(SOUND_BUFFER, SOUND_BUFFER + MAX_SOUND_BUFFER_SIZE, 0);
 
     return buffer;
 }

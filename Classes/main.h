@@ -3,11 +3,13 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "Comparators.h"
 
 // Check if program is running on Windows or OS X.
 #ifdef _WIN32
+    #undef interface
     const bool Windows = true;
 #elif __APPLE__
     const bool Windows = false;
@@ -37,7 +39,7 @@ extern Listener listener;
 extern Inventory inventory;
 extern GLFWwindow* Window;
 
-extern std::map<glm::vec3, Chunk*, ChunkPosComparator> ChunkMap;
+extern std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 extern std::string WORLD_NAME;
 extern int WORLD_SEED;

@@ -34,3 +34,11 @@ public:
         else return false;
     }
 };
+
+class VectorHasher {
+public:
+	template <typename T>
+	size_t operator() (const glm::tvec3<T> &v) const {
+		return std::hash<glm::tvec3<T>>()(v);
+	}
+};

@@ -462,7 +462,7 @@ void Chunk::Light(bool flag) {
 
         glm::vec3 tile = node.Tile;
         int lightLevel = Get_Light(tile);
-        bool visible = Get_Air(tile);
+        bool visible = Get_Air(tile) > 0;
 
         int index = 0;
 
@@ -552,7 +552,7 @@ void Chunk::Mesh() {
                         Extend(VBOData, element[i][j].second);
                         VBOData.push_back(lightValue);
                         VBOData.push_back(0);
-                        VBOData.push_back(Get_Extra_Texture(*block));
+                        VBOData.push_back(static_cast<float>(Get_Extra_Texture(*block)));
                     }
                 }
             }
@@ -568,11 +568,11 @@ void Chunk::Mesh() {
 
                     if (blockInstance->MultiTextures) {
                         Extend(VBOData, tex_coords[bit][j]);
-                        VBOData.push_back(blockInstance->Textures[static_cast<unsigned long>(bit)]);
+                        VBOData.push_back(static_cast<float>(blockInstance->Textures[static_cast<unsigned long>(bit)]));
                     }
                     else {
                         Extend(VBOData, tex_coords[bit][j]);
-                        VBOData.push_back(blockInstance->Texture);
+                        VBOData.push_back(static_cast<float>(blockInstance->Texture));
                     }
 
                     VBOData.push_back(lightValue);
@@ -584,7 +584,7 @@ void Chunk::Mesh() {
                         VBOData.push_back(0);
                     }
 
-                    VBOData.push_back(Get_Extra_Texture(*block));
+                    VBOData.push_back(static_cast<float>(Get_Extra_Texture(*block)));
                 }
             }
         }

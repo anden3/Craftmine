@@ -30,7 +30,7 @@ const float PLAYER_WIDTH = 0.1f;
 
 const float CAMERA_HEIGHT = 1.7f;
 
-const float HITSCAN_STEP_SIZE = 0.03f;
+const float HITSCAN_STEP_SIZE = 0.1f;
 
 const float JUMP_HEIGHT = 0.1f;
 
@@ -392,7 +392,7 @@ void Player::Update(bool update) {
     Move();
 
     if (MouseDown) {
-        PunchingAngle += DeltaTime * PunchingAngleDirection;
+        PunchingAngle += static_cast<float>(DeltaTime) * PunchingAngleDirection;
 
         if (PunchingAngle >= PUNCHING_ANGLE_END && PunchingAngleDirection > 0) {
             PunchingAngle = PUNCHING_ANGLE_END;
@@ -618,16 +618,28 @@ void Player::Check_Hit() {
 
     bool started = false;
 
+	glm::vec3 prevTile = glm::vec3(0);
+
     for (float t = 0; t < PLAYER_RANGE; t += HITSCAN_STEP_SIZE) {
         glm::vec3 checkingPos = Cam.Position + Cam.Front * t;
 
-        if (!Is_Block(checkingPos)) {
-            lastPos = checkingPos;
-            started = true;
-            continue;
-        }
+		glm::vec3 checkChunk, checkTile;
+		std::tie(checkChunk, checkTile) = Get_Chunk_Pos(checkingPos);
 
-        std::tie(lookChunk, lookTile) = Get_Chunk_Pos(checkingPos);
+		if (checkTile == prevTile) {
+			continue;
+		}
+
+		prevTile = checkTile;
+
+		if (!Is_Block(checkingPos)) {
+			lastPos = checkingPos;
+			started = true;
+			continue;
+		}
+
+		lookChunk = checkChunk;
+		lookTile = checkTile;
 
         const Block* blockType = Blocks::Get_Block(
             ChunkMap[lookChunk]->Get_Type(lookTile),
@@ -756,8 +768,8 @@ void Player::Mouse_Handler(double posX, double posY) {
         return;
     }
 
-    Cam.Yaw += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
-    Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
+    Cam.Yaw += static_cast<float>((posX - LastMousePos.x) * PLAYER_SENSITIVITY);
+    Cam.Pitch += static_cast<float>((LastMousePos.y - posY) * PLAYER_SENSITIVITY);
 
     if (Cam.Pitch > 89.9f) {
         Cam.Pitch = 89.9f;
@@ -929,8 +941,8 @@ void Player::Queue_Chunks(bool regenerate) {
     float endY = -10;
 
     if (player.CurrentChunk.y <= -6) {
-        startY = int(player.CurrentChunk.y) + 3;
-        endY = int(player.CurrentChunk.y) - 3;
+        startY = player.CurrentChunk.y + 3;
+        endY = player.CurrentChunk.y - 3;
     }
 
     while (ChunkMapBusy) {
@@ -1004,7 +1016,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
             glm::vec3 pos, chunk, tile;
 
             for (unsigned long i = 0; i < 3; i++) {
-                pos[static_cast<int>(i)] = std::stoi(coords[i]);
+                pos[static_cast<int>(i)] = std::stof(coords[i]);
             }
 
             std::tie(chunk, tile) = Get_Chunk_Pos(pos);
