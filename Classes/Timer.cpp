@@ -126,7 +126,7 @@ Time::Time(std::string id) {
 
     if (!Initialized) {
         QueryPerformanceFrequency(&Frequency);
-        Multiplier = 1000000000 / Frequency.QuadPart;
+        Multiplier = static_cast<double>(1000000000 / Frequency.QuadPart);
         Initialized = true;
     }
 }
@@ -141,7 +141,7 @@ void Time::Add() {
     }
     else {
         if (T0 != 0) {
-            Timings[Count++] = (t.QuadPart - T0) * Multiplier;
+            Timings[Count++] = static_cast<uint64_t>((t.QuadPart - T0) * Multiplier);
         }
 
         T0 = (T0 == 0) ? t.QuadPart : 0;

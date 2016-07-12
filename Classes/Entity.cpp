@@ -23,9 +23,9 @@ EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 
     EntityBuffer.Create(3, 3, data);
 
     if (velocity == glm::vec3(-100)) {
-        Velocity.y += 0.05;
+        Velocity.y += 0.05f;
 
-        double randomAngle = (rand() / (RAND_MAX / 360.0));
+        float randomAngle = (rand() / (RAND_MAX / 360.0f));
 
         Velocity.x += glm::cos(randomAngle) * 2;
         Velocity.z += glm::sin(randomAngle) * 2;

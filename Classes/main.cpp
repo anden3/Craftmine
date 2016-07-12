@@ -204,7 +204,7 @@ void Parse_Config() {
 
     while (std::getline(file_content, line)) {
         // Get the position of the key-value divisor.
-        unsigned long equalPos = line.find('=');
+        size_t equalPos = line.find('=');
         std::string key = line.substr(0, equalPos);
 
         if (key != "") {
@@ -449,7 +449,7 @@ void Background_Thread() {
 
         // Get the XZ-location of the player.
         glm::vec2 playerPos = player.CurrentChunk.xz();
-        float nearestDistance = RENDER_DISTANCE;
+        float nearestDistance = static_cast<float>(RENDER_DISTANCE);
         Chunk* nearestChunk = nullptr;
 
         for (auto const &chunk : ChunkMap) {

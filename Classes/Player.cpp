@@ -388,7 +388,7 @@ void Player::Update(bool update) {
     Move();
 
     if (MouseDown) {
-        PunchingAngle += DeltaTime * PunchingAngleDirection;
+        PunchingAngle += static_cast<float>(DeltaTime) * PunchingAngleDirection;
 
         if (PunchingAngle >= PUNCHING_ANGLE_END && PunchingAngleDirection > 0) {
             PunchingAngle = PUNCHING_ANGLE_END;
@@ -762,8 +762,8 @@ void Player::Mouse_Handler(double posX, double posY) {
         return;
     }
 
-    Cam.Yaw += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
-    Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
+    Cam.Yaw += static_cast<float>((posX - LastMousePos.x) * PLAYER_SENSITIVITY);
+    Cam.Pitch += static_cast<float>((LastMousePos.y - posY) * PLAYER_SENSITIVITY);
 
     if (Cam.Pitch > 89.9f) {
         Cam.Pitch = 89.9f;
@@ -935,8 +935,8 @@ void Player::Queue_Chunks(bool regenerate) {
     float endY = -10;
 
     if (player.CurrentChunk.y <= -6) {
-        startY = int(player.CurrentChunk.y) + 3;
-        endY = int(player.CurrentChunk.y) - 3;
+        startY = player.CurrentChunk.y + 3;
+        endY = player.CurrentChunk.y - 3;
     }
 
     while (ChunkMapBusy) {
@@ -1003,7 +1003,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
                 glm::vec3 pos, chunk, tile;
 
                 for (unsigned long i = 0; i < 3; i++) {
-                    pos[static_cast<int>(i)] = std::stoi(coords[i]);
+                    pos[static_cast<int>(i)] = std::stof(coords[i]);
                 }
 
                 std::tie(chunk, tile) = Get_Chunk_Pos(pos);

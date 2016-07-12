@@ -35,7 +35,7 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
 
     for (int const &element : config) {
         glEnableVertexAttribArray(index);
-        glVertexAttribPointer(index, element, GL_FLOAT, false, VertexSize * FLOAT_SIZE, reinterpret_cast<void*>(partSum * FLOAT_SIZE));
+        glVertexAttribPointer(index, element, GL_FLOAT, false, VertexSize * FLOAT_SIZE, reinterpret_cast<const GLvoid*>(partSum * FLOAT_SIZE));
 
         partSum += element;
         ++index;

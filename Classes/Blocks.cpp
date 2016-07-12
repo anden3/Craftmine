@@ -49,7 +49,7 @@ static std::map<int, Block> BlockTypes;
 static std::map<std::string, Block> BlockNames;
 
 bool Case_Insensitive_Cmp(const std::string &a, const std::string &b) {
-    unsigned long sz = a.size();
+    size_t sz = a.size();
 
     if (b.size() != sz) {
         return false;
@@ -236,7 +236,7 @@ std::string Blocks::Get_Name(int type, int data) {
 bool Blocks::Exists(int type, int data) {
     if (BlockTypes.count(type)) {
         if (data != 0) {
-            return BlockTypes[type].Types.count(data);
+            return BlockTypes[type].Types.count(data) > 0;
         }
 
         return true;
@@ -246,7 +246,7 @@ bool Blocks::Exists(int type, int data) {
 }
 
 bool Blocks::Exists(std::string name) {
-    return BlockNames.count(name);
+    return BlockNames.count(name) > 0;
 }
 
 Data Blocks::Mesh(const Block* block, glm::vec3 offset, float scale, Data data) {
@@ -268,7 +268,7 @@ void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float sca
         for (unsigned long i = 0; i < 6; i++) {
             Extend(storage, (vertices[UP][i] + offset) * scale);
             Extend(storage, tex_coords[UP][i]);
-            storage.push_back(block->Icon);
+            storage.push_back(static_cast<float>(block->Icon));
         }
     }
 
@@ -293,10 +293,10 @@ void Blocks::Mesh(Data &storage, const Block* block, glm::vec3 offset, float sca
                 Extend(storage, tex_coords[i][j]);
 
                 if (block->MultiTextures) {
-                    storage.push_back(block->Textures[i]);
+                    storage.push_back(static_cast<float>(block->Textures[i]));
                 }
                 else if (block->HasTexture) {
-                    storage.push_back(block->Texture);
+                    storage.push_back(static_cast<float>(block->Texture));
                 }
             }
         }
