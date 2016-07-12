@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "Buffer.h"
+#include "Comparators.h"
 
 const int CHUNK_SIZE = 16;
 
@@ -25,27 +26,12 @@ struct ArrayHelper<T, N> {
 template<class T, size_t... A>
 using Array3D = typename ArrayHelper<T, A...>::type;
 
-class Vec3Comparator {
-  public:
-    bool operator () (const glm::vec3 &a, const glm::vec3 &b) const {
-        if (a.x != b.x) return a.x < b.x;
-        else if (a.z != b.z) return a.z < b.z;
-        else if (a.y != b.y) return a.y > b.y;
-        else return false;
-    }
-};
+extern std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorComparator>, ChunkPosComparator> ChangedBlocks;
+extern std::map<glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator> TopBlocks;
 
-class Vec2Comparator {
-  public:
-    bool operator () (const glm::vec2 &a, const glm::vec2 &b) const {
-        if (a.x != b.x) return a.x < b.x;
-        else if (a.y != b.y) return a.y < b.y;
-        else return false;
-    }
+namespace Chunks {
+    void Seed(int seed);
 };
-
-extern std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, Vec3Comparator>, Vec3Comparator> ChangedBlocks;
-extern std::map<glm::vec2, std::map<glm::vec2, int, Vec2Comparator>, Vec2Comparator> TopBlocks;
 
 struct Block;
 
@@ -72,14 +58,16 @@ public:
     std::queue<LightNode> LightQueue;
     std::queue<LightNode> LightRemovalQueue;
 
-    std::map<glm::ivec3, int, Vec3Comparator> ExtraTextures;
+    std::map<glm::ivec3, int, VectorComparator> ExtraTextures;
 
     bool Meshed = false;
     bool Visible = true;
     bool Generated = false;
     bool DataUploaded = false;
 
-    Chunk(glm::vec3 position);
+    Chunk(glm::vec3 position) {
+        Position = position;
+    }
 
     inline int Get_Type(glm::uvec3 pos) { return BlockMap[pos.x][pos.y][pos.z]; }
     inline void Set_Type(glm::uvec3 pos, int value) { BlockMap[pos.x][pos.y][pos.z] = value; }
@@ -132,9 +120,9 @@ private:
     Array3D<unsigned char, CHUNK_SIZE> LightMap = {0};
     Array3D<unsigned char, CHUNK_SIZE> SeesAir  = {0};
 
-    std::set<glm::vec3, Vec3Comparator> Blocks;
-    std::map<glm::vec3, int, Vec3Comparator> DataMap;
-    std::set<glm::vec3, Vec3Comparator> TransparentBlocks;
+    std::set<glm::vec3, VectorComparator> Blocks;
+    std::map<glm::vec3, int, VectorComparator> DataMap;
+    std::set<glm::vec3, VectorComparator> TransparentBlocks;
 };
 
 std::vector<std::pair<glm::vec3, glm::vec3>> Get_Neighbors(glm::vec3 chunk, glm::vec3 tile);

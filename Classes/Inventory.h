@@ -7,6 +7,14 @@
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
+#include <json.hpp>
+
+typedef nlohmann::basic_json<
+    std::__1::map, std::__1::vector, std::__1::basic_string<
+        char, std::__1::char_traits<char>, std::__1::allocator<char>
+    >, bool, long long, double, std::__1::allocator
+> JSONValue;
+
 struct Stack {
     Stack() {
         Type = 0;
@@ -33,7 +41,7 @@ struct Stack {
 
     int Type;
     int Size;
-    int Data;
+    int Data = 0;
 };
 
 extern bool keys[1024];
@@ -68,17 +76,17 @@ public:
     void Click_Handler(int button, int action);
     void Mouse_Handler(double x = -1, double y = -1);
 
+    void Load(const JSONValue &data, std::vector<Stack> &storage);
     void Mesh();
     void Draw();
 
-private:
     std::vector<Stack> Inv;
     std::vector<Stack> Craft;
-    std::vector<Stack> Toolbar;
 
     Stack CraftingOutput = Stack();
     Stack HoldingStack = Stack();
 
+private:
     glm::dvec2 MousePos = glm::dvec2(0);
 
     int HoveringSlot = -1;

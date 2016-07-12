@@ -46,6 +46,10 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
 }
 
 void Buffer::Upload(const Data &data, int start, bool sub) {
+    if (VertexSize == 0) {
+        return;
+    }
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
     if (start == 0 && !sub) {

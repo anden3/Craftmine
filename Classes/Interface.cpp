@@ -10,12 +10,30 @@
 #include <SOIL/SOIL.h>
 #include <FreeImagePlus.h>
 
+#include <unicode/ustream.h>
+
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
 
-#undef min
-#undef max
+#ifdef WIN32
+    #undef min
+    #undef max
+#endif
+
+std::string Interface::ActiveDocument  = "";
+std::string Interface::HoveringType    = "";
+void*       Interface::HoveringElement = nullptr;
+bool        Interface::Holding         = false;
+
+static std::map<std::string, std::map<std::string, Bar         >> Bars;
+static std::map<std::string, std::map<std::string, Image       >> Images;
+static std::map<std::string, std::map<std::string, Button      >> Buttons;
+static std::map<std::string, std::map<std::string, Slider      >> Sliders;
+static std::map<std::string, std::map<std::string, TextBox     >> TextBoxes;
+static std::map<std::string, std::map<std::string, Background  >> Backgrounds;
+static std::map<std::string, std::map<std::string, TextElement >> TextElements;
+static std::map<std::string, std::map<std::string, OrthoElement>> OrthoElements;
 
 const std::string FONT      = "Roboto";
 const int         FONT_SIZE = 15;
@@ -26,8 +44,7 @@ static Shader* UIBorderShader;
 static Shader* UITextureShader;
 static Shader* UIBackgroundShader;
 
-static int TEXT_ATLAS_WIDTH = 0;
-static int TEXT_ATLAS_HEIGHT = 0;
+static glm::ivec2 TEXT_ATLAS_SIZE = {0, 0};
 
 const int       TEXT_TEXTURE_UNIT         = 10;
 const int       TEXT_GLYPHS               = 128;
@@ -64,6 +81,8 @@ const float     BACKGROUND_OPACITY        = 0.7f;
 const glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
 const glm::vec3 BACKGROUND_BORDER_COLOR   = glm::vec3(0.5f);
 
+const int       TEXT_BOX_HORZ_PADDING     = 10;
+
 const std::map<char, glm::vec3> ColorCodes = {
     {'0', {0.000, 0.000, 0.000} }, // Black
     {'1', {0.000, 0.000, 0.666} }, // Dark Blue
@@ -94,7 +113,7 @@ struct CharacterInfo {
   glm::vec2 BitmapSize;
   glm::vec2 BitmapOffset;
 
-  float OffsetX;
+  glm::vec2 Offset = {0, 0};
 };
 
 static std::map<char, CharacterInfo> Characters;
@@ -238,23 +257,21 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
 void Take_Screenshot() {
     SOIL_save_screenshot(
-        "/Users/mac/Desktop/screenshot.bmp",
-        SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+        "/Users/mac/Desktop/screenshot.bmp", SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
     );
 }
 
-void TextElement::Create(std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
-    Text = text;
-    Width = Get_Width();
+void TextElement::Create(std::string name, std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
+    OriginalX = x;
+    OriginalY = y;
 
-    Text = text;
     X = x;
     Y = y;
-
-    Opacity = opacity;
-    Scale = scale;
+    Name = name;
+    Text = text;
     Color = color;
-
+    Scale = scale;
+    Opacity = opacity;
     Width = Get_Width();
 
     TextBuffer.Init(TextShader);
@@ -263,64 +280,71 @@ void TextElement::Create(std::string text, float x, float y, float opacity, glm:
     Mesh();
 }
 
-void TextElement::Center(float x, float y, float width) {
-    X = std::floor(x + (width - Width) / 2);
-    Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
+void TextElement::Center(float x, float y, float width, glm::bvec2 axes) {
+    Centered = axes;
+    CenterWidth = width;
+
+    if (axes.x) {
+        X = std::floor(x + (width - Width) / 2);
+    }
+    
+    if (axes.y) {
+        Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
+    }
 }
 
 void TextElement::Set_Text(std::string newText) {
     Text = newText;
+    Width = Get_Width();
+
+    Center(OriginalX, OriginalY, CenterWidth, Centered);
     Mesh();
 }
 
 void TextElement::Mesh() {
-    float charX = 0;
-    float charY = 0;
-
     Data data;
 
-    bool SkipNext = false;
+    bool skipNext = false;
+    glm::vec2 charPos = {0, 0};
     glm::vec3 textColor = Color;
 
     for (char const &c : Text) {
-        if (c == '&' || SkipNext) {
-            if (SkipNext) {
-                textColor = ColorCodes.at(c);
+        if (c == '&' || skipNext) {
+            if (skipNext) {
+                try {
+                    textColor = ColorCodes.at(c);
+                }
+                catch (const std::out_of_range) {
+                    throw std::runtime_error("Error! Invalid color code in string \"" + Text + "\".");
+                }
             }
 
-            SkipNext = (c == '&');
+            skipNext = (c == '&');
             continue;
         }
 
         CharacterInfo ch = Characters[c];
 
-        float w = ch.BitmapSize.x * Scale;
-        float h = ch.BitmapSize.y * Scale;
+        glm::vec2 size = ch.BitmapSize * Scale;
+        glm::vec2 p1 = charPos + ch.BitmapOffset * Scale - glm::vec2(0, size.y);
+        glm::vec2 p2 = p1 + size;
 
-        float x1 = charX + ch.BitmapOffset.x * Scale;
-        float y1 = charY + ch.BitmapOffset.y * Scale - h;
+        charPos += ch.Advance * Scale;
 
-        float x2 = x1 + w;
-        float y2 = y1 + h;
-
-        charX += ch.Advance.x * Scale;
-        charY += ch.Advance.y * Scale;
-
-        if (w == 0 || h == 0) {
+        if (size.x == 0 || size.y == 0) {
             continue;
         }
 
-        float texX1 = ch.OffsetX;
-        float texX2 = ch.OffsetX + ch.BitmapSize.x / TEXT_ATLAS_WIDTH;
-        float texY2 = ch.BitmapSize.y / TEXT_ATLAS_HEIGHT;
+        glm::vec2 t1 = ch.Offset;
+        glm::vec2 t2 = t1 + ch.BitmapSize / static_cast<glm::vec2>(TEXT_ATLAS_SIZE);
 
         Extend(data,
-            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y1, texX2, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
-            x1, y1, texX1, texY2, textColor.r, textColor.g, textColor.b,
-            x2, y2, texX2, 0,     textColor.r, textColor.g, textColor.b,
-            x1, y2, texX1, 0,     textColor.r, textColor.g, textColor.b
+            p1.x, p1.y, t1.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p1.y, t2.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p2.y, t2.x, t1.y, EXPAND_VEC3(textColor),
+            p1.x, p1.y, t1.x, t2.y, EXPAND_VEC3(textColor),
+            p2.x, p2.y, t2.x, t1.y, EXPAND_VEC3(textColor),
+            p1.x, p2.y, t1.x, t1.y, EXPAND_VEC3(textColor)
         );
     }
 
@@ -339,8 +363,14 @@ void TextElement::Draw() {
 
 float TextElement::Get_Width() {
     float width = 0;
+    bool skipNext = false;
 
     for (char const &c : Text) {
+        if (c == '&' || skipNext) {
+            skipNext = (c == '&');
+            continue;
+        }
+
         width += Characters[c].Advance.x * Scale;
     }
 
@@ -359,19 +389,20 @@ void UIElement::Draw() {
     Text.Draw();
 }
 
-Button::Button(std::string text, float x, float y, float w, float h, Func &function) {
+Button::Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
     Height = (Height != 0) ? h : BUTTON_PADDING * 2;
 
     X = x;
     Y = y;
     Width = w;
+    Name = name;
 
     Opacity = BUTTON_OPACITY;
     Color = BUTTON_COLOR;
 
     Function = function;
 
-    Text.Create(text, X, Y);
+    Text.Create(name, text, X, Y);
     Text.Center(X, Y, Width);
 
     Text.Opacity = BUTTON_TEXT_OPACITY;
@@ -393,14 +424,15 @@ Button::Button(std::string text, float x, float y, float w, float h, Func &funct
 inline void Button::Hover() { Color = BUTTON_HOVER_COLOR; }
 inline void Button::Stop_Hover() { Color = BUTTON_COLOR; }
 inline void Button::Press() { Color = BUTTON_CLICK_COLOR; }
-inline void Button::Release() { Color = BUTTON_COLOR; Function(); }
+inline void Button::Release() { Color = BUTTON_COLOR; Function(this); }
 
-Slider::Slider(std::string text, float x, float y, float w, float h, float min,
+Slider::Slider(std::string name, std::string text, float x, float y, float w, float h, float min,
     float max, float value, Func &function) : Value(value), Min(min), Max(max) {
 
     X = x;
     Y = y;
     Width = w;
+    Name = name;
     Height = (h == 0) ? SLIDER_PADDING * 2 : h;
 
     Opacity = SLIDER_OPACITY;
@@ -411,7 +443,7 @@ Slider::Slider(std::string text, float x, float y, float w, float h, float min,
 
     Function = function;
 
-    Text.Create(text, X, Y);
+    Text.Create(name, text, X, Y);
     Text.Center(X, Y, Width);
 
     Text.Opacity = SLIDER_TEXT_OPACITY;
@@ -445,7 +477,7 @@ inline void Slider::Press() { HandleColor = SLIDER_HANDLE_CLICK_COLOR; }
 void Slider::Release() {
     HandleColor = SLIDER_HANDLE_COLOR;
     Move(std::ceil(Value), true);
-    Function();
+    Function(this);
 }
 
 void Slider::Move(float position, bool setValue) {
@@ -490,11 +522,12 @@ void Slider::Draw() {
     HandleBuffer.Draw();
 }
 
-Bar::Bar(std::string text, float x, float y, float w, float h, float min, float max, float value)
+Bar::Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value)
     : Value(value), Min(min), Max(max) {
     X = x;
     Y = y;
     Width = w;
+    Name = name;
     Height = (h == 0) ? BAR_PADDING * 2 : h;
 
     Opacity = BAR_BACKGROUND_OPACITY;
@@ -503,7 +536,7 @@ Bar::Bar(std::string text, float x, float y, float w, float h, float min, float 
     BarOpacity = BAR_OPACITY;
     BarColor = BAR_COLOR;
 
-    Text.Create(text, x, y);
+    Text.Create(name, text, x, y);
     Text.Opacity = BAR_TEXT_OPACITY;
     Text.Color = BAR_TEXT_COLOR;
 
@@ -534,8 +567,11 @@ void Bar::Draw() {
     BarBuffer.Draw();
 }
 
-Image::Image(std::string file, int texID, float x, float y, float scale)
-    : X(x), Y(y), Scale(scale), TexID(texID) {
+Image::Image(std::string name, std::string file, int texID, float x, float y, float scale) : Scale(scale), TexID(texID) {
+    X = x;
+    Y = y;
+    Name = name;
+
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TexID));
 
     std::tie(Texture, Width, Height) = Load_Texture(file);
@@ -558,15 +594,16 @@ void Image::Draw() {
     ImageBuffer.Draw();
 }
 
-Background::Background(float x, float y, float w, float h, bool border,
-    glm::vec2 gridWidth, glm::vec2 pad) : X(x), Y(y), Width(w), Height(h) {
+Background::Background(std::string name, float x, float y, float w, float h, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
+    X = x;
+    Y = y;
+    Name = name;
+    Width = w;
+    Height = h;
 
     Opacity = BACKGROUND_OPACITY;
     Color = BACKGROUND_COLOR;
     GridColor = BACKGROUND_BORDER_COLOR;
-
-    Width = w;
-    Height = h;
 
     BackgroundBuffer.Init(UIBackgroundShader);
     BackgroundBuffer.Create(2, Get_Rect(X, X + Width, Y, Y + Height));
@@ -643,9 +680,10 @@ void Background::Draw() {
     }
 }
 
-OrthoElement::OrthoElement(int type, int data, float x, float y, float scale) {
+OrthoElement::OrthoElement(std::string name, int type, int data, float x, float y, float scale) {
     OrthoBuffer.Init(UI3DShader);
 
+    Name = name;
     Type = type;
     Scale = scale;
 
@@ -681,11 +719,89 @@ void OrthoElement::Draw() {
     }
 }
 
-enum ActiveElementType { NONE, BUTTON, SLIDER };
+TextBox::TextBox(std::string name, float x, float y, float w, float h) {
+    X = x;
+    Y = y;
+    Width = w;
+    Name = name;
+    Height = h;
 
-static int ActiveElement = NONE;
-static Button* ActiveButton;
-static Slider* ActiveSlider;
+    BG = Background(name, x, y, w, h, true);
+
+    MaxWidth = Width - TEXT_BOX_HORZ_PADDING * 2;
+
+    int textPad = static_cast<int>((h - FONT_SIZE) / 2);
+
+    Cursor.Create(name, "|", x + TEXT_BOX_HORZ_PADDING, y + textPad);
+    TextEl.Create(name, Text, x + TEXT_BOX_HORZ_PADDING, y + textPad);
+
+    Cursor.Opacity = 0;
+}
+
+void TextBox::Key_Handler(int key) {
+    if (key == GLFW_KEY_BACKSPACE && CursorPos > 0) {
+        --CursorPos;
+        Text.erase(CursorPos, 1);
+        Update();
+    }
+
+    else if (key == GLFW_KEY_LEFT && CursorPos > 0) {
+        --CursorPos;
+        Update();
+    }
+
+    else if (key == GLFW_KEY_RIGHT && CursorPos < Text.length()) {
+        ++CursorPos;
+        Update();
+    }
+}
+
+void TextBox::Input(unsigned int codepoint) {
+    UnicodeString string(static_cast<UChar32>(codepoint));
+    std::string str;
+    string.toUTF8String(str);
+
+    Text.insert(CursorPos, str);
+
+    ++CursorPos;
+    Update();
+}
+
+void TextBox::Set_Cursor_Visibility(bool cursorVisible) {
+    Cursor.Opacity = cursorVisible;
+}
+
+void TextBox::Update() {
+    TextWidth = Interface::Get_String_Width(Text);
+
+    if (TextWidth > MaxWidth) {        
+        --CursorPos;
+        Text.erase(CursorPos, 1);
+        return;
+    }
+
+    Cursor.X = X + TEXT_BOX_HORZ_PADDING + Interface::Get_String_Width(Text.substr(0, CursorPos));
+
+    TextEl.Set_Text(Text);
+    TextEl.Mesh();
+}
+
+void TextBox::Clear() {
+    Text = "";
+    TextWidth = 0;
+    CursorPos = 0;
+    Cursor.X = X + TEXT_BOX_HORZ_PADDING;
+    TextEl.Set_Text("");
+    TextEl.Mesh();
+}
+
+void TextBox::Draw() {
+    if (Visible) {
+        BG.Draw();
+        Cursor.Draw();
+        TextEl.Draw();
+    }
+}
 
 void Interface::Init() {
     Init_Shaders();
@@ -738,8 +854,8 @@ void Interface::Init_Text() {
 
     for (unsigned char c = 32; c < TEXT_GLYPHS; c++) {
         FT_Load_Char(face, c, FT_LOAD_RENDER);
-        TEXT_ATLAS_WIDTH += g->bitmap.width;
-        TEXT_ATLAS_HEIGHT = std::max(TEXT_ATLAS_HEIGHT, static_cast<int>(g->bitmap.rows));
+        TEXT_ATLAS_SIZE.x += g->bitmap.width;
+        TEXT_ATLAS_SIZE.y = std::max(TEXT_ATLAS_SIZE.y, static_cast<int>(g->bitmap.rows));
     }
 
     unsigned int textAtlas;
@@ -755,7 +871,7 @@ void Interface::Init_Text() {
 
     glTexImage2D(
         GL_TEXTURE_2D, 0, GL_RED,
-        TEXT_ATLAS_WIDTH, TEXT_ATLAS_HEIGHT,
+        TEXT_ATLAS_SIZE.x, TEXT_ATLAS_SIZE.y,
         0, GL_RED, GL_UNSIGNED_BYTE, NULL
     );
 
@@ -774,24 +890,12 @@ void Interface::Init_Text() {
             GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer
         );
 
-        ch.Advance = glm::vec2(
-            g->advance.x >> 6,
-            g->advance.y >> 6
-        );
+        ch.Advance = glm::vec2(g->advance.x >> 6, g->advance.y >> 6);
+        ch.BitmapSize = glm::vec2(g->bitmap.width, g->bitmap.rows);
+        ch.BitmapOffset = glm::vec2(g->bitmap_left, g->bitmap_top);
+        ch.Offset = glm::vec2(static_cast<float>(xOffset) / TEXT_ATLAS_SIZE.x, 0);
 
-        ch.BitmapSize = glm::vec2(
-            g->bitmap.width,
-            g->bitmap.rows
-        );
-
-        ch.BitmapOffset = glm::vec2(
-            g->bitmap_left,
-            g->bitmap_top
-        );
-
-        ch.OffsetX = static_cast<float>(xOffset) / TEXT_ATLAS_WIDTH;
         Characters[static_cast<char>(c)] = ch;
-
         xOffset += g->bitmap.width;
     }
 
@@ -810,8 +914,8 @@ void Interface::Mouse_Handler(double x, double y) {
         return;
     }
 
-    if (Holding && ActiveSlider != nullptr) {
-        ActiveSlider->Move(static_cast<float>(x));
+    if (Holding && HoveringType == "slider") {
+        static_cast<Slider*>(HoveringElement)->Move(static_cast<float>(x));
         return;
     }
 
@@ -820,9 +924,8 @@ void Interface::Mouse_Handler(double x, double y) {
             if (In_Range(y, glm::vec2(button.second.Y, button.second.Height))) {
                 Holding ? button.second.Press() : button.second.Hover();
 
-                ActiveElement = BUTTON;
-                ActiveButton = &button.second;
-                ActiveSlider = nullptr;
+                HoveringType = "button";
+                HoveringElement = &button.second;
                 return;
             }
         }
@@ -835,9 +938,8 @@ void Interface::Mouse_Handler(double x, double y) {
             if (In_Range(y, glm::vec2(slider.second.Y, slider.second.Height))) {
                 Holding ? slider.second.Press() : slider.second.Hover();
 
-                ActiveElement = SLIDER;
-                ActiveSlider = &slider.second;
-                ActiveButton = nullptr;
+                HoveringType = "slider";
+                HoveringElement = &slider.second;
                 return;
             }
         }
@@ -845,44 +947,58 @@ void Interface::Mouse_Handler(double x, double y) {
         slider.second.Stop_Hover();
     }
 
-    ActiveElement = NONE;
-    ActiveSlider = nullptr;
-    ActiveButton = nullptr;
+    for (auto &box : TextBoxes[ActiveDocument]) {
+        if (In_Range(x, glm::vec2(box.second.X, box.second.Width))) {
+            if (In_Range(y, glm::vec2(box.second.Y, box.second.Height))) {
+                HoveringType = "textBox";
+                HoveringElement = &box.second;
+                box.second.Set_Cursor_Visibility(true);
+                return;
+            }
+        }
+
+        box.second.Set_Cursor_Visibility(false);
+    }
+
+    HoveringType = "";
+    HoveringElement = nullptr;
 }
 
 void Interface::Click(int mouseButton, int action) {
-    if (ActiveElement == NONE || mouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
+    if (HoveringType == "" || mouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
         Holding = false;
         return;
     }
 
     Holding = (action == GLFW_PRESS);
 
-    if (ActiveElement == BUTTON) {
-        Holding ? ActiveButton->Press() : ActiveButton->Release();
+    if (HoveringType == "button") {
+        Button* button = static_cast<Button*>(HoveringElement);
+        Holding ? button->Press() : button->Release();
     }
 
-    else if (ActiveElement == SLIDER) {
-        Holding ? ActiveSlider->Press() : ActiveSlider->Release();
+    else if (HoveringType == "slider") {
+        Slider* slider = static_cast<Slider*>(HoveringElement);
+        Holding ? slider->Press() : slider->Release();
     }
 
     if (!Holding) {
-        ActiveElement = NONE;
-        ActiveSlider = nullptr;
-        ActiveButton = nullptr;
+        HoveringType = "";
+        HoveringElement = nullptr;
     }
 }
 
 void Interface::Draw_Document(std::string document) {
     glDisable(GL_DEPTH_TEST);
 
-    for (auto &bg : Backgrounds[document]) { bg.second.Draw(); }
-    for (auto &image : Images[document]) { image.second.Draw(); }
-    for (auto &button : Buttons[document]) { button.second.Draw(); }
-    for (auto &slider : Sliders[document]) { slider.second.Draw(); }
-    for (auto &bar : Bars[document]) { bar.second.Draw(); }
+    for (auto &bg     : Backgrounds  [document]) { bg    .second.Draw(); }
+    for (auto &image  : Images       [document]) { image .second.Draw(); }
+    for (auto &button : Buttons      [document]) { button.second.Draw(); }
+    for (auto &slider : Sliders      [document]) { slider.second.Draw(); }
+    for (auto &bar    : Bars         [document]) { bar   .second.Draw(); }
     for (auto &object : OrthoElements[document]) { object.second.Draw(); }
-    for (auto &text : TextElements[document]) { text.second.Draw(); }
+    for (auto &box    : TextBoxes    [document]) { box   .second.Draw(); }
+    for (auto &text   : TextElements [document]) { text  .second.Draw(); }
 
     glEnable(GL_DEPTH_TEST);
 }
@@ -945,3 +1061,51 @@ std::vector<std::string> Interface::Get_Fitting_String(std::string string, int w
 
     return partStrings;
 }
+
+namespace Interface {
+    void Set_Document(std::string document) {
+        ActiveDocument = document;
+    }
+
+    void Add_Text(std::string name, std::string text, float x, float y) {
+        TextElements[ActiveDocument].emplace(name, TextElement(name, text, std::floor(x), std::floor(y)));
+    }
+    void Add_Text_Box(std::string name, float x, float y, float w, float h) {
+        TextBoxes[ActiveDocument].emplace(name, TextBox(name, x, y, w, h));
+    }
+    void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
+        Buttons[ActiveDocument].emplace(name, Button(name, text, x, y, w, h, function));
+    }
+    void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
+        Sliders[ActiveDocument].emplace(name, Slider(name, text, x, y, w, h, min, max, value, function));
+    }
+    void Add_Bar(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value) {
+        Bars[ActiveDocument].emplace(name, Bar(name, text, x, y, w, h, min, max, value));
+    }
+    void Add_Image(std::string name, std::string path, int texID, float x, float y, float scale) {
+        Images[ActiveDocument].emplace(name, Image(name, path, texID, x, y, scale));
+    }
+    void Add_Background(std::string name, glm::vec4 dims, bool border, glm::vec2 gridWidth, glm::vec2 pad) {
+        Backgrounds[ActiveDocument].emplace(name, Background(name, dims.x, dims.y, dims.z, dims.w, border, gridWidth, pad));
+    }
+    void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale) {
+        OrthoElements[ActiveDocument].emplace(name, OrthoElement(name, type, data, x, y, scale));
+    }
+
+    void Delete_Bar       (std::string name) { Bars         [ActiveDocument].erase(name); }
+    void Delete_Text      (std::string name) { TextElements [ActiveDocument].erase(name); }
+    void Delete_Image     (std::string name) { Images       [ActiveDocument].erase(name); }
+    void Delete_Button    (std::string name) { Buttons      [ActiveDocument].erase(name); }
+    void Delete_Slider    (std::string name) { Sliders      [ActiveDocument].erase(name); }
+    void Delete_Text_Box  (std::string name) { TextBoxes    [ActiveDocument].erase(name); }
+    void Delete_Background(std::string name) { Backgrounds  [ActiveDocument].erase(name); }
+    void Delete_3D_Element(std::string name) { OrthoElements[ActiveDocument].erase(name); }
+
+    Image*        Get_Image       (std::string name) { return &Images       [ActiveDocument][name]; }
+    Button*       Get_Button      (std::string name) { return &Buttons      [ActiveDocument][name]; }
+    Slider*       Get_Slider      (std::string name) { return &Sliders      [ActiveDocument][name]; }
+    TextBox*      Get_Text_Box    (std::string name) { return &TextBoxes    [ActiveDocument][name]; }
+    Background*   Get_Background  (std::string name) { return &Backgrounds  [ActiveDocument][name]; }
+    OrthoElement* Get_3D_Element  (std::string name) { return &OrthoElements[ActiveDocument][name]; }
+    TextElement*  Get_Text_Element(std::string name) { return &TextElements [ActiveDocument][name]; }
+};
