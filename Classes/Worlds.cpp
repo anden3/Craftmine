@@ -18,13 +18,13 @@
 static std::map<std::string, int> WorldList;
 
 // Only works for uppercase.
-constexpr int Hex_To_Dec(char hex) {
+int Hex_To_Dec(char hex) {
     if (hex >= 'A') {  return hex - 'A' + 10; }
     return hex - '0';
 }
 
 // Only outputs uppercase hex.
-constexpr char Dec_To_Hex(int val) {
+char Dec_To_Hex(int val) {
     if (val >= 10) { return static_cast<char>(val - 10 + 'A'); }
     return static_cast<char>(val + '0');
 }
@@ -137,7 +137,7 @@ void Worlds::Load_World(int seed) {
     }
 
     Chunks::Seed(seed);
-    player.Queue_Chunks(true);
+	player.Update(true);
 }
 
 std::vector<World> Worlds::Get_Worlds() {

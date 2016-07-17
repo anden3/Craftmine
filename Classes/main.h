@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <atomic>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -142,7 +143,7 @@ extern bool ToggleWireframe;
 extern bool MouseEnabled;
 
 // If the chunk map is currently locked to a thread.
-extern bool ChunkMapBusy;
+extern std::atomic_flag ChunkMapBusy;
 
 extern bool Multiplayer;
 

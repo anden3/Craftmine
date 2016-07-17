@@ -1,10 +1,10 @@
 #pragma once
 
-#ifdef _WIN32
-#include <OpenAL/al.h>
-#include <OpenAL/alc.h>
-#elif __APPLE__
-#include <OpenAL/OpenAL.h>
+#ifdef __APPLE__
+    #include <OpenAL/OpenAL.h>
+#else
+    #include <OpenAL/al.h>
+    #include <OpenAL/alc.h>
 #endif
 
 #define GLM_SWIZZLE

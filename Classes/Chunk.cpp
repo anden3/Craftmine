@@ -503,9 +503,7 @@ float Chunk::GetAO(glm::vec3 block, int face, int index) {
     for (int i = 0; i < 3; ++i) {
         glm::ivec2 vertexIndex = vertexIndexes[face / 2];
 
-        if (!Blocks.count(
-            block + AOOffsets[face][vertexIndex.x][vertexIndex.y][i]
-        )) {
+        if (!Blocks.count(block + AOOffsets[face][vertexIndex.x][vertexIndex.y][i])) {
             continue;
         }
 
@@ -520,7 +518,7 @@ float Chunk::GetAO(glm::vec3 block, int face, int index) {
 }
 
 int Chunk::Get_Extra_Texture(glm::ivec3 tile) {
-    if (ExtraTextures.count(tile)) {
+    if (HasExtraTextures && ExtraTextures.count(tile)) {
         return ExtraTextures[tile];
     }
 
@@ -869,5 +867,15 @@ bool Is_Block(glm::vec3 pos) {
 }
 
 bool Exists(glm::vec3 chunk) {
-    return ChunkMap.count(chunk) && ChunkMap[chunk]->DataUploaded;
+	if (!ChunkMap.count(chunk)) {
+		return false;
+	}
+
+	Chunk* ch = ChunkMap[chunk];
+
+	if (ch == nullptr) {
+		return false;
+	}
+
+	return ch->DataUploaded;
 }

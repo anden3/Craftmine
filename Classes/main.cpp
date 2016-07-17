@@ -42,9 +42,11 @@ bool Wireframe = false;
 bool GamePaused = true;
 bool Multiplayer = false;
 bool MouseEnabled = false;
-bool ChunkMapBusy = false;
 bool ToggleWireframe = false;
 
+std::atomic_flag ChunkMapBusy = ATOMIC_FLAG_INIT;
+
+static bool WindowFocused = true;
 static bool WindowMinimized = false;
 
 static double LastNetworkUpdate = 0.0;
@@ -117,6 +119,7 @@ void Mouse_Proxy(GLFWwindow* window, double posX, double posY);
 void Scroll_Proxy(GLFWwindow* window, double xoffset, double yoffset);
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods);
 
+void Window_Focused(GLFWwindow* window, int focused);
 void Window_Minimized(GLFWwindow* window, int iconified);
 
 int main() {
@@ -143,8 +146,9 @@ int main() {
     // The main loop.
     // Runs until window is closed.
     while (!glfwWindowShouldClose(Window)) {
-        if (WindowMinimized) {
+        if (WindowMinimized || !WindowFocused) {
             glfwWaitEvents();
+			continue;
         }
 
         // Clear the screen buffer from the last frame.
@@ -249,6 +253,7 @@ void Init_GL() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     glfwWindowHint(GLFW_RESIZABLE, false);
+	glfwWindowHint(GLFW_AUTO_ICONIFY, false);
 
     if (FULLSCREEN) {
         // Stops the window from having any decoration, such as a title bar.
@@ -262,6 +267,8 @@ void Init_GL() {
         // Set SCREEN_WIDTH and SCREEN_HEIGHT to the resolution of the primary monitor.
         SCREEN_WIDTH = videoMode->width;
         SCREEN_HEIGHT = videoMode->height;
+
+		glfwWindowHint(GLFW_REFRESH_RATE, videoMode->refreshRate);
 
         // Create a fullscreen window.
         Window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Craftmine", monitor, nullptr);
@@ -420,7 +427,7 @@ void Render_Scene() {
     shader->Upload("RenderTransparent", false);
 
     for (auto const &chunk : ChunkMap) {
-        chunk.second->Draw();
+		chunk.second->Draw();
     }
 
     // Set the second rendering pass to discard any opaque fragments.
@@ -449,20 +456,17 @@ void Render_Scene() {
 }
 
 void Background_Thread() {
-    while (true) {
-        if (glfwWindowShouldClose(Window)) {
-            return;
-        }
+	while (true) {
+		if (glfwWindowShouldClose(Window)) {
+			return;
+		}
 
         bool queueEmpty = true;
 
         // Waits for the chunk map to be available for reading.
-        while (ChunkMapBusy) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        while (ChunkMapBusy.test_and_set(std::memory_order_acquire)) {
+			;
         }
-
-        // Stops the chunk map from being modified.
-        ChunkMapBusy = true;
 
         // Get the XZ-location of the player.
         glm::vec2 playerPos = player.CurrentChunk.xz();
@@ -498,7 +502,7 @@ void Background_Thread() {
         }
 
         // Show that the thread is no longer using the chunk map.
-        ChunkMapBusy = false;
+		ChunkMapBusy.clear(std::memory_order_release);
 
         // Sleep for 1 ms if there's still chunks to be generated, else sleep for 100 ms.
         std::this_thread::sleep_for(std::chrono::milliseconds(queueEmpty ? 100 : 1));
@@ -534,18 +538,13 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
 // Proxy for receiving Unicode codepoints, very useful for getting text input.
 void Text_Proxy(GLFWwindow* window, unsigned int codepoint) { UI::Text_Handler(codepoint); }
 void Mouse_Proxy(GLFWwindow* window, double posX, double posY) { UI::Mouse_Handler(posX, posY); }
-void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) {
-    if (!GamePaused) {
-        player.Scroll_Handler(offsetY);
-    }
-}
+void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) { if (!GamePaused) { player.Scroll_Handler(offsetY); } }
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
 
-void Window_Minimized(GLFWwindow* window, int iconified) {
-    WindowMinimized = iconified > 0;
-}
+void Window_Focused(GLFWwindow* window, int focused) { WindowFocused = focused > 0; }
+void Window_Minimized(GLFWwindow* window, int iconified) { WindowMinimized = iconified > 0; }
 
-void Exit(void* caller) { glfwSetWindowShouldClose(Window, GL_TRUE); }
+void Exit(void* caller) { glfwSetWindowShouldClose(Window, true); }
 
 #ifdef __clang__
     #pragma clang diagnostic pop

@@ -10,9 +10,9 @@
 #include <json.hpp>
 
 typedef nlohmann::basic_json<
-    std::__1::map, std::__1::vector, std::__1::basic_string<
-        char, std::__1::char_traits<char>, std::__1::allocator<char>
-    >, bool, long long, double, std::__1::allocator
+    std::map, std::vector, std::basic_string<
+        char, std::char_traits<char>, std::allocator<char>
+    >, bool, long long, double, std::allocator
 > JSONValue;
 
 struct Stack {

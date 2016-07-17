@@ -75,8 +75,6 @@ static float MovementAngle = 0.0f;
 
 static std::map<std::string, std::vector<Sound>> Sounds;
 
-void Load_Player_Data(nlohmann::json &data);
-
 std::vector<std::string> Split(const std::string &s, const char delim) {
     std::vector<std::string> elements;
     std::stringstream ss(s);
@@ -181,6 +179,7 @@ void Player::Mesh_Holding() {
 
 void Player::Mesh_Damage(int index) {
     ChunkMap[LookingChunk]->ExtraTextures[LookingTile] = Blocks::Get_Block(255, index + 1)->Texture;
+	ChunkMap[LookingChunk]->HasExtraTextures = true;
     ChunkMap[LookingChunk]->Mesh();
 }
 
@@ -409,6 +408,8 @@ void Player::Update(bool update) {
 
     Check_Pickup();
 
+	Chunk* lookingChunk = ChunkMap[LookingChunk];
+
     if (MouseDown && LookingAtBlock) {
         if (Creative) {
             Break_Block(Get_World_Pos(LookingChunk, LookingTile));
@@ -424,8 +425,13 @@ void Player::Update(bool update) {
             MouseTimer += static_cast<float>(DeltaTime);
 
             if (MouseTimer >= requiredTime) {
-                ChunkMap[LookingChunk]->ExtraTextures.erase(LookingTile);
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
+				lookingChunk->ExtraTextures.erase(LookingTile);
+
+				if (lookingChunk->ExtraTextures.size() == 0) {
+					lookingChunk->HasExtraTextures = false;
+				}
+
                 MouseTimer = 0.0;
                 update = true;
 
@@ -443,9 +449,14 @@ void Player::Update(bool update) {
         }
     }
     else if (LookingAtBlock) {
-        if (ChunkMap[LookingChunk]->ExtraTextures.count(LookingTile)) {
-            ChunkMap[LookingChunk]->ExtraTextures.erase(LookingTile);
-            ChunkMap[LookingChunk]->Mesh();
+        if (lookingChunk->ExtraTextures.count(LookingTile)) {
+			lookingChunk->ExtraTextures.erase(LookingTile);
+
+			if (lookingChunk->ExtraTextures.size() == 0) {
+				lookingChunk->HasExtraTextures = false;
+			}
+
+			lookingChunk->Mesh();
         }
     }
 
@@ -682,19 +693,26 @@ void Player::Check_Hit() {
         LookingAirChunk = airChunk;
         LookingAirTile = airTile;
 
-        if (LookingTile != prevTile) {
-            MouseTimer = 0.0f;
+		if (LookingTile == prevTile) {
+			return;
+		}
 
-            if (ChunkMap[prevChunk]->ExtraTextures.count(prevTile)) {
-                ChunkMap[prevChunk]->ExtraTextures.erase(prevTile);
-                ChunkMap[prevChunk]->Mesh();
-            }
+        MouseTimer = 0.0f;
 
-            LookingBlockType = Blocks::Get_Block(
-                ChunkMap[LookingChunk]->Get_Type(LookingTile),
-                ChunkMap[LookingChunk]->Get_Data(LookingTile)
-            );
+        if (Exists(prevChunk) && ChunkMap[prevChunk]->ExtraTextures.count(prevTile)) {
+            ChunkMap[prevChunk]->ExtraTextures.erase(prevTile);
+
+			if (ChunkMap[prevChunk]->ExtraTextures.size() == 0) {
+				ChunkMap[prevChunk]->HasExtraTextures = false;
+			}
+
+            ChunkMap[prevChunk]->Mesh();
         }
+
+        LookingBlockType = Blocks::Get_Block(
+            ChunkMap[LookingChunk]->Get_Type(LookingTile),
+            ChunkMap[LookingChunk]->Get_Data(LookingTile)
+        );
 
         return;
     }
@@ -945,17 +963,15 @@ void Player::Queue_Chunks(bool regenerate) {
         endY = player.CurrentChunk.y - 3;
     }
 
-    while (ChunkMapBusy) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    ChunkMapBusy = true;
+	while (ChunkMapBusy.test_and_set(std::memory_order_acquire)) {
+		;
+	}
 
     for (auto chunk = ChunkMap.begin(); chunk != ChunkMap.end();) {
         float dist = glm::distance(CurrentChunk.xz(), chunk->first.xz());
         bool outOfRange = dist > RENDER_DISTANCE || chunk->first.y > startY || chunk->first.y < endY;
 
-        if (regenerate || outOfRange) {
+        if (chunk->second == nullptr || regenerate || outOfRange) {
             delete chunk->second;
             chunk = ChunkMap.erase(chunk);
         }
@@ -969,27 +985,31 @@ void Player::Queue_Chunks(bool regenerate) {
             for (float y = startY; y >= endY; y--) {
                 glm::vec3 pos(x, y, z);
 
-                if (!ChunkMap.count(pos)) {
-                    if (glm::distance(CurrentChunk.xz(), pos.xz()) <= RENDER_DISTANCE) {
-                        auto savedData = Worlds::Load_Chunk(WORLD_NAME, pos);
+				if (ChunkMap.count(pos)) {
+					continue;
+				}
 
-                        if (savedData.size() > 0) {
-                            ChangedBlocks[pos] = savedData;
-                        }
-                        else {
-                            ChangedBlocks.erase(pos);
-                        }
+				if (glm::distance(CurrentChunk.xz(), pos.xz()) > RENDER_DISTANCE) {
+					continue;
+				}
 
-                        ChunkMap[pos] = new Chunk(pos);
-                        ChunkMap[pos]->buffer.Init(shader);
-                        ChunkMap[pos]->buffer.Create(3, 3, 1, 1, 1);
-                    }
+                auto savedData = Worlds::Load_Chunk(WORLD_NAME, pos);
+
+                if (savedData.size() > 0) {
+                    ChangedBlocks[pos] = savedData;
                 }
+                else {
+                    ChangedBlocks.erase(pos);
+                }
+
+                ChunkMap[pos] = new Chunk(pos);
+                ChunkMap[pos]->buffer.Init(shader);
+                ChunkMap[pos]->buffer.Create(3, 3, 1, 1, 1);
             }
         }
     }
 
-    ChunkMapBusy = false;
+	ChunkMapBusy.clear(std::memory_order_release);
 }
 
 void Player::Request_Handler(std::string packet, bool sending) {
@@ -1039,7 +1059,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
         }
 
         else if (data["event"] == "config") {
-            WORLD_NAME = data["world"];
+            WORLD_NAME = data["world"].get<std::string>();
             Worlds::Load_World(data["seed"]);
             UI::ShowWorlds = false;
             UI::ShowTitle = false;
@@ -1067,9 +1087,14 @@ void Player::Load_Data(const std::string data) {
     Cam.Pitch = playerData["Pitch"];
     Cam.UpdateCameraVectors();
 
-    Teleport(glm::vec3(
-        playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
-    ));
+	WorldPos = glm::vec3(
+		playerData["Position"][0], playerData["Position"][1], playerData["Position"][2]
+	);
+	Velocity = glm::vec3(0);
+
+	std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
+	LookingChunk = CurrentChunk;
+	LookingTile = CurrentTile;
 
     if (playerData.count("Storage")) {
         if (playerData["Storage"].count("Inventory")) {

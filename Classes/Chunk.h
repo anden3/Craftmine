@@ -31,6 +31,7 @@ extern std::map<glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorCom
 
 namespace Chunks {
     void Seed(int seed);
+	void Delete(glm::vec3 chunk);
 };
 
 struct Block;
@@ -64,6 +65,7 @@ public:
     bool Visible = true;
     bool Generated = false;
     bool DataUploaded = false;
+	bool HasExtraTextures = false;
 
     Chunk(glm::vec3 position) {
         Position = position;
@@ -132,5 +134,5 @@ bool Is_Block(glm::vec3 pos);
 bool Exists(glm::vec3 chunk);
 
 inline glm::vec3 Get_World_Pos(glm::vec3 chunk, glm::vec3 tile) {
-    return chunk * static_cast<float>(CHUNK_SIZE) + tile;
+	return glm::fma(glm::vec3(static_cast<float>(CHUNK_SIZE)), chunk, tile);
 }

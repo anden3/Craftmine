@@ -2,6 +2,7 @@
 
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 
 class VectorComparator {
 public:
