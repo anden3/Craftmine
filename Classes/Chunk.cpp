@@ -108,7 +108,7 @@ void Chunks::Seed(int seed) {
         };
         rng.seed(ss);
 
-        std::uniform_int_distribution<int> uni(-2147483648, 2147483647);
+        std::uniform_int_distribution<int> uni(-2147483647, 2147483647);
         seed = uni(rng);
     }
 
@@ -124,6 +124,23 @@ void Chunks::Seed(int seed) {
 
     oreNoise.SetSeed(seed);
     oreNoise.SetFrequency(2.0);
+}
+
+void Chunks::Delete(glm::vec3 chunk) {
+	auto it = ChunkMap.find(chunk);
+
+	if (it == ChunkMap.end()) {
+		return;
+	}
+
+	while (ChunkMapBusy.test_and_set(std::memory_order_acquire)) {
+		;
+	}
+
+	delete it->second;
+	ChunkMap.erase(it);
+
+	ChunkMapBusy.clear(std::memory_order_release);
 }
 
 void Chunk::Update_Air(glm::ivec3 pos, glm::bvec3 inChunk) {

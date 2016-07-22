@@ -12,6 +12,8 @@
 #ifdef _WIN32
     #undef interface
     const bool Windows = true;
+
+	int __cdecl Print_Debug(const char *format, ...);
 #elif __APPLE__
     const bool Windows = false;
 #endif

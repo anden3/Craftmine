@@ -262,6 +262,9 @@ void Take_Screenshot() {
 }
 
 void TextElement::Create(std::string name, std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
+	x = std::floor(x);
+	y = std::floor(y);
+
     OriginalX = x;
     OriginalY = y;
 
@@ -574,9 +577,10 @@ Image::Image(std::string name, std::string file, int texID, float x, float y, fl
 
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TexID));
 
-    std::tie(Texture, Width, Height) = Load_Texture(file);
-    Width *= Scale;
-    Height *= Scale;
+	auto imageData = Load_Texture(file);
+	Texture = std::get<0>(imageData);
+	Width = static_cast<float>(std::get<1>(imageData)) * Scale;
+	Height = static_cast<float>(std::get<2>(imageData)) * Scale;
 
     glBindTexture(GL_TEXTURE_2D, Texture);
 

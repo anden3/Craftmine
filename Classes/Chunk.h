@@ -3,6 +3,7 @@
 #include <set>
 #include <array>
 #include <queue>
+#include <atomic>
 #include <thread>
 
 #include "Buffer.h"
@@ -61,11 +62,11 @@ public:
 
     std::map<glm::ivec3, int, VectorComparator> ExtraTextures;
 
-    bool Meshed = false;
-    bool Visible = true;
-    bool Generated = false;
-    bool DataUploaded = false;
-	bool HasExtraTextures = false;
+	std::atomic_bool Meshed           = ATOMIC_VAR_INIT(false);
+	std::atomic_bool Visible          = ATOMIC_VAR_INIT(true);
+	std::atomic_bool Generated        = ATOMIC_VAR_INIT(false);
+	std::atomic_bool DataUploaded     = ATOMIC_VAR_INIT(false);
+	std::atomic_bool HasExtraTextures = ATOMIC_VAR_INIT(false);
 
     Chunk(glm::vec3 position) {
         Position = position;

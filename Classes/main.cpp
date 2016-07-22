@@ -25,6 +25,24 @@
 #include "Interface.h"
 #include "Inventory.h"
 
+#ifdef WIN32
+	#include <cstdarg>
+	#include <Windows.h>
+
+	int __cdecl Print_Debug(const char *format, ...) {
+		char str[1024];
+
+		va_list argptr;
+		va_start(argptr, format);
+		int ret = vsnprintf(str, sizeof(str), format, argptr);
+		va_end(argptr);
+
+		OutputDebugStringA(str);
+
+		return ret;
+	}
+#endif
+
 // The camera drawing limits.
 const float Z_NEAR_LIMIT = 0.04f;
 const float Z_FAR_LIMIT = 1000.0f;
@@ -434,7 +452,7 @@ void Render_Scene() {
     shader->Upload("RenderTransparent", true);
 
     for (auto const &chunk : ChunkMap) {
-        chunk.second->Draw(true);
+		chunk.second->Draw(true);
     }
 
     if (!player.LookingAtBlock) {
@@ -461,7 +479,12 @@ void Background_Thread() {
 			return;
 		}
 
-        bool queueEmpty = true;
+		if (GamePaused) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			continue;
+		}
+
+		bool queueEmpty = true;
 
         // Waits for the chunk map to be available for reading.
         while (ChunkMapBusy.test_and_set(std::memory_order_acquire)) {
@@ -474,17 +497,28 @@ void Background_Thread() {
         Chunk* nearestChunk = nullptr;
 
         for (auto const &chunk : ChunkMap) {
-            if (!chunk.second->Meshed) {
-                // Get the distance between the chunk and the player's position.
-                float dist = glm::distance(chunk.first.xz(), playerPos);
+			// Get the distance between the chunk and the player's position.
+			float dist = glm::distance(chunk.first.xz(), playerPos);
 
-                // If the distance is smaller than the smallest so far,
-                // set the chunk to be the nearest chunk.
-                if (dist < nearestDistance && dist < RENDER_DISTANCE) {
-                    nearestDistance = dist;
-                    nearestChunk = chunk.second;
-                }
+			// If the distance is smaller than the smallest so far,
+			// set the chunk to be the nearest chunk.
+			if (dist >= RENDER_DISTANCE) {
+				continue;
+			}
+
+			if (chunk.second->Meshed) {
+				continue;
+			}
+
+            if (dist < nearestDistance) {
+                nearestDistance = dist;
+                nearestChunk = chunk.second;
             }
+			else if (dist == nearestDistance) {
+				if (chunk.first.y > nearestChunk->Position.y) {
+					nearestChunk = chunk.second;
+				}
+			}
         }
 
         // Checks if there's a chunk to be rendered.

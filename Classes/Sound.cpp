@@ -67,9 +67,10 @@ Sound::Sound(std::string sound) {
 }
 
 std::vector<char> Sound::Load_OGG(std::string path) {
-	FILE *file = fopen(path.c_str(), "rb");
+	FILE* file;
+	int err = fopen_s(&file, path.c_str(), "rb");
 
-    if (!file) {
+    if (!file || err) {
         std::cout << "ERROR::SOUND::FILE_NOT_FOUND\n" << path << std::endl;
     }
 

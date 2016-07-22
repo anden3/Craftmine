@@ -671,11 +671,10 @@ void Player::Check_Hit() {
             continue;
         }
 
-        if (glm::lessThanEqual(checkingFrac, blockType->Scale +
-            blockType->ScaleOffset) != glm::bvec3(true)) {
-                lastPos = checkingPos;
-                started = true;
-                continue;
+        if (glm::lessThanEqual(checkingFrac, blockType->Scale + blockType->ScaleOffset) != glm::bvec3(true)) {
+            lastPos = checkingPos;
+            started = true;
+            continue;
         }
 
         if (!started) {
@@ -688,10 +687,10 @@ void Player::Check_Hit() {
         glm::vec3 prevChunk = LookingChunk;
         glm::vec3 prevTile  = LookingTile;
 
-        LookingChunk = lookChunk;
-        LookingTile = lookTile;
+        LookingChunk    = lookChunk;
+        LookingTile     = lookTile;
         LookingAirChunk = airChunk;
-        LookingAirTile = airTile;
+        LookingAirTile  = airTile;
 
 		if (LookingTile == prevTile) {
 			return;
@@ -969,7 +968,7 @@ void Player::Queue_Chunks(bool regenerate) {
 
     for (auto chunk = ChunkMap.begin(); chunk != ChunkMap.end();) {
         float dist = glm::distance(CurrentChunk.xz(), chunk->first.xz());
-        bool outOfRange = dist > RENDER_DISTANCE || chunk->first.y > startY || chunk->first.y < endY;
+        bool outOfRange = dist >= RENDER_DISTANCE || chunk->first.y > startY || chunk->first.y < endY;
 
         if (chunk->second == nullptr || regenerate || outOfRange) {
             delete chunk->second;
@@ -989,7 +988,7 @@ void Player::Queue_Chunks(bool regenerate) {
 					continue;
 				}
 
-				if (glm::distance(CurrentChunk.xz(), pos.xz()) > RENDER_DISTANCE) {
+				if (glm::distance(CurrentChunk.xz(), pos.xz()) >= RENDER_DISTANCE) {
 					continue;
 				}
 
@@ -1008,6 +1007,12 @@ void Player::Queue_Chunks(bool regenerate) {
             }
         }
     }
+
+	for (auto const &chunk : ChunkMap) {
+		if (glm::distance(chunk.first.xz(), CurrentChunk.xz()) >= RENDER_DISTANCE) {
+			Print_Debug("NOOOO\n");
+		}
+	}
 
 	ChunkMapBusy.clear(std::memory_order_release);
 }

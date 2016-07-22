@@ -3,11 +3,6 @@ project(Craftmine)
 
 set (SOURCE_PATH ${CMAKE_CURRENT_LIST_DIR}/Classes)
 
-set (CMAKE_EXE_LINKER_FLAGS /MACHINE:X64)
-set (CMAKE_MODULE_LINKER_FLAGS /MACHINE:X64)
-set (CMAKE_SHARED_LINKER_FLAGS /MACHINE:X64)
-set (CMAKE_STATIC_LINKER_FLAGS /MACHINE:X64)
-
 set (SOURCES
     ${SOURCE_PATH}/Blocks.cpp
     ${SOURCE_PATH}/Buffer.cpp
@@ -28,15 +23,21 @@ set (SOURCES
 	${SOURCE_PATH}/Worlds.cpp
 )
 
+set (LIBRARIES enet freeimage freetype glew glfw3 icuuc noise OpenAL32 opengl32 SOIL vorbisfile)
+
 if (WIN32)
-    set (LIBRARIES opengl32 enet FreeImage freetype glew glfw3 icuuc noise OpenAL32 SOIL vorbisfile winmm ws2_32)
+	set (CMAKE_EXE_LINKER_FLAGS /MACHINE:X64)
+	set (CMAKE_MODULE_LINKER_FLAGS /MACHINE:X64)
+	set (CMAKE_SHARED_LINKER_FLAGS /MACHINE:X64)
+	set (CMAKE_STATIC_LINKER_FLAGS /MACHINE:X64)
+
+	list(APPEND LIBRARIES winmm ws2_32)
     set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
     set (LIBRARY_DIRS F:/lib F:/lib/boost)
 
     set (CMAKE_GENERATOR "Visual Studio 14 2015 Win64" CACHE INTERNAL "" FORCE)
 
 elseif (APPLE)
-    set (LIBRARIES opengl32 enet freeimage freetype GLEW glfw3 icuuc noise OpenAL32 SOIL vorbisfile)
     set (INCLUDE_DIRS ${SOURCE_PATH} /usr/local/include /usr/local/include/freetype2)
     set (LIBRARY_DIRS /usr/local/lib /usr/local/boost)
 endif()

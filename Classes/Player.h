@@ -38,8 +38,6 @@ class Player {
     void Mesh_Holding();
     void Mesh_Damage(int index);
 
-    void Poll_Sounds();
-
     void Move();
 
     void Update(bool update = false);
@@ -82,7 +80,6 @@ class Player {
 
     void Draw_Model();
     void Draw_Holding();
-    void Draw_Damage();
 
     void Col_Detection();
     void Check_Hit();

@@ -31,7 +31,7 @@ void Buffer::Create(const std::vector<int> &config, const Data &data) {
     }
 
     unsigned int index = 0;
-    int partSum = 0;
+    long long partSum = 0;
 
     for (int const &element : config) {
         glEnableVertexAttribArray(index);
