@@ -8,7 +8,10 @@
 #include "main.h"
 #include "Interface.h"
 
+#include "../BlockScripts/Block_Scripts.h"
+
 #define BLOCK_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val; }
+#define STRING_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val.get<std::string>(); }
 #define VECTOR_LAMBDA(_v) [](Block &b, JSONValue val) { \
     for (unsigned long j = 0; j < 3; j++) \
         b._v[static_cast<int>(j)] = val[j]; \
@@ -22,24 +25,27 @@ typedef nlohmann::basic_json<
 
 static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambdas = {
     {"id",                  BLOCK_LAMBDA(ID)                 },
-    {"name",                BLOCK_LAMBDA(Name)               },
+	{"isTool",              BLOCK_LAMBDA(IsTool)             },
     {"hardness",            BLOCK_LAMBDA(Hardness)           },
-    {"material",            BLOCK_LAMBDA(Material)           },
-    {"transparent",         BLOCK_LAMBDA(Transparent)        },
-    {"fullBlock",           BLOCK_LAMBDA(FullBlock)          },
+	{"isMBRoot",            BLOCK_LAMBDA(IsMBRoot)           },
     {"collision",           BLOCK_LAMBDA(Collision)          },
-    {"targetable",          BLOCK_LAMBDA(Targetable)         },
-    {"placeable",           BLOCK_LAMBDA(Placeable)          },
-    {"isTool",              BLOCK_LAMBDA(IsTool)             },
+	{"fullBlock",           BLOCK_LAMBDA(FullBlock)          },
+	{"placeable",           BLOCK_LAMBDA(Placeable)          },
     {"durability",          BLOCK_LAMBDA(Durability)         },
-    {"miningSpeed",         BLOCK_LAMBDA(MiningSpeed)        },
-    {"miningLevel",         BLOCK_LAMBDA(MiningLevel)        },
-    {"requiredMiningLevel", BLOCK_LAMBDA(RequiredMiningLevel)},
-    {"effectiveMat",        BLOCK_LAMBDA(EffectiveMaterial)  },
     {"luminosity",          BLOCK_LAMBDA(Luminosity)         },
-    {"sound",               BLOCK_LAMBDA(Sound)              },
     {"multiBlock",          BLOCK_LAMBDA(MultiBlock)         },
-    {"isMBRoot",            BLOCK_LAMBDA(IsMBRoot)           },
+	{"targetable",          BLOCK_LAMBDA(Targetable)         },
+	{"miningLevel",         BLOCK_LAMBDA(MiningLevel)        },
+	{"miningSpeed",         BLOCK_LAMBDA(MiningSpeed)        },
+	{"transparent",         BLOCK_LAMBDA(Transparent)		 },
+	{"craftingYield",       BLOCK_LAMBDA(CraftingYield)      },
+	{"requiredMiningLevel", BLOCK_LAMBDA(RequiredMiningLevel)},
+
+	{"name",                STRING_LAMBDA(Name)              },
+	{"sound",               STRING_LAMBDA(Sound)             },
+	{"material",            STRING_LAMBDA(Material)          },
+	{"effectiveMat",        STRING_LAMBDA(EffectiveMaterial) },
+
     {"mBOffset",            VECTOR_LAMBDA(MBOffset)          },
     {"hitboxScale",         VECTOR_LAMBDA(Scale)             },
     {"hitboxOffset",        VECTOR_LAMBDA(ScaleOffset)       }
@@ -76,6 +82,114 @@ nlohmann::json Parse_JSON(std::string path) {
     return json;
 }
 
+std::regex Parse_Recipe(std::string recipe) {
+	std::vector<std::string> setNums;
+
+	std::string rgx = "";
+	std::string setNum = "";
+	std::string capture = "";
+
+	bool set = false;
+	bool capturing = false;
+	bool checkNext = false;
+	bool setAcceptZero = false;
+	bool ignoreNextSpace = false;
+
+	for (const char &c : recipe) {
+		if (c == '(') {
+			capture.clear();
+			capturing = true;
+		}
+
+		else if (c == '%') {
+			rgx += "(0,)*";
+			ignoreNextSpace = true;
+		}
+
+		else if (capturing) {
+			if (c == ')') {
+				capturing = false;
+				checkNext = true;
+			}
+			else {
+				capture += (c == ' ') ? ',' : c;
+			}
+		}
+
+		else if (checkNext) {
+			checkNext = false;
+
+			if (isdigit(c)) {
+				for (int i = 0; i < (c - 48); i++) {
+					rgx += capture + ",";
+				}
+
+				rgx.pop_back();
+			}
+
+			else if (c == '[') {
+				set = true;
+			}
+		}
+
+		else if (set) {
+			if (c == ']') {
+				set = false;
+
+				setNums.push_back(setNum);
+				setNum.clear();
+
+				if (setAcceptZero) {
+					rgx += "(";
+				}
+
+				for (auto const &num : setNums) {
+					rgx += "(" + capture + ",){" + num + "}|";
+				}
+
+				rgx.pop_back();
+
+				if (setAcceptZero) {
+					rgx += ")?";
+				}
+
+				ignoreNextSpace = true;
+				setAcceptZero = false;
+			}
+
+			else if (c == '0') {
+				setAcceptZero = true;
+			}
+
+			else if (isdigit(c)) {
+				setNum += c;
+			}
+
+			else if (c == ',' && setNum != "") {
+				setNums.push_back(setNum);
+				setNum = "";
+			}
+		}
+
+		else {
+			if (c != ' ') {
+				rgx += c;
+			}
+			else if (!ignoreNextSpace) {
+				rgx += ",";
+			}
+
+			ignoreNextSpace = false;
+		}
+	}
+
+	if (rgx.back() != ',' && rgx.back() != '*') {
+		rgx += ",";
+	}
+
+	return std::regex("^" + rgx + "$");
+}
+
 void Process_Block(nlohmann::json::iterator it, Block &block) {
     if (lambdas.count(it.key())) {
         lambdas[it.key()](block, it.value());
@@ -85,6 +199,11 @@ void Process_Block(nlohmann::json::iterator it, Block &block) {
         block.HasIcon = true;
         block.Icon = it.value();
     }
+
+	else if (it.key() == "recipe") {
+		block.Craftable = true;
+		block.Recipe = Parse_Recipe(it.value());
+	}
 
     else if (it.key() == "texture") {
         block.HasTexture = true;
@@ -183,25 +302,31 @@ void Blocks::Init() {
             Process_Block(it, block);
         }
 
-        if (!json.count("types")) {
-            BlockTypes[block.ID] = block;
-            BlockNames[block.Name] = block;
-            continue;
+        if (json.count("types")) {
+			int subIndex = 1;
+
+			for (auto &type : json["types"]) {
+				Block subType = block;
+				subType.Data = subIndex;
+
+				for (auto it = type.begin(); it != type.end(); ++it) {
+					Process_Block(it, subType);
+				}
+
+				if (BlockFunctions.count(subType.Name)) {
+					subType.Interactable = true;
+					subType.RightClickFunction = BlockFunctions[subType.Name];
+				}
+
+				block.Types[subIndex++] = subType;
+				BlockNames[subType.Name] = subType;
+			}
         }
 
-        int subIndex = 1;
-
-        for (auto &type : json["types"]) {
-            Block subType = block;
-            subType.Data = subIndex;
-
-            for (auto it = type.begin(); it != type.end(); ++it) {
-                Process_Block(it, subType);
-            }
-
-            block.Types[subIndex++] = subType;
-            BlockNames[subType.Name] = subType;
-        }
+		if (BlockFunctions.count(block.Name)) {
+			block.Interactable = true;
+			block.RightClickFunction = BlockFunctions[block.Name];
+		}
 
         BlockTypes[block.ID] = block;
         BlockNames[block.Name] = block;
@@ -235,11 +360,11 @@ std::string Blocks::Get_Name(int type, int data) {
 
 bool Blocks::Exists(int type, int data) {
     if (BlockTypes.count(type)) {
-        if (data != 0) {
-            return BlockTypes[type].Types.count(data) > 0;
+        if (data == 0) {
+			return true;
         }
 
-        return true;
+		return BlockTypes[type].Types.count(data) > 0;
     }
 
     return false;
@@ -247,6 +372,18 @@ bool Blocks::Exists(int type, int data) {
 
 bool Blocks::Exists(std::string name) {
     return BlockNames.count(name) > 0;
+}
+
+const Block* Blocks::Check_Crafting(std::string grid) {
+	for (auto const &block : BlockNames) {
+		if (block.second.Craftable) {
+			if (std::regex_match(grid.cbegin(), grid.cend(), block.second.Recipe)) {
+				return &block.second;
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 Data Blocks::Mesh(const Block* block, glm::vec3 offset, float scale, Data data) {

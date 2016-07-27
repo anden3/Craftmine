@@ -3,42 +3,47 @@
 	"placeable": false,
 	"isTool": true,
 	"effectiveMat": "stone",
-	
+
 	"types": [
 		{
 			"name": "Wooden Pickaxe",
 			"icon": 352,
 			"durability": 60,
 			"miningSpeed": 2,
-			"miningLevel": 0
+			"miningLevel": 0,
+            "recipe": "(5)3 (0 280 0)2"
 		},
 		{
 			"name": "Stone Pickaxe",
 			"icon": 353,
 			"durability": 132,
 			"miningSpeed": 4,
-			"miningLevel": 1
+			"miningLevel": 1,
+            "recipe": "(1)3 (0 280 0)2"
 		},
 		{
 			"name": "Iron Pickaxe",
 			"icon": 354,
 			"durability": 251,
 			"miningSpeed": 6,
-			"miningLevel": 2
+			"miningLevel": 2,
+            "recipe": "(265)3 (0 280 0)2"
 		},
 		{
 			"name": "Diamond Pickaxe",
 			"icon": 355,
 			"durability": 1562,
 			"miningSpeed": 8,
-			"miningLevel": 3
+			"miningLevel": 3,
+            "recipe": "(264)3 (0 280 0)2"
 		},
 		{
 			"name": "Gold Pickaxe",
 			"icon": 356,
 			"durability": 33,
 			"miningSpeed": 12,
-			"miningLevel": 2
+			"miningLevel": 2,
+            "recipe": "(266)3 (0 280 0)2"
 		}
 	]
 }

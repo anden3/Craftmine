@@ -867,11 +867,16 @@ void Player::Click_Handler(int button, int action) {
         }
     }
 
-    if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT) {
+    if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT ||!LookingAtBlock) {
         return;
     }
 
-    if (!LookingAtBlock || !CurrentBlock || !CurrentBlockType->Placeable) {
+    if (LookingBlockType->Interactable) {
+        LookingBlockType->RightClickFunction();
+        return;
+    }
+
+    if (!CurrentBlock || !CurrentBlockType->Placeable) {
         return;
     }
 
@@ -1007,12 +1012,6 @@ void Player::Queue_Chunks(bool regenerate) {
             }
         }
     }
-
-	for (auto const &chunk : ChunkMap) {
-		if (glm::distance(chunk.first.xz(), CurrentChunk.xz()) >= RENDER_DISTANCE) {
-			Print_Debug("NOOOO\n");
-		}
-	}
 
 	ChunkMapBusy.clear(std::memory_order_release);
 }

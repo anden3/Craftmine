@@ -25,6 +25,8 @@
 #include "Interface.h"
 #include "Inventory.h"
 
+#include "../BlockScripts/Block_Scripts.h"
+
 #ifdef WIN32
 	#include <cstdarg>
 	#include <Windows.h>
@@ -155,6 +157,8 @@ int main() {
 
     UI::Init();
     player.Init();
+
+    Init_Block_Scripts();
 
     // Start the background thread.
     std::thread chunkGeneration(Background_Thread);

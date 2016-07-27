@@ -1,0 +1,10 @@
+{
+    "name": "Furnace",
+    "id": 61,
+    "hardness": 3.5,
+	"material": "stone",
+    "sound": "stone",
+    "recipe": "(4)4 0 (4)4",
+
+    "multiTexture": [45, 45, 62, 62, 45, 44]
+}

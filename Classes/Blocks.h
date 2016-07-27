@@ -5,53 +5,57 @@
 
 #include <map>
 #include <set>
+#include <regex>
 #include <string>
 #include <vector>
 #include <utility>
+#include <functional>
 
 struct Block {
-    std::string Name = "";
-    std::string Sound = "";
+	bool IsTool        = false;
+	bool HasIcon       = false;
+	bool IsMBRoot      = false;
+	bool Collision     = true;
+	bool Craftable     = false;
+	bool FullBlock     = true;
+	bool Placeable     = true;
+	bool Targetable    = true;
+	bool HasTexture    = false;
+	bool MultiBlock    = false;
+	bool Transparent   = false;
+	bool Interactable  = false;
+	bool HasCustomData = false;
+	bool MultiTextures = false;
 
-    int ID = 0;
-    int Data = 0;
+	int ID                  = 0;
+	int Data                = 0;
+	int Icon                = 0;
+	int Texture             = 0;
+    int Durability          = 0;
+	int Luminosity          = 0;
+	int MiningLevel         = 0;
+    int MiningSpeed         = 0;
+	int CraftingYield       = 1;
+	int RequiredMiningLevel = 0;
 
-    bool FullBlock = true;
-    bool Transparent = false;
-    bool Collision = true;
-    bool Targetable = true;
-    bool Placeable = true;
+	float Hardness = 0;
 
-    bool HasIcon = false;
-    bool HasTexture = false;
-    bool MultiTextures = false;
-    bool HasCustomData = false;
+	std::string Name              = "";
+	std::string Sound             = "";
+	std::string Material          = "";
+	std::string EffectiveMaterial = "";
 
-    bool IsTool      = false;
-    int  Durability  = 0;
-    int  MiningSpeed = 0;
-    int  MiningLevel = 0;
+	glm::vec3  Scale       = {1, 1, 1};
+	glm::vec3  ScaleOffset = {0, 0, 0};
 
-    int RequiredMiningLevel = 0;
+	glm::ivec3 MBOffset    = {0, 0, 0};
 
-    std::string EffectiveMaterial = "";
+	std::regex Recipe;
 
-    bool       MultiBlock = false;
-    bool       IsMBRoot   = false;
-    glm::ivec3 MBOffset = glm::ivec3(0);
-
-    float Hardness   = 0;
-    int   Luminosity = 0;
-    std::string Material = "";
-
-    int Icon    = 0;
-    int Texture = 0;
-
-    glm::vec3 Scale = glm::vec3(1);
-    glm::vec3 ScaleOffset = glm::vec3(0);
+	std::function<void()> RightClickFunction;
 
     std::vector<int> Textures = {};
-    // Elements -> Side -> Vertex -> (Position, Texture Coords)
+
     std::vector<std::vector<std::vector<std::pair<glm::vec3, glm::vec3>>>> CustomData = {};
 
     std::map<int, Block> Types = {};
@@ -62,6 +66,8 @@ namespace Blocks {
 
     const Block* Get_Block(int type, int data = 0);
     const Block* Get_Block(std::string name);
+
+	const Block* Check_Crafting(std::string grid);
 
     std::string Get_Name(int type, int data = 0);
     bool Exists(int type, int data = 0);

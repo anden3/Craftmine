@@ -1,0 +1,11 @@
+{
+    "name": "Lever",
+    "id": 69,
+    "icon": 96,
+    "hardness": 0,
+    "sound": "wood",
+    "fullBlock": false,
+    "collision": false,
+
+    "recipe": "% 280 (0)2 4 %"
+}

@@ -5,6 +5,8 @@ DIRECTORY=$(shell pwd)
 OBJECTS_FOLDER=Build/Data/Objects
 APP_CONTENTS=Build/$(BIN).app/Contents
 
+./BlockScripts/Load_Scripts.sh
+
 ifeq ($(OS),Linux)
 	CXX=clang++-3.8
 	WIN_ROOT=C:/Users/andre/AppData/Local/lxss/rootfs

@@ -3,42 +3,47 @@
 	"placeable": false,
 	"isTool": true,
 	"effectiveMat": "wood",
-	
+
 	"types": [
 		{
 			"name": "Wooden Axe",
 			"icon": 336,
 			"durability": 60,
 			"miningSpeed": 2,
-			"miningLevel": 0
+			"miningLevel": 0,
+            "recipe": "% (5)2 0 5 280 (0)2 280 %"
 		},
 		{
 			"name": "Stone Axe",
 			"icon": 337,
 			"durability": 132,
 			"miningSpeed": 4,
-			"miningLevel": 1
+			"miningLevel": 1,
+            "recipe": "% (1)2 0 1 280 (0)2 280 %"
 		},
 		{
 			"name": "Iron Axe",
 			"icon": 338,
 			"durability": 251,
 			"miningSpeed": 6,
-			"miningLevel": 2
+			"miningLevel": 2,
+            "recipe": "% (265)2 0 265 280 (0)2 280 %"
 		},
 		{
 			"name": "Diamond Axe",
 			"icon": 339,
 			"durability": 1562,
 			"miningSpeed": 8,
-			"miningLevel": 3
+			"miningLevel": 3,
+            "recipe": "% (264)2 0 264 280 (0)2 280 %"
 		},
 		{
 			"name": "Gold Axe",
 			"icon": 340,
 			"durability": 33,
 			"miningSpeed": 12,
-			"miningLevel": 2
+			"miningLevel": 2,
+            "recipe": "% (266)2 0 266 280 (0)2 280 %"
 		}
 	]
 }

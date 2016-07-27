@@ -1,0 +1,10 @@
+{
+    "name": "Chest",
+    "id": 54,
+    "hardness": 2.5,
+	"material": "wood",
+    "sound": "wood",
+    "recipe": "(5)4 0 (5)4",
+
+    "multiTexture": [26, 26, 25, 25, 26, 27]
+}

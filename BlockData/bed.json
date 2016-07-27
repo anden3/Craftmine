@@ -8,6 +8,8 @@
     "multiBlock": true,
     "icon": 301,
 
+    "recipe": "(0)[0,3] (35)3 (5)3 %",
+
     "types": [
         {
             "name": "Bed Head",

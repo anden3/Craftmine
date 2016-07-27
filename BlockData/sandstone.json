@@ -4,6 +4,7 @@
     "hardness": 0.8,
 	"material": "stone",
     "sound": "stone",
-    
+    "recipe": "% (12)2 0 (12)2 %",
+
     "multiTexture": [208, 208, 192, 192, 208, 208]
 }

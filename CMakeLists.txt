@@ -23,13 +23,16 @@ set (SOURCES
 	${SOURCE_PATH}/Worlds.cpp
 )
 
+file (GLOB BLOCK_SCRIPTS "BlockScripts/*.cpp")
+list (APPEND SOURCES ${BLOCK_SCRIPTS})
+
 set (LIBRARIES enet freeimage freetype glew glfw3 icuuc noise OpenAL32 opengl32 SOIL vorbisfile)
 
 if (WIN32)
-	set (CMAKE_EXE_LINKER_FLAGS /MACHINE:X64)
-	set (CMAKE_MODULE_LINKER_FLAGS /MACHINE:X64)
-	set (CMAKE_SHARED_LINKER_FLAGS /MACHINE:X64)
-	set (CMAKE_STATIC_LINKER_FLAGS /MACHINE:X64)
+	set (CMAKE_EXE_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
+	set (CMAKE_MODULE_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
+	set (CMAKE_SHARED_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
+	set (CMAKE_STATIC_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
 
 	list(APPEND LIBRARIES winmm ws2_32)
     set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
@@ -37,9 +40,21 @@ if (WIN32)
 
     set (CMAKE_GENERATOR "Visual Studio 14 2015 Win64" CACHE INTERNAL "" FORCE)
 
+    add_custom_command(
+        OUTPUT BlockScripts/Block_Scripts.h
+        COMMAND powershell -executionpolicy bypass BlockScripts\\Load_Scripts.ps1
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    )
+
 elseif (APPLE)
     set (INCLUDE_DIRS ${SOURCE_PATH} /usr/local/include /usr/local/include/freetype2)
     set (LIBRARY_DIRS /usr/local/lib /usr/local/boost)
+
+    add_custom_command(
+        OUTPUT BlockScripts/Block_Scripts.h
+        COMMAND BlockScripts/Load_Scripts.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    )
 endif()
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_LIST_DIR})
@@ -48,7 +63,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_LIST_DIR})
 
 include_directories(${INCLUDE_DIRS})
 link_directories(${LIBRARY_DIRS})
-add_executable(Craftmine ${SOURCES})
+add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.h)
 
 set_target_properties(Craftmine PROPERTIES
     LINKER_LANGUAGE CXX

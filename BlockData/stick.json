@@ -2,5 +2,8 @@
 	"name": "Stick",
 	"id": 280,
 	"icon": 309,
-	"placeable": false
+	"placeable": false,
+
+    "recipe": "% 5 (0)2 5 %",
+    "craftingYield": 4
 }

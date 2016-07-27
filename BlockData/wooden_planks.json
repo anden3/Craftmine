@@ -4,5 +4,8 @@
     "hardness": 2.0,
 	"material": "wood",
     "sound": "wood",
-    "texture": 4
+    "texture": 4,
+
+    "recipe": "% 17 %",
+    "craftingYield": 4
 }

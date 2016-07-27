@@ -47,178 +47,6 @@ static int StartSlot = -1;
 static std::set<Stack*> DivideSlots;
 static int HoldingSize = 0;
 
-class Recipe {
-public:
-    std::regex Pattern;
-    Stack Result;
-
-    Recipe(std::string pattern, Stack result) {
-        Result = result;
-
-        std::vector<std::string> setNums;
-
-        std::string rgx = "";
-        std::string setNum = "";
-        std::string capture = "";
-
-        bool set = false;
-        bool capturing = false;
-        bool checkNext = false;
-        bool setAcceptZero = false;
-        bool ignoreNextSpace = false;
-
-        for (const char &c : pattern) {
-            if (c == '(') {
-                capture.clear();
-                capturing = true;
-            }
-
-            else if (c == '%') {
-                rgx += "(0,)*";
-                ignoreNextSpace = true;
-            }
-
-            else if (capturing) {
-                if (c == ')') {
-                    capturing = false;
-                    checkNext = true;
-                }
-                else {
-                    capture += (c == ' ') ? ',' : c;
-                }
-            }
-
-            else if (checkNext) {
-                checkNext = false;
-
-                if (isdigit(c)) {
-                    for (int i = 0; i < (c - 48); i++) {
-                        rgx += capture + ",";
-                    }
-
-                    rgx.pop_back();
-                }
-
-                else if (c == '[') {
-                    set = true;
-                }
-            }
-
-            else if (set) {
-                if (c == ']') {
-                    set = false;
-
-                    setNums.push_back(setNum);
-                    setNum.clear();
-
-                    if (setAcceptZero) {
-                        rgx += "(";
-                    }
-
-                    for (auto const &num : setNums) {
-                        rgx += "(" + capture + ",){" + num + "}|";
-                    }
-
-                    rgx.pop_back();
-
-                    if (setAcceptZero) {
-                        rgx += ")?";
-                    }
-
-                    ignoreNextSpace = true;
-                    setAcceptZero = false;
-                }
-
-                else if (c == '0') {
-                    setAcceptZero = true;
-                }
-
-                else if (isdigit(c)) {
-                    setNum += c;
-                }
-
-                else if (c == ',' && setNum != "") {
-                    setNums.push_back(setNum);
-                    setNum = "";
-                }
-            }
-
-            else {
-                if (c != ' ') {
-                    rgx += c;
-                }
-                else if (!ignoreNextSpace) {
-                    rgx += ",";
-                }
-
-                ignoreNextSpace = false;
-            }
-        }
-
-        if (rgx.back() != ',' && rgx.back() != '*') {
-            rgx += ",";
-        }
-
-        Pattern = std::regex("^" + rgx + "$");
-    }
-
-    inline bool Check(const std::string grid) const {
-        return std::regex_match(grid.cbegin(), grid.cend(), Pattern);
-    }
-};
-
-static std::map<int, std::vector<Recipe>> Recipes = {
-    // %   == Any number (including zero) of zeroes.
-    // ()  == Capture expression
-    // ()x == Repeating captured expression x times.
-    // []  == Repeating n times, where n is any of the numbers in the set.
-
-    {1, std::vector<Recipe> {
-        {"% 17 %", {5, 4}}, // Wooden Planks
-    }},
-
-    {2, std::vector<Recipe> {
-        {"% 5 (0)2 5 %",     {280, 4}}, // Stick
-        {"% 280 (0)2 4 %",   {69}},     // Lever
-        {"% 263 (0)2 280 %", {50, 4}},  // Torch
-    }},
-
-    {3, std::vector<Recipe> {
-        {"% 265 (0 0 280)2 %", {256}},   // Iron Shovel
-        {"(0)[0,3,6] (1)3 %",  {44, 6}}, // Stone Slab
-    }},
-
-    {4, std::vector<Recipe> {
-        {"% (5)2 0 (5)2 %",   {58}}, // Crafting Table
-        {"% (12)2 0 (12)2 %", {24}}, // Sandstone
-    }},
-
-    {5, std::vector<Recipe> {
-        {"% (265)2 0 265 280 (0)2 280 %", {258}}, // Iron Axe
-        {"(265)3 (0 280 0)2",             {257}}, // Iron Pickaxe
-    }},
-
-    {6, std::vector<Recipe> {
-        {"(0)[0,3] (35)3 (5)3 %", {26}}, // Bed
-    }},
-
-    {7, std::vector<Recipe> {
-        {"265 0 (265)2 280 (265)2 0 265", {66, 16}}, // Rail
-        {"280 0 (280)5 0 280",            {65, 4}},  // Ladder
-    }},
-
-    {8, std::vector<Recipe> {
-        {"(4)4 0 (4)4", {61}}, // Furnace
-        {"(5)4 0 (5)4", {54}}, // Chest
-    }},
-
-    {9, std::vector<Recipe> {
-        {"(264)9", {57}}, // Diamond Block
-        {"(265)9", {42}}, // Iron Block
-        {"(266)9", {41}}, // Gold Block
-    }}
-};
-
 void Inventory::Init() {
     barDims = glm::vec4(Scale(520, 40), Scale(400, 40));
     invDims = glm::vec4(Scale(220), Scale(800, 480));
@@ -523,20 +351,16 @@ void Inventory::Check_Crafting() {
         blocks += tile.Type > 0;
     }
 
-    for (auto const &recipe : Recipes[blocks]) {
-        if (recipe.Check(grid)) {
-            // Checks if recipe result exists :P
-            if (Blocks::Exists(recipe.Result.Type, recipe.Result.Data)) {
-                CraftingOutput = recipe.Result;
-                Mesh();
-            }
+	const Block* result = Blocks::Check_Crafting(grid);
 
-            return;
-        }
-    }
-
-    CraftingOutput = Stack();
-    Mesh();
+	if (result != nullptr) {
+		CraftingOutput = Stack(result->ID, result->Data, result->CraftingYield);
+		Mesh();
+	}
+	else if (CraftingOutput.Type) {
+		CraftingOutput.Clear();
+		Mesh();
+	}
 }
 
 void Inventory::Craft_Item() {
