@@ -20,12 +20,9 @@ struct Message {
     bool OutOfView = false;
 };
 
-class Chat {
-  public:
-    bool Focused = false;
-    bool FocusToggled = false;
-
-    Chat() {}
+namespace Chat {
+    extern bool Focused;
+    extern bool FocusToggled;
 
     void Init();
 
@@ -36,32 +33,4 @@ class Chat {
 
     void Write(std::string text);
     void Update();
-
-  private:
-    std::map<unsigned int, Message> Messages;
-    std::vector<std::string> History;
-
-    unsigned int MessageCount = 0;
-    unsigned int HistoryIndex = 0;
-    unsigned int CursorPos = 0;
-
-    double LastCursorToggle = 0.0;
-    bool CursorVisible = true;
-
-    float MouseX;
-    float MouseY;
-
-    bool MouseOverChat = false;
-
-    std::string NewMessage = "";
-
-    void Get_Prev();
-    void Get_Next();
-
-    void Toggle_Cursor(float opacity = -1.0f);
-    void Update_Message();
-    void Move_Up(float spacing);
-    void Submit();
-
-    std::vector<std::string> Process_Commands(std::string message);
 };

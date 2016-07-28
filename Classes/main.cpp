@@ -72,7 +72,6 @@ static bool WindowMinimized = false;
 static double LastNetworkUpdate = 0.0;
 
 // Initializing objects.
-Chat chat = Chat();
 Camera Cam = Camera();
 Player player = Player();
 Listener listener = Listener();
@@ -195,7 +194,7 @@ int main() {
             // Check if any sounds should be removed.
             listener.Poll_Sounds();
 
-            if (!MouseEnabled && !chat.Focused) {
+            if (!MouseEnabled && !Chat::Focused) {
                 player.Update();
                 Entity::Update();
             }
@@ -560,7 +559,7 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
         UI::Key_Handler(key, action);
     }
     else {
-        if (chat.Focused) {
+        if (Chat::Focused) {
             player.Clear_Keys();
         }
         else {
@@ -569,7 +568,7 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
         }
 
         if (action == GLFW_PRESS) {
-            chat.Key_Handler(key);
+            Chat::Key_Handler(key);
         }
     }
 }

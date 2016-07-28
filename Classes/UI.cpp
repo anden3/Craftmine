@@ -67,7 +67,7 @@ void Connect_To_Server(void* caller);
 void UI::Init() {
     Interface::Init();
     inventory.Init();
-    chat.Init();
+    Chat::Init();
 
     Init_Title();
     Init_Menu();
@@ -110,7 +110,7 @@ void UI::Draw() {
     }
 
     else {
-        chat.Update();
+        Chat::Update();
 
         if (CustomDocument != "") {
             Interface::Draw_Document(CustomDocument);
@@ -161,11 +161,11 @@ void UI::Mouse_Handler(double x, double y) {
     Interface::Mouse_Handler(x, SCREEN_HEIGHT - y);
     Interface::Set_Document("");
 
-    if (chat.Focused && !chat.FocusToggled) {
-        chat.Mouse_Handler(x, y);
+    if (Chat::Focused && !Chat::FocusToggled) {
+        Chat::Mouse_Handler(x, y);
     }
 
-    if (!GamePaused && !chat.Focused) {
+    if (!GamePaused && !Chat::Focused) {
         player.Mouse_Handler(x, y);
     }
 }
@@ -206,8 +206,8 @@ void UI::Key_Handler(int key, int action) {
 }
 
 void UI::Text_Handler(unsigned int codepoint) {
-    if (chat.Focused && !chat.FocusToggled) {
-        chat.Input(codepoint);
+    if (Chat::Focused && !Chat::FocusToggled) {
+        Chat::Input(codepoint);
     }
     else {
         if (Interface::HoveringType == "textBox") {

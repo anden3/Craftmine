@@ -17,8 +17,38 @@ const double FADE_TIME = 4.0;
 const double CURSOR_BLINK_SPEED = 1.0;
 const float SCROLL_AMOUNT = 30.0f;
 
+bool Chat::Focused = false;
+bool Chat::FocusToggled = false;
+
 static glm::vec4 chatDims;
 static glm::vec2 chatPad;
+
+std::map<unsigned int, Message> Messages;
+std::vector<std::string> History;
+
+unsigned int MessageCount = 0;
+unsigned int HistoryIndex = 0;
+unsigned int CursorPos = 0;
+
+double LastCursorToggle = 0.0;
+bool CursorVisible = true;
+
+float MouseX;
+float MouseY;
+
+bool MouseOverChat = false;
+
+std::string NewMessage = "";
+
+void Get_Prev();
+void Get_Next();
+
+void Toggle_Cursor(float opacity = -1.0f);
+void Update_Message();
+void Move_Up(float spacing);
+void Submit();
+
+std::vector<std::string> Process_Commands(std::string message);
 
 void Chat::Init() {
     // Have to wait with initializing UI dimensions, because screen dimensions aren't set at compile time.
@@ -184,18 +214,18 @@ void Chat::Input(unsigned int key) {
     Update_Message();
 }
 
-void Chat::Submit() {
+void Submit() {
     if (NewMessage.length() == 0) {
         return;
     }
 
     if (NewMessage.front() == '/') {
         for (auto const &message : Process_Commands(NewMessage.substr(1))) {
-            Write(message);
+            Chat::Write(message);
         }
     }
     else {
-        Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
+        Chat::Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
     }
 
     if (Multiplayer) {
@@ -214,7 +244,7 @@ void Chat::Submit() {
     Update_Message();
 }
 
-void Chat::Toggle_Cursor(float opacity) {
+void Toggle_Cursor(float opacity) {
     CursorVisible = !CursorVisible;
     opacity = (opacity == -1.0f) ? CursorVisible : 1.0f;
 
@@ -223,7 +253,7 @@ void Chat::Toggle_Cursor(float opacity) {
     Interface::Set_Document("");
 }
 
-void Chat::Update_Message() {
+void Update_Message() {
     Interface::Set_Document("chatFocused");
 
     TextElement* message = Interface::Get_Text_Element("newMessage");
@@ -236,7 +266,7 @@ void Chat::Update_Message() {
     Interface::Set_Document("");
 }
 
-void Chat::Move_Up(float spacing) {
+void Move_Up(float spacing) {
     Interface::Set_Document("chat");
 
     for (auto &message : Messages) {
@@ -253,14 +283,14 @@ void Chat::Move_Up(float spacing) {
     Interface::Set_Document("");
 }
 
-void Chat::Get_Prev() {
+void Get_Prev() {
     if (HistoryIndex > 0) {
         NewMessage = History[--HistoryIndex];
         Update_Message();
     }
 }
 
-void Chat::Get_Next() {
+void Get_Next() {
     if (HistoryIndex < History.size() - 1 && History.size() > 0) {
         NewMessage = History[++HistoryIndex];
     }
@@ -330,7 +360,7 @@ void Chat::Update() {
     Interface::Draw_Document("chat");
 }
 
-std::vector<std::string> Chat::Process_Commands(std::string message) {
+std::vector<std::string> Process_Commands(std::string message) {
     std::vector<std::string> parameters = Split(message, ' ');
 
     if (parameters.size() == 0) {
@@ -415,7 +445,7 @@ std::vector<std::string> Chat::Process_Commands(std::string message) {
         else {
             try {
                 type = std::stoi(name);
-                
+
                 if (!Blocks::Exists(type)) {
                     return std::vector<std::string> {"&4Error! &fNo block exists with that ID."};
                 }

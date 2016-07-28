@@ -829,8 +829,8 @@ void Player::Scroll_Handler(double offsetY) {
         return;
     }
 
-    if (chat.Focused && !chat.FocusToggled) {
-        chat.Scroll(int(std::copysign(1, offsetY)));
+    if (Chat::Focused && !Chat::FocusToggled) {
+        Chat::Scroll(int(std::copysign(1, offsetY)));
     }
     else {
         inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
@@ -1059,15 +1059,17 @@ void Player::Request_Handler(std::string packet, bool sending) {
                 return;
             }
 
-            chat.Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
+            Chat::Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
         }
 
         else if (data["event"] == "config") {
             WORLD_NAME = data["world"].get<std::string>();
             Worlds::Load_World(data["seed"]);
+
             UI::ShowWorlds = false;
             UI::ShowTitle = false;
             GamePaused = false;
+
             UI::Toggle_Mouse(false);
         }
 

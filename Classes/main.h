@@ -19,7 +19,6 @@
 #endif
 
 // Forward declaring classes.
-class Chat;
 class Chunk;
 class Camera;
 class Player;
@@ -35,7 +34,6 @@ extern Shader* modelShader;
 extern Shader* outlineShader;
 
 // Defining references to objects.
-extern Chat chat;
 extern Camera Cam;
 extern Player player;
 extern Listener listener;
