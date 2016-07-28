@@ -228,7 +228,7 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
     }
 
     glTexStorage3D(
-        GL_TEXTURE_2D_ARRAY, mipmap + 1, GL_RGBA8, 
+        GL_TEXTURE_2D_ARRAY, mipmap + 1, GL_RGBA8,
         subSize.x, subSize.y, (width * height) / (subSize.x * subSize.y)
     );
 
@@ -290,7 +290,7 @@ void TextElement::Center(float x, float y, float width, glm::bvec2 axes) {
     if (axes.x) {
         X = std::floor(x + (width - Width) / 2);
     }
-    
+
     if (axes.y) {
         Y = std::floor(y + TEXT_PADDING - float(FONT_SIZE / 6));
     }
@@ -701,26 +701,30 @@ OrthoElement::OrthoElement(std::string name, int type, int data, float x, float 
 
 void OrthoElement::Mesh(int type, int data, float x, float y) {
     Type = type;
-    const Block* block = Blocks::Get_Block(type, data);
 
-    if (Type != 0) {
-        glm::mat4 model;
-
-        if (!block->HasIcon) {
-            model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1, 0, 0));
-            model = glm::rotate(model, 45.0f, glm::vec3(0, 1, 0));
-        }
-
-        UI3DShader->Upload("model", model);
-        OrthoBuffer.Upload(Get_3D_Mesh(block, x, y, true));
+    if (Type == 0) {
+        return;
     }
+
+    const Block* block = Blocks::Get_Block(type, data);
+    ModelMatrix = glm::mat4();
+
+    if (!block->HasIcon) {
+        ModelMatrix = glm::rotate(ModelMatrix, glm::radians(20.0f), glm::vec3(1, 0, 0));
+        ModelMatrix = glm::rotate(ModelMatrix, 45.0f, glm::vec3(0, 1, 0));
+    }
+
+    OrthoBuffer.Upload(Get_3D_Mesh(block, x, y, true));
 }
 
 void OrthoElement::Draw() {
-    if (Type != 0) {
-        UI3DShader->Upload("scale", Scale);
-        OrthoBuffer.Draw();
+    if (Type == 0) {
+        return;
     }
+    
+    UI3DShader->Upload("model", ModelMatrix);
+    UI3DShader->Upload("scale", Scale);
+    OrthoBuffer.Draw();
 }
 
 TextBox::TextBox(std::string name, float x, float y, float w, float h) {
@@ -778,7 +782,7 @@ void TextBox::Set_Cursor_Visibility(bool cursorVisible) {
 void TextBox::Update() {
     TextWidth = Interface::Get_String_Width(Text);
 
-    if (TextWidth > MaxWidth) {        
+    if (TextWidth > MaxWidth) {
         --CursorPos;
         Text.erase(CursorPos, 1);
         return;

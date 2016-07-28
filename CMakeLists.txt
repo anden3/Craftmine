@@ -35,13 +35,12 @@ if (WIN32)
 	set (CMAKE_STATIC_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
 
 	list(APPEND LIBRARIES winmm ws2_32)
-    set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
     set (LIBRARY_DIRS F:/lib F:/lib/boost)
+    set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
 
     set (CMAKE_GENERATOR "Visual Studio 14 2015 Win64" CACHE INTERNAL "" FORCE)
 
-    add_custom_command(
-        OUTPUT BlockScripts/Block_Scripts.h
+    execute_process(
         COMMAND powershell -executionpolicy bypass BlockScripts\\Load_Scripts.ps1
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     )
@@ -50,8 +49,7 @@ elseif (APPLE)
     set (INCLUDE_DIRS ${SOURCE_PATH} /usr/local/include /usr/local/include/freetype2)
     set (LIBRARY_DIRS /usr/local/lib /usr/local/boost)
 
-    add_custom_command(
-        OUTPUT BlockScripts/Block_Scripts.h
+    execute_process(
         COMMAND BlockScripts/Load_Scripts.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     )
@@ -63,7 +61,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_LIST_DIR})
 
 include_directories(${INCLUDE_DIRS})
 link_directories(${LIBRARY_DIRS})
-add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.h)
+add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.cpp)
 
 set_target_properties(Craftmine PROPERTIES
     LINKER_LANGUAGE CXX

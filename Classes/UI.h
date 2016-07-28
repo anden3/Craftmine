@@ -1,21 +1,23 @@
 #pragma once
 
+#include <string>
+
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
-
-#include <string>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 namespace UI {
-    extern bool ShowTitle;
-    extern bool ShowInventory;
-    extern bool ShowGameMenu;
     extern bool ShowDebug;
+    extern bool ShowTitle;
+    extern bool ShowWorlds;
     extern bool ShowOptions;
     extern bool ShowServers;
-    extern bool ShowWorlds;
+    extern bool ShowGameMenu;
+    extern bool ShowInventory;
+
+    extern std::string CustomDocument;
 
     void Init();
     void Draw();

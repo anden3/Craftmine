@@ -20,13 +20,15 @@ const std::string FONT = "Roboto";
 static double lastUIUpdate;
 static std::deque<int> CPU;
 
-bool UI::ShowTitle = true;
+bool UI::ShowDebug     = false;
+bool UI::ShowTitle     = true;
+bool UI::ShowWorlds    = false;
+bool UI::ShowOptions   = false;
+bool UI::ShowServers   = false;
+bool UI::ShowGameMenu  = false;
 bool UI::ShowInventory = false;
-bool UI::ShowGameMenu = false;
-bool UI::ShowDebug = false;
-bool UI::ShowOptions = false;
-bool UI::ShowServers = false;
-bool UI::ShowWorlds = false;
+
+std::string UI::CustomDocument = "";
 
 const std::string BoolStrings[2] = {"False", "True"};
 
@@ -109,10 +111,16 @@ void UI::Draw() {
 
     else {
         chat.Update();
-        inventory.Draw();
 
-        if (ShowDebug) {
-            Draw_Debug();
+        if (CustomDocument != "") {
+            Interface::Draw_Document(CustomDocument);
+        }
+        else {
+            inventory.Draw();
+
+            if (ShowDebug) {
+                Draw_Debug();
+            }
         }
     }
 
@@ -141,9 +149,10 @@ void UI::Click(int action, int button) {
 void UI::Load_World(int seed) {
     Worlds::Load_World(seed);
 
-    ShowWorlds = false;
     ShowTitle = false;
+    ShowWorlds = false;
     GamePaused = false;
+
     UI::Toggle_Mouse(false);
 }
 
@@ -171,7 +180,12 @@ void UI::Key_Handler(int key, int action) {
     if (action == GLFW_PRESS) {
         switch (key) {
             case GLFW_KEY_ESCAPE:
-                if (ShowInventory) {
+                if (CustomDocument != "") {
+                    CustomDocument = "";
+                    UI::Toggle_Mouse(false);
+                }
+
+                else if (ShowInventory) {
                     inventory.Is_Open = false;
                     Toggle_Inventory();
                 }
@@ -591,7 +605,7 @@ void Create_World(void* caller) {
     if (seedStr.length() >= 20) {
         seedStr = seedStr.substr(0, 19);
     }
-    
+
     int worldSeed;
 
     try {
@@ -602,7 +616,7 @@ void Create_World(void* caller) {
         unsigned long long stringSum = std::accumulate(seedStr.begin(), seedStr.end(), static_cast<unsigned long long>(0));
         worldSeed = stringSum % 2147483647;
     }
-    
+
     Worlds::Create_World(worldName, worldSeed);
     Create_World_List();
 }

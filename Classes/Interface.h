@@ -44,7 +44,7 @@ inline Data Get_Tex_Rect(T x1, T x2, T y1, T y2) {
     return Data {
         x1, y1, 0, 1, x2, y1, 1, 1, x2, y2, 1, 0,
         x1, y1, 0, 1, x2, y2, 1, 0, x1, y2, 0, 0
-    }; 
+    };
 }
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
@@ -110,7 +110,7 @@ public:
 
     void Create(std::string name, std::string text, float x, float y, float opacity = 1.0f,
         glm::vec3 color = {1, 1, 1}, float scale = 1.0f);
-    
+
     inline void Center(glm::vec2 pos, float width, glm::bvec2 axes = {true, true}) {
         Center(pos.x, pos.y, width, axes);
     }
@@ -295,6 +295,7 @@ public:
     void Draw();
 
 private:
+    glm::mat4 ModelMatrix;
     Buffer OrthoBuffer;
 };
 
