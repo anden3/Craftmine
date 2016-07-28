@@ -37,6 +37,15 @@ enum MouseButtons {
     MOUSE_RIGHT
 };
 
+bool Inventory::Is_Open = false;
+int Inventory::ActiveToolbarSlot = 0;
+
+std::vector<Stack> Inventory::Inv;
+std::vector<Stack> Inventory::Craft;
+
+Stack Inventory::HoldingStack = Stack();
+Stack Inventory::CraftingOutput = Stack();
+
 static int MouseDown = NONE;
 
 static bool MouseState = 0;
@@ -46,6 +55,22 @@ static int StartSlot = -1;
 
 static std::set<Stack*> DivideSlots;
 static int HoldingSize = 0;
+
+glm::dvec2 MousePos = glm::dvec2(0);
+
+int HoveringSlot = -1;
+
+void Click_Slot(int slot, int button);
+void Check_Crafting();
+void Craft_Item();
+
+Stack& Get_Stack(int slot);
+
+void Swap_Stacks(Stack &stack);
+bool Left_Click_Stack(Stack &a, Stack &b, bool swap = false);
+void Right_Click_Stack(Stack &stack);
+
+void Left_Drag(int slot);
 
 void Inventory::Init() {
     barDims = glm::vec4(Scale(520, 40), Scale(400, 40));
@@ -195,25 +220,25 @@ Stack Inventory::Get_Info(int slot) {
     return Inv[static_cast<unsigned long>(slot)];
 }
 
-Stack& Inventory::Get_Stack(int slot) {
+Stack& Get_Stack(int slot) {
     unsigned long uSlot = static_cast<unsigned long>(slot);
-    return (slot >= INV_SIZE) ? Craft[uSlot - INV_SIZE] : Inv[uSlot];
+    return (slot >= INV_SIZE) ? Inventory::Craft[uSlot - INV_SIZE] : Inventory::Inv[uSlot];
 }
 
-void Inventory::Click_Slot(int slot, int button) {
-    if (slot == OUTPUT_SLOT && CraftingOutput.Type) {
+void Click_Slot(int slot, int button) {
+    if (slot == OUTPUT_SLOT && Inventory::CraftingOutput.Type) {
         if (keys[GLFW_KEY_LEFT_SHIFT]) {
-            Add_Stack(CraftingOutput);
-            CraftingOutput.Clear();
+            Inventory::Add_Stack(Inventory::CraftingOutput);
+            Inventory::CraftingOutput.Clear();
             Craft_Item();
         }
 
-        else if (!HoldingStack.Type) {
-            Swap_Stacks(CraftingOutput);
+        else if (!Inventory::HoldingStack.Type) {
+            Swap_Stacks(Inventory::CraftingOutput);
             Craft_Item();
         }
 
-        else if (Left_Click_Stack(CraftingOutput, HoldingStack)) {
+        else if (Left_Click_Stack(Inventory::CraftingOutput, Inventory::HoldingStack)) {
             Craft_Item();
         }
     }
@@ -221,7 +246,7 @@ void Inventory::Click_Slot(int slot, int button) {
         Stack& stack = Get_Stack(slot);
 
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            Left_Click_Stack(HoldingStack, stack, true);
+            Left_Click_Stack(Inventory::HoldingStack, stack, true);
         }
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
             Right_Click_Stack(stack);
@@ -233,13 +258,13 @@ void Inventory::Click_Slot(int slot, int button) {
     }
 }
 
-void Inventory::Swap_Stacks(Stack &stack) {
-    Stack toBePlaced = HoldingStack;
-    HoldingStack = stack;
+void Swap_Stacks(Stack &stack) {
+    Stack toBePlaced = Inventory::HoldingStack;
+    Inventory::HoldingStack = stack;
     stack = toBePlaced;
 }
 
-bool Inventory::Left_Click_Stack(Stack &a, Stack &b, bool swap) {
+bool Left_Click_Stack(Stack &a, Stack &b, bool swap) {
     if (a.Type != 0 && a.Type == b.Type && a.Data == b.Data) {
         if (b.Size < MAX_STACK_SIZE) {
             if (a.Size <= MAX_STACK_SIZE - b.Size) {
@@ -263,22 +288,22 @@ bool Inventory::Left_Click_Stack(Stack &a, Stack &b, bool swap) {
     return false;
 }
 
-void Inventory::Left_Drag(int slot) {
+void Left_Drag(int slot) {
     unsigned long uSlot = static_cast<unsigned long>(slot);
-    Stack &stack = (slot >= INV_SIZE) ? Craft[uSlot - INV_SIZE] : Inv[uSlot];
+    Stack &stack = (slot >= INV_SIZE) ? Inventory::Craft[uSlot - INV_SIZE] : Inventory::Inv[uSlot];
 
     if (MouseState == 0) {
-        if (HoldingStack.Type == 0 || (stack.Type == HoldingStack.Type && stack.Data == HoldingStack.Data)) {
-            HoldingStack.Type = stack.Type;
-            HoldingStack.Data = stack.Data;
+        if (Inventory::HoldingStack.Type == 0 || (stack.Type == Inventory::HoldingStack.Type && stack.Data == Inventory::HoldingStack.Data)) {
+            Inventory::HoldingStack.Type = stack.Type;
+            Inventory::HoldingStack.Data = stack.Data;
 
-            if (HoldingStack.Size <= MAX_STACK_SIZE - stack.Size) {
-                HoldingStack.Size += stack.Size;
+            if (Inventory::HoldingStack.Size <= MAX_STACK_SIZE - stack.Size) {
+                Inventory::HoldingStack.Size += stack.Size;
                 stack.Clear();
             }
             else {
-                int remainder = stack.Size - (MAX_STACK_SIZE - HoldingStack.Size);
-                HoldingStack.Size = MAX_STACK_SIZE;
+                int remainder = stack.Size - (MAX_STACK_SIZE - Inventory::HoldingStack.Size);
+                Inventory::HoldingStack.Size = MAX_STACK_SIZE;
                 stack.Size = remainder;
 
                 if (stack.Size == 0) {
@@ -286,16 +311,16 @@ void Inventory::Left_Drag(int slot) {
                 }
             }
 
-            Mesh();
+            Inventory::Mesh();
         }
     }
-    else if (!stack.Type || (stack.Type == HoldingStack.Type && stack.Data == HoldingStack.Data)) {
+    else if (!stack.Type || (stack.Type == Inventory::HoldingStack.Type && stack.Data == Inventory::HoldingStack.Data)) {
         if (HoldingSize <= static_cast<int>(DivideSlots.size())) {
             return;
         }
 
-        stack.Type = HoldingStack.Type;
-        stack.Data = HoldingStack.Data;
+        stack.Type = Inventory::HoldingStack.Type;
+        stack.Data = Inventory::HoldingStack.Data;
 
         DivideSlots.insert(&stack);
 
@@ -306,9 +331,9 @@ void Inventory::Left_Drag(int slot) {
                 divStack->Size += floorNum;
             }
 
-            HoldingStack.Size = HoldingSize % int(DivideSlots.size());
+            Inventory::HoldingStack.Size = HoldingSize % int(DivideSlots.size());
 
-            Mesh();
+            Inventory::Mesh();
 
             for (auto &divStack : DivideSlots) {
                 divStack->Size -= floorNum;
@@ -317,24 +342,24 @@ void Inventory::Left_Drag(int slot) {
     }
 }
 
-void Inventory::Right_Click_Stack(Stack &stack) {
-    if (HoldingStack.Type) {
-        if (HoldingStack.Type == stack.Type && HoldingStack.Data == stack.Data && stack.Size < MAX_STACK_SIZE) {
+void Right_Click_Stack(Stack &stack) {
+    if (Inventory::HoldingStack.Type) {
+        if (Inventory::HoldingStack.Type == stack.Type && Inventory::HoldingStack.Data == stack.Data && stack.Size < MAX_STACK_SIZE) {
             stack.Size++;
         }
         else if (!stack.Type) {
-            stack = Stack(HoldingStack.Type, HoldingStack.Data, 1);
+            stack = Stack(Inventory::HoldingStack.Type, Inventory::HoldingStack.Data, 1);
         }
 
-        if (--HoldingStack.Size == 0) {
-            HoldingStack.Clear();
+        if (--Inventory::HoldingStack.Size == 0) {
+            Inventory::HoldingStack.Clear();
         }
     }
     else if (stack.Type) {
-        HoldingStack.Type = stack.Type;
-        HoldingStack.Data = stack.Data;
-        HoldingStack.Size = int(ceil(stack.Size / 2.0));
-        stack.Size -= HoldingStack.Size;
+        Inventory::HoldingStack.Type = stack.Type;
+        Inventory::HoldingStack.Data = stack.Data;
+        Inventory::HoldingStack.Size = int(ceil(stack.Size / 2.0));
+        stack.Size -= Inventory::HoldingStack.Size;
 
         if (stack.Size == 0) {
             stack.Clear();
@@ -342,11 +367,11 @@ void Inventory::Right_Click_Stack(Stack &stack) {
     }
 }
 
-void Inventory::Check_Crafting() {
+void Check_Crafting() {
     std::string grid = "";
     int blocks = 0;
 
-    for (auto const &tile : Craft) {
+    for (auto const &tile : Inventory::Craft) {
         grid += std::to_string(tile.Type) + ",";
         blocks += tile.Type > 0;
     }
@@ -354,17 +379,17 @@ void Inventory::Check_Crafting() {
 	const Block* result = Blocks::Check_Crafting(grid);
 
 	if (result != nullptr) {
-		CraftingOutput = Stack(result->ID, result->Data, result->CraftingYield);
-		Mesh();
+		Inventory::CraftingOutput = Stack(result->ID, result->Data, result->CraftingYield);
+		Inventory::Mesh();
 	}
-	else if (CraftingOutput.Type) {
-		CraftingOutput.Clear();
-		Mesh();
+	else if (Inventory::CraftingOutput.Type) {
+		Inventory::CraftingOutput.Clear();
+		Inventory::Mesh();
 	}
 }
 
-void Inventory::Craft_Item() {
-    for (auto &stack : Craft) {
+void Craft_Item() {
+    for (auto &stack : Inventory::Craft) {
         if (stack.Type && --stack.Size == 0) {
             stack.Clear();
         }

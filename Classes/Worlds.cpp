@@ -95,19 +95,19 @@ void Worlds::Save_World() {
     playerData["Yaw"]   = Cam.Yaw;
     playerData["Pitch"] = Cam.Pitch;
 
-    if (inventory.HoldingStack.Type) {
-        inventory.Add_Stack(inventory.HoldingStack);
-        inventory.HoldingStack.Clear();
+    if (Inventory::HoldingStack.Type) {
+        Inventory::Add_Stack(Inventory::HoldingStack);
+        Inventory::HoldingStack.Clear();
     }
 
-    Add_Storage_Data(playerData, "Inventory", inventory.Inv);
-    Add_Storage_Data(playerData, "Crafting", inventory.Craft);
+    Add_Storage_Data(playerData, "Inventory", Inventory::Inv);
+    Add_Storage_Data(playerData, "Crafting", Inventory::Craft);
 
-    if (inventory.CraftingOutput.Type) {
+    if (Inventory::CraftingOutput.Type) {
         playerData["Storage"]["CraftingOutput"] = {
-            inventory.CraftingOutput.Type,
-            inventory.CraftingOutput.Data,
-            inventory.CraftingOutput.Size
+            Inventory::CraftingOutput.Type,
+            Inventory::CraftingOutput.Data,
+            Inventory::CraftingOutput.Size
         };
     }
 
@@ -123,7 +123,7 @@ void Worlds::Save_World() {
 }
 
 void Worlds::Load_World(int seed) {
-    inventory.Clear();
+    Inventory::Clear();
     ChunkMap.clear();
 
     if (!Multiplayer) {

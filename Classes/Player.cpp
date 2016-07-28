@@ -168,8 +168,8 @@ void Player::Init_Sounds() {
 
 
 void Player::Mesh_Holding() {
-    CurrentBlock = inventory.Get_Info().Type;
-    CurrentBlockData = inventory.Get_Info().Data;
+    CurrentBlock = Inventory::Get_Info().Type;
+    CurrentBlockData = Inventory::Get_Info().Data;
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
 
     if (CurrentBlock > 0) {
@@ -556,7 +556,7 @@ void Player::Check_Pickup() {
 
         if (dist < PICKUP_RANGE) {
             Play_Sound("pickup", CurrentChunk, CurrentTile);
-            inventory.Add_Stack((*it)->Type, (*it)->BlockData, (*it)->Size);
+            Inventory::Add_Stack((*it)->Type, (*it)->BlockData, (*it)->Size);
             Mesh_Holding();
 
             delete *it;
@@ -571,7 +571,7 @@ void Player::Check_Pickup() {
         it = (dist < PICKUP_RANGE) ? Entities.erase(it) : it + 1;
     }
 
-    if (CurrentBlock == 0 && inventory.Get_Info().Type) {
+    if (CurrentBlock == 0 && Inventory::Get_Info().Type) {
         Mesh_Holding();
     }
 }
@@ -593,7 +593,7 @@ void Player::Drop_Item() {
         return;
     }
 
-    inventory.Decrease_Size();
+    Inventory::Decrease_Size();
     Entity::Spawn(
         WorldPos + glm::vec3(0, CAMERA_HEIGHT, 0) + Cam.Front,
         CurrentBlock, CurrentBlockData,
@@ -730,11 +730,11 @@ void Player::Key_Handler(int key, int action) {
         }
 
         else if (key == GLFW_KEY_TAB) {
-            inventory.Is_Open = !inventory.Is_Open;
-            inventory.Mesh();
+            Inventory::Is_Open = !Inventory::Is_Open;
+            Inventory::Mesh();
 
-            if (inventory.Is_Open) {
-                inventory.Mouse_Handler();
+            if (Inventory::Is_Open) {
+                Inventory::Mouse_Handler();
             }
 
             Mesh_Holding();
@@ -750,11 +750,11 @@ void Player::Key_Handler(int key, int action) {
         }
 
         // Pressing a number key
-        if (!inventory.Is_Open) {
+        if (!Inventory::Is_Open) {
             for (int i = 0; i < 10; i++) {
                 if (key == NumKeys[i]) {
-                    inventory.ActiveToolbarSlot = i;
-                    inventory.Switch_Slot();
+                    Inventory::ActiveToolbarSlot = i;
+                    Inventory::Switch_Slot();
                     Mesh_Holding();
                     break;
                 }
@@ -777,8 +777,8 @@ void Player::Mouse_Handler(double posX, double posY) {
     }
 
     if (MouseEnabled) {
-        if (inventory.Is_Open) {
-            inventory.Mouse_Handler(posX, posY);
+        if (Inventory::Is_Open) {
+            Inventory::Mouse_Handler(posX, posY);
         }
 
         LastMousePos = glm::dvec2(posX, posY);
@@ -833,17 +833,17 @@ void Player::Scroll_Handler(double offsetY) {
         Chat::Scroll(int(std::copysign(1, offsetY)));
     }
     else {
-        inventory.ActiveToolbarSlot += int(std::copysign(1, offsetY));
+        Inventory::ActiveToolbarSlot += int(std::copysign(1, offsetY));
 
-        if (inventory.ActiveToolbarSlot > 9) {
-            inventory.ActiveToolbarSlot = 0;
+        if (Inventory::ActiveToolbarSlot > 9) {
+            Inventory::ActiveToolbarSlot = 0;
         }
 
-        else if (inventory.ActiveToolbarSlot < 0) {
-            inventory.ActiveToolbarSlot = 9;
+        else if (Inventory::ActiveToolbarSlot < 0) {
+            Inventory::ActiveToolbarSlot = 9;
         }
 
-        inventory.Switch_Slot();
+        Inventory::Switch_Slot();
         Mesh_Holding();
     }
 }
@@ -888,10 +888,10 @@ void Player::Click_Handler(int button, int action) {
         LookingAirTile, CurrentBlock, CurrentBlockData
     );
 
-    inventory.Decrease_Size();
+    Inventory::Decrease_Size();
 
-    CurrentBlock = inventory.Get_Info().Type;
-    CurrentBlockData = inventory.Get_Info().Data;
+    CurrentBlock = Inventory::Get_Info().Type;
+    CurrentBlockData = Inventory::Get_Info().Data;
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
 
     if (CurrentBlockType->Luminosity > 0) {
@@ -1084,7 +1084,7 @@ void Player::Clear_Keys() {
 }
 
 void Player::Load_Data(const std::string data) {
-    inventory.Clear();
+    Inventory::Clear();
     ChunkMap.clear();
 
     nlohmann::json playerData = nlohmann::json::parse(data);
@@ -1104,11 +1104,11 @@ void Player::Load_Data(const std::string data) {
 
     if (playerData.count("Storage")) {
         if (playerData["Storage"].count("Inventory")) {
-            inventory.Load(playerData["Storage"]["Inventory"], inventory.Inv);
+            Inventory::Load(playerData["Storage"]["Inventory"], Inventory::Inv);
         }
 
         if (playerData["Storage"].count("Crafting")) {
-            inventory.Load(playerData["Storage"]["Crafting"], inventory.Craft);
+            Inventory::Load(playerData["Storage"]["Crafting"], Inventory::Craft);
         }
     }
 }

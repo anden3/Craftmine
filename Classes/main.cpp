@@ -75,7 +75,6 @@ static double LastNetworkUpdate = 0.0;
 Camera Cam = Camera();
 Player player = Player();
 Listener listener = Listener();
-Inventory inventory = Inventory();
 
 // Defining buffers.
 static UniformBuffer UBO;

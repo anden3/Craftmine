@@ -66,7 +66,7 @@ void Connect_To_Server(void* caller);
 
 void UI::Init() {
     Interface::Init();
-    inventory.Init();
+    Inventory::Init();
     Chat::Init();
 
     Init_Title();
@@ -116,7 +116,7 @@ void UI::Draw() {
             Interface::Draw_Document(CustomDocument);
         }
         else {
-            inventory.Draw();
+            Inventory::Draw();
 
             if (ShowDebug) {
                 Draw_Debug();
@@ -133,7 +133,7 @@ void UI::Click(int action, int button) {
     Bind_Current_Document();
 
     if (ShowInventory && !ShowGameMenu) {
-        inventory.Click_Handler(button, action);
+        Inventory::Click_Handler(button, action);
     }
     else {
         Interface::Click(button, action);
@@ -186,7 +186,7 @@ void UI::Key_Handler(int key, int action) {
                 }
 
                 else if (ShowInventory) {
-                    inventory.Is_Open = false;
+                    Inventory::Is_Open = false;
                     Toggle_Inventory();
                 }
                 else {
@@ -450,7 +450,7 @@ void Toggle_Title(void* caller) {
     UI::ShowInventory = false;
     UI::ShowDebug = false;
 
-    inventory.Is_Open = false;
+    Inventory::Is_Open = false;
 
     UI::ShowTitle = !UI::ShowTitle;
     GamePaused = UI::ShowTitle;

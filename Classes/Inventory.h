@@ -57,16 +57,21 @@ double Sum(const std::vector<T> &a) {
     return sum;
 }
 
-class Inventory {
-public:
-    bool Is_Open = false;
-    int ActiveToolbarSlot = 0;
+namespace Inventory {
+    extern bool Is_Open;
+    extern int ActiveToolbarSlot;
+
+    extern std::vector<Stack> Inv;
+    extern std::vector<Stack> Craft;
+
+    extern Stack CraftingOutput;
+    extern Stack HoldingStack;
 
     void Init();
     void Clear();
 
-    inline void Add_Stack(Stack stack) { Add_Stack(stack.Type, stack.Data, stack.Size); }
     void Add_Stack(int type, int typeData, int size);
+    inline void Add_Stack(Stack stack) { Add_Stack(stack.Type, stack.Data, stack.Size); }
     void Decrease_Size(int slot = -1);
 
     Stack Get_Info(int slot = -1);
@@ -79,27 +84,4 @@ public:
     void Load(const JSONValue &data, std::vector<Stack> &storage);
     void Mesh();
     void Draw();
-
-    std::vector<Stack> Inv;
-    std::vector<Stack> Craft;
-
-    Stack CraftingOutput = Stack();
-    Stack HoldingStack = Stack();
-
-private:
-    glm::dvec2 MousePos = glm::dvec2(0);
-
-    int HoveringSlot = -1;
-
-    void Click_Slot(int slot, int button);
-    void Check_Crafting();
-    void Craft_Item();
-
-    Stack& Get_Stack(int slot);
-
-    void Swap_Stacks(Stack &stack);
-    bool Left_Click_Stack(Stack &a, Stack &b, bool swap = false);
-    void Right_Click_Stack(Stack &stack);
-
-    void Left_Drag(int slot);
 };

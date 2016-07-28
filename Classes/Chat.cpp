@@ -464,13 +464,13 @@ std::vector<std::string> Process_Commands(std::string message) {
         }
 
         name = Blocks::Get_Name(type, data);
-        inventory.Add_Stack(type, data, size);
+        Inventory::Add_Stack(type, data, size);
         player.Mesh_Holding();
         return std::vector<std::string> {"Given &2" + name + " &fto player."};
     }
 
     else if (command == "clear") {
-        inventory.Clear();
+        Inventory::Clear();
         player.Mesh_Holding();
         return std::vector<std::string> {"Inventory cleared!"};
     }

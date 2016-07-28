@@ -24,7 +24,6 @@ class Camera;
 class Player;
 class Shader;
 class Listener;
-class Inventory;
 struct GLFWwindow;
 
 // Declaring shaders.
@@ -37,7 +36,6 @@ extern Shader* outlineShader;
 extern Camera Cam;
 extern Player player;
 extern Listener listener;
-extern Inventory inventory;
 extern GLFWwindow* Window;
 
 extern std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
