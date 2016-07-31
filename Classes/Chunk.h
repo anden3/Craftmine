@@ -108,6 +108,7 @@ public:
         TopBlocks[Position.xz()][tile.xz()] = value;
     }
 private:
+    bool ContainsChangedBlocks     = false;
     bool ContainsTransparentBlocks = false;
 
     void Update_Air(glm::ivec3 pos, glm::bvec3 inChunk);

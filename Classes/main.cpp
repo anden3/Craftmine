@@ -90,11 +90,11 @@ std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 // Defining options.
 int AMBIENT_OCCLUSION = 0;
-int RENDER_DISTANCE = 0;
+int RENDER_DISTANCE = 4;
 int SCREEN_HEIGHT = 1080;
 int SCREEN_WIDTH = 1920;
 int FULLSCREEN = 0;
-int VSYNC = 0;
+int VSYNC = 1;
 
 // Defining shaders.
 Shader* shader = nullptr;
@@ -237,6 +237,11 @@ void Parse_Config() {
 
     // Load the config file, and store it in file_content.
     std::ifstream file(CONFIG_FILE);
+
+    if (!file.good()) {
+        return;
+    }
+
     file_content << file.rdbuf();
     file.close();
 

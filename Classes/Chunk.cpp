@@ -199,16 +199,16 @@ void Chunk::Generate_Block(glm::ivec3 pos) {
     );
     int height = static_cast<int>(Position.y) * CHUNK_SIZE + pos.y;
 
-    bool changedBlock = ChangedBlocks.count(Position) && ChangedBlocks[Position].count(pos);
-
-    if (!ChangedBlocks.count(Position) || !ChangedBlocks[Position].count(pos)) {
+    if (!ContainsChangedBlocks || !ChangedBlocks[Position].count(pos)) {
         glm::vec3 changedChunk, changedTile;
         std::tie(changedChunk, changedTile) = Get_Chunk_Pos(Get_World_Pos(Position, pos));
 
-        if (ChangedBlocks.count(changedChunk) && ChangedBlocks[changedChunk].count(changedTile)) {
-            if (ChangedBlocks[changedChunk][changedTile].first == 0) {
-                Update_Air(pos, inChunk);
-                return;
+        if (changedChunk != Position) {
+            if (ChangedBlocks.count(changedChunk) && ChangedBlocks[changedChunk].count(changedTile)) {
+                if (ChangedBlocks[changedChunk][changedTile].first == 0) {
+                    Update_Air(pos, inChunk);
+                    return;
+                }
             }
         }
     }
@@ -294,6 +294,10 @@ void Chunk::Generate() {
     glm::vec2 topPos = Position.xz();
     glm::dvec3 positionOffset = static_cast<glm::dvec3>(Position);
     positionOffset *= static_cast<double>(CHUNK_SIZE);
+
+    if (ChangedBlocks.count(Position)) {
+        ContainsChangedBlocks = true;
+    }
 
     bool underground = Position.y < -3;
     double densityThreshold = underground ?

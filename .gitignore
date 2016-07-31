@@ -3,6 +3,7 @@ Build/
 CMakeFiles/
 Worlds/*
 
+config.conf
 Craftmine.exe
 Craftmine.ilk
 Craftmine.pdb
