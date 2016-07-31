@@ -19,7 +19,7 @@
 			"durability": 132,
 			"miningSpeed": 4,
 			"miningLevel": 1,
-            "recipe": "% (1)2 0 1 280 (0)2 280 %"
+            "recipe": "% (4)2 0 4 280 (0)2 280 %"
 		},
 		{
 			"name": "Iron Axe",

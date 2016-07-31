@@ -113,6 +113,7 @@ private:
     void Update_Air(glm::ivec3 pos, glm::bvec3 inChunk);
     void Update_Transparency(glm::ivec3 pos);
 
+    void Generate_Block(glm::ivec3 pos);
     void Generate_Tree(glm::vec3 tile);
     void Check_Ore(glm::ivec3 pos, glm::dvec3 noisePos);
 

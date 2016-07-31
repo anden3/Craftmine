@@ -73,18 +73,18 @@ void Right_Click_Stack(Stack &stack);
 void Left_Drag(int slot);
 
 void Inventory::Init() {
-    barDims = glm::vec4(Scale(520, 40), Scale(400, 40));
-    invDims = glm::vec4(Scale(220), Scale(800, 480));
-    craftDims = glm::vec4(Scale(1100, 460), Scale(240));
-    outputDims = glm::vec4(Scale(1180, 300), Scale(80));
-    invBarDims = glm::vec4(Scale(220, 100), Scale(800, 80));
-
+    invPad    = Scale(10);
+    textPad   = Scale(5);
+    slotPad   = Scale(10);
     slotWidth = Scale(80);
-    invPad = Scale(10);
-    slotPad = Scale(10);
-    textPad = Scale(5);
 
     BLOCK_SCALE = Scale_X(80);
+
+    barDims    = glm::vec4(Scale(520, 40),   Scale(400, 40));
+    invDims    = glm::vec4(Scale(220),       Scale(800, 480));
+    craftDims  = glm::vec4(Scale(1100, 460), Scale(240));
+    outputDims = glm::vec4(Scale(1180, 300), Scale(80));
+    invBarDims = glm::vec4(Scale(220, 100),  Scale(800, 80));
 
     Interface::Set_Document("toolbar");
 
@@ -372,7 +372,7 @@ void Check_Crafting() {
     int blocks = 0;
 
     for (auto const &tile : Inventory::Craft) {
-        grid += std::to_string(tile.Type) + ",";
+        grid.insert(0, std::to_string(tile.Type) + ",");
         blocks += tile.Type > 0;
     }
 

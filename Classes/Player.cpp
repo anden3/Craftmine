@@ -408,55 +408,57 @@ void Player::Update(bool update) {
 
     Check_Pickup();
 
-	Chunk* lookingChunk = ChunkMap[LookingChunk];
+    if (ChunkMap.count(LookingChunk)) {
+        Chunk* lookingChunk = ChunkMap[LookingChunk];
 
-    if (MouseDown && LookingAtBlock) {
-        if (Creative) {
-            Break_Block(Get_World_Pos(LookingChunk, LookingTile));
-            MouseTimer = 0.0;
-
-            if (Multiplayer) {
-                Request_Handler("blockBreak", true);
-            }
-        }
-        else {
-            float requiredTime = Get_Block_Break_Time();
-            int prevDamageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
-            MouseTimer += static_cast<float>(DeltaTime);
-
-            if (MouseTimer >= requiredTime) {
+        if (MouseDown && LookingAtBlock) {
+            if (Creative) {
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
-				lookingChunk->ExtraTextures.erase(LookingTile);
-
-				if (lookingChunk->ExtraTextures.size() == 0) {
-					lookingChunk->HasExtraTextures = false;
-				}
-
                 MouseTimer = 0.0;
-                update = true;
 
                 if (Multiplayer) {
                     Request_Handler("blockBreak", true);
                 }
             }
             else {
-                int damageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
+                float requiredTime = Get_Block_Break_Time();
+                int prevDamageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
+                MouseTimer += static_cast<float>(DeltaTime);
 
-                if (damageIndex != prevDamageIndex) {
-                    Mesh_Damage(damageIndex);
+                if (MouseTimer >= requiredTime) {
+                    Break_Block(Get_World_Pos(LookingChunk, LookingTile));
+    				lookingChunk->ExtraTextures.erase(LookingTile);
+
+    				if (lookingChunk->ExtraTextures.size() == 0) {
+    					lookingChunk->HasExtraTextures = false;
+    				}
+
+                    MouseTimer = 0.0;
+                    update = true;
+
+                    if (Multiplayer) {
+                        Request_Handler("blockBreak", true);
+                    }
+                }
+                else {
+                    int damageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
+
+                    if (damageIndex != prevDamageIndex) {
+                        Mesh_Damage(damageIndex);
+                    }
                 }
             }
         }
-    }
-    else if (LookingAtBlock) {
-        if (lookingChunk->ExtraTextures.count(LookingTile)) {
-			lookingChunk->ExtraTextures.erase(LookingTile);
+        else if (LookingAtBlock) {
+            if (lookingChunk->ExtraTextures.count(LookingTile)) {
+    			lookingChunk->ExtraTextures.erase(LookingTile);
 
-			if (lookingChunk->ExtraTextures.size() == 0) {
-				lookingChunk->HasExtraTextures = false;
-			}
+    			if (lookingChunk->ExtraTextures.size() == 0) {
+    				lookingChunk->HasExtraTextures = false;
+    			}
 
-			lookingChunk->Mesh();
+    			lookingChunk->Mesh();
+            }
         }
     }
 
@@ -579,10 +581,6 @@ void Player::Check_Pickup() {
 void Player::Teleport(glm::vec3 pos) {
     Velocity = glm::vec3(0);
     WorldPos = pos;
-
-    std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
-    LookingChunk = CurrentChunk;
-    LookingTile = CurrentTile;
 
     Update(true);
     Queue_Chunks();
@@ -785,7 +783,7 @@ void Player::Mouse_Handler(double posX, double posY) {
         return;
     }
 
-    Cam.Yaw += static_cast<float>((posX - LastMousePos.x) * PLAYER_SENSITIVITY);
+    Cam.Yaw   += static_cast<float>((posX - LastMousePos.x) * PLAYER_SENSITIVITY);
     Cam.Pitch += static_cast<float>((LastMousePos.y - posY) * PLAYER_SENSITIVITY);
 
     if (Cam.Pitch > 89.9f) {
@@ -816,7 +814,7 @@ void Player::Mouse_Handler(double posX, double posY) {
     Rotation = glm::radians(270.0f - Cam.Yaw);
 
     PUNCHING_ANGLE_START = Cam.Pitch + 90.0f;
-    PUNCHING_ANGLE_END = Cam.Pitch + 120.0f;
+    PUNCHING_ANGLE_END   = Cam.Pitch + 120.0f;
 
     listener.Set_Orientation(Cam.Front, Cam.Up);
 

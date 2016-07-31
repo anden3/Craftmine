@@ -119,9 +119,9 @@ void Parse_Config();
 
 // Initialize different objects and states.
 void Init_GL();
-void Init_Textures();
 void Init_Shaders();
 void Init_Outline();
+void Init_Textures();
 void Init_Rendering();
 
 // Renders the main scene.
@@ -131,11 +131,11 @@ void Render_Scene();
 void Background_Thread();
 
 // Proxy functions that send events to other functions.
-void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
 void Text_Proxy(GLFWwindow* window, unsigned int codepoint);
 void Mouse_Proxy(GLFWwindow* window, double posX, double posY);
 void Scroll_Proxy(GLFWwindow* window, double xoffset, double yoffset);
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods);
+void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 void Window_Focused(GLFWwindow* window, int focused);
 void Window_Minimized(GLFWwindow* window, int iconified);

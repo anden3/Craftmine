@@ -17,16 +17,22 @@
 
 static std::map<std::string, int> WorldList;
 
-// Only works for uppercase.
-int Hex_To_Dec(char hex) {
-    if (hex >= 'A') {  return hex - 'A' + 10; }
-    return hex - '0';
+int Hex_To_Dec(std::string hex) {
+    int result;
+    std::stringstream ss;
+    ss << std::hex << hex;
+    ss >> result;
+    return result;
 }
 
-// Only outputs uppercase hex.
-char Dec_To_Hex(int val) {
-    if (val >= 10) { return static_cast<char>(val - 10 + 'A'); }
-    return static_cast<char>(val + '0');
+int Hex_To_Dec(const char hex) {
+    return Hex_To_Dec(std::string(1, hex));
+}
+
+std::string Dec_To_Hex(int dec) {
+    std::stringstream ss;
+    ss << std::hex << dec;
+    return ss.str();
 }
 
 int Worlds::Get_Seed(std::string name) {
@@ -189,6 +195,7 @@ void Worlds::Save_Chunk(std::string world, glm::vec3 chunkPos) {
         file << ':';
 
         if (block.second.second > 0) {
+
             file << std::hex << block.second.second;
         }
 
@@ -206,46 +213,25 @@ std::map<glm::vec3, std::pair<int, int>, VectorComparator> Worlds::Load_Chunk(st
         return changedBlocks;
     }
 
-    char c;
-    int index = 0;
-    bool dataFound = false;
+    std::stringstream buffer;
+    buffer << file.rdbuf();
 
-    glm::ivec3 blockPos = {0, 0, 0};
-    std::pair<int, int> blockType = {0, 0};
+    for (auto const &b : Split(buffer.str(), '-')) {
+        glm::vec3 blockPos(
+            Hex_To_Dec(b[0]), Hex_To_Dec(b[1]), Hex_To_Dec(b[2])
+        );
 
-    std::vector<int> idVal;
+        std::pair<int, int> blockType = {0, 0};
 
-    while (file.get(c)) {
-        if (index < 3) {
-            blockPos[index] = Hex_To_Dec(c);
-        }
-        else if (!dataFound && c != ':') {
-            for (int &val : idVal) { val *= 16; }
-            idVal.push_back(Hex_To_Dec(c));
-        }
-        else if (c == ':') {
-            for (int const &val : idVal) { blockType.first += val; }
-            dataFound = true;
-        }
-        else if (c != '-') {
-            if (blockType.second > 0) { continue; }
-
-            blockType.second = Hex_To_Dec(c);
-            char nextChar = static_cast<char>(file.peek());
-
-            if (nextChar != '-') {
-                blockType.second = blockType.second * 16 + Hex_To_Dec(nextChar);
-            }
-        }
-        else {
-            changedBlocks[static_cast<glm::vec3>(blockPos)] = blockType;
-            blockType = {0, 0};
-            idVal.clear();
-            dataFound = false;
-            index = -1;
+        if (b.find(':') > 3) {
+            blockType.first = Hex_To_Dec(b.substr(3, (b.find(':') - 3)));
         }
 
-        ++index;
+        if (b.back() != ':') {
+            blockType.second = Hex_To_Dec(b.substr(b.find(':')));
+        }
+
+        changedBlocks[blockPos] = blockType;
     }
 
     return changedBlocks;

@@ -19,7 +19,7 @@
 			"durability": 132,
 			"miningSpeed": 4,
 			"miningLevel": 1,
-            "recipe": "% 1 (0 0 280)2 %"
+            "recipe": "% 4 (0 0 280)2 %"
 		},
 		{
 			"name": "Iron Shovel",

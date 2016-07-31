@@ -19,7 +19,7 @@
 			"durability": 132,
 			"miningSpeed": 4,
 			"miningLevel": 1,
-            "recipe": "(1)3 (0 280 0)2"
+            "recipe": "(4)3 (0 280 0)2"
 		},
 		{
 			"name": "Iron Pickaxe",
