@@ -7,7 +7,7 @@
 	"types": [
 		{
 			"name": "Wooden Axe",
-			"icon": 336,
+			"icon": 368,
 			"durability": 60,
 			"miningSpeed": 2,
 			"miningLevel": 0,
@@ -15,7 +15,7 @@
 		},
 		{
 			"name": "Stone Axe",
-			"icon": 337,
+			"icon": 369,
 			"durability": 132,
 			"miningSpeed": 4,
 			"miningLevel": 1,
@@ -23,7 +23,7 @@
 		},
 		{
 			"name": "Iron Axe",
-			"icon": 338,
+			"icon": 370,
 			"durability": 251,
 			"miningSpeed": 6,
 			"miningLevel": 2,
@@ -31,7 +31,7 @@
 		},
 		{
 			"name": "Diamond Axe",
-			"icon": 339,
+			"icon": 371,
 			"durability": 1562,
 			"miningSpeed": 8,
 			"miningLevel": 3,
@@ -39,7 +39,7 @@
 		},
 		{
 			"name": "Gold Axe",
-			"icon": 340,
+			"icon": 372,
 			"durability": 33,
 			"miningSpeed": 12,
 			"miningLevel": 2,

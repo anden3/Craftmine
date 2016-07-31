@@ -382,6 +382,8 @@ void Player::Col_Detection() {
 }
 
 void Player::Update(bool update) {
+    static bool FirstUpdate = true;
+
     if (FirstUpdate) {
         update = true;
         FirstUpdate = false;
@@ -408,10 +410,10 @@ void Player::Update(bool update) {
 
     Check_Pickup();
 
-    if (ChunkMap.count(LookingChunk)) {
+    if (LookingAtBlock && ChunkMap.count(LookingChunk)) {
         Chunk* lookingChunk = ChunkMap[LookingChunk];
 
-        if (MouseDown && LookingAtBlock) {
+        if (MouseDown) {
             if (Creative) {
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
                 MouseTimer = 0.0;
@@ -449,7 +451,7 @@ void Player::Update(bool update) {
                 }
             }
         }
-        else if (LookingAtBlock) {
+        else {
             if (lookingChunk->ExtraTextures.count(LookingTile)) {
     			lookingChunk->ExtraTextures.erase(LookingTile);
 
@@ -488,7 +490,7 @@ void Player::Update(bool update) {
         listener.Set_Position(Cam.Position);
         Check_Hit();
 
-        if (CurrentChunk != lastChunk) {
+        if (update || CurrentChunk != lastChunk) {
             lastChunk = CurrentChunk;
             Queue_Chunks();
         }

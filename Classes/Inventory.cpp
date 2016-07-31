@@ -226,7 +226,11 @@ Stack& Get_Stack(int slot) {
 }
 
 void Click_Slot(int slot, int button) {
-    if (slot == OUTPUT_SLOT && Inventory::CraftingOutput.Type) {
+    if (slot == OUTPUT_SLOT) {
+        if (Inventory::CraftingOutput.Type == 0) {
+            return;
+        }
+
         if (keys[GLFW_KEY_LEFT_SHIFT]) {
             Inventory::Add_Stack(Inventory::CraftingOutput);
             Inventory::CraftingOutput.Clear();

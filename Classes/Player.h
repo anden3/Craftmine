@@ -60,7 +60,6 @@ class Player {
     bool Jumping = false;
     bool OnGround = false;
     bool MovedMouse = false;
-    bool FirstUpdate = true;
     bool ThirdPerson = false;
 
     int LightLevel;

@@ -189,6 +189,8 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipmap ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+
     int width, height;
     unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
 
@@ -215,6 +217,8 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
     int height = static_cast<int>(FreeImage_GetHeight(image));
 
     glm::ivec2 subSize(width / subCount.x, height / subCount.y);
+
+    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_REPEAT);
@@ -721,7 +725,7 @@ void OrthoElement::Draw() {
     if (Type == 0) {
         return;
     }
-    
+
     UI3DShader->Upload("model", ModelMatrix);
     UI3DShader->Upload("scale", Scale);
     OrthoBuffer.Draw();

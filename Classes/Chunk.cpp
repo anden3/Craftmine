@@ -208,6 +208,7 @@ void Chunk::Generate_Block(glm::ivec3 pos) {
         if (ChangedBlocks.count(changedChunk) && ChangedBlocks[changedChunk].count(changedTile)) {
             if (ChangedBlocks[changedChunk][changedTile].first == 0) {
                 Update_Air(pos, inChunk);
+                return;
             }
         }
     }
@@ -271,7 +272,7 @@ void Chunk::Generate_Block(glm::ivec3 pos) {
         LightQueue.emplace(Position, pos);
 
         Set_Type(pos, 2);
-        // Generate_Tree(block);
+        Generate_Tree(pos);
     }
     else {
         int depth = std::abs(
@@ -413,6 +414,7 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
             std::tie(chunkPos, tilePos) = Get_Chunk_Pos(pos);
 
             if (!Exists(chunkPos)) {
+                ChangedBlocks[chunkPos][tilePos] = block.second;
                 continue;
             }
 

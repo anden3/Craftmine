@@ -354,9 +354,9 @@ void Init_Textures() {
 
 void Init_Shaders() {
     // Load the shaders.
-    shader = new Shader("shader");
-    modelShader = new Shader("model");
-    mobShader = new Shader("model2DTex");
+    shader        = new Shader("shader");
+    mobShader     = new Shader("model2DTex");
+    modelShader   = new Shader("model");
     outlineShader = new Shader("outline");
 
     // Create the frustrum projection matrix for the camera.
