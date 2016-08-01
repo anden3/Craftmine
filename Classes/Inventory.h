@@ -76,7 +76,7 @@ namespace Inventory {
 
     Stack Get_Info(int slot = -1);
 
-    void Switch_Slot();
+    void Switch_Slot(int slot);
 
     void Click_Handler(int button, int action);
     void Mouse_Handler(double x = -1, double y = -1);

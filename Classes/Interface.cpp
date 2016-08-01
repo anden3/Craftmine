@@ -15,6 +15,7 @@
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
+#include "Inventory.h"
 
 #ifdef WIN32
     #undef min
@@ -27,6 +28,7 @@ void*       Interface::HoveringElement = nullptr;
 bool        Interface::Holding         = false;
 
 static std::map<std::string, std::map<std::string, Bar         >> Bars;
+static std::map<std::string, std::map<std::string, Slot        >> Slots;
 static std::map<std::string, std::map<std::string, Image       >> Images;
 static std::map<std::string, std::map<std::string, Button      >> Buttons;
 static std::map<std::string, std::map<std::string, Slider      >> Sliders;
@@ -46,42 +48,51 @@ static Shader* UIBackgroundShader;
 
 static glm::ivec2 TEXT_ATLAS_SIZE = {0, 0};
 
-const int       TEXT_TEXTURE_UNIT         = 10;
-const int       TEXT_GLYPHS               = 128;
-const float     TEXT_PADDING              = 20;
+static int       TEXT_BOX_HORZ_PADDING;
 
-const float     BUTTON_PADDING            = 20.0f;
-const float     BUTTON_OPACITY            = 1.0f;
-const float     BUTTON_TEXT_OPACITY       = 1.0f;
-const glm::vec3 BUTTON_COLOR              = glm::vec3(0.5f);
-const glm::vec3 BUTTON_HOVER_COLOR        = glm::vec3(0.7f);
-const glm::vec3 BUTTON_CLICK_COLOR        = glm::vec3(0.3f, 0.3f, 0.8f);
-const glm::vec3 BUTTON_TEXT_COLOR         = glm::vec3(1.0f);
+static float     BAR_PADDING;
+static float     SLIDER_WIDTH;
+static float     TEXT_PADDING;
+static float     BUTTON_PADDING;
+static float     SLIDER_PADDING;
+static float     SLOT_BLOCK_SCALE;
 
-const float     SLIDER_PADDING            = 20.0f;
-const float     SLIDER_WIDTH              = 10.0f;
-const float     SLIDER_OPACITY            = 1.0f;
-const float     SLIDER_HANDLE_OPACITY     = 1.0f;
-const float     SLIDER_TEXT_OPACITY       = 1.0f;
-const glm::vec3 SLIDER_COLOR              = glm::vec3(0.5f);
-const glm::vec3 SLIDER_HANDLE_COLOR       = glm::vec3(0.7f);
-const glm::vec3 SLIDER_HANDLE_HOVER_COLOR = glm::vec3(0.9f);
-const glm::vec3 SLIDER_HANDLE_CLICK_COLOR = glm::vec3(0.3f, 0.3f, 0.8f);
-const glm::vec3 SLIDER_TEXT_COLOR         = glm::vec3(1.0f);
+static glm::vec2 SLOT_SIZE;
+static glm::vec2 SLOT_PADDING;
+static glm::vec2 SLOT_TEXT_PADDING;
 
-const float     BAR_PADDING               = 20.0f;
-const float     BAR_OPACITY               = 1.0f;
-const float     BAR_TEXT_OPACITY          = 1.0f;
-const float     BAR_BACKGROUND_OPACITY    = 1.0f;
-const glm::vec3 BAR_BACKGROUND_COLOR      = glm::vec3(0.0f, 1.0f, 0.0f);
-const glm::vec3 BAR_COLOR                 = glm::vec3(0.2f);
-const glm::vec3 BAR_TEXT_COLOR            = glm::vec3(1.0f);
+const  int       TEXT_TEXTURE_UNIT         = 10;
+const  int       TEXT_GLYPHS               = 128;
 
-const float     BACKGROUND_OPACITY        = 0.7f;
-const glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
-const glm::vec3 BACKGROUND_BORDER_COLOR   = glm::vec3(0.5f);
+const  glm::vec3 SLOT_BG_COLOR             = glm::vec3(0.1f);
+const  glm::vec3 SLOT_HOVER_COLOR          = glm::vec3(0.7f);
 
-const int       TEXT_BOX_HORZ_PADDING     = 10;
+const  float     BUTTON_OPACITY            = 1.0f;
+const  float     BUTTON_TEXT_OPACITY       = 1.0f;
+const  glm::vec3 BUTTON_COLOR              = glm::vec3(0.5f);
+const  glm::vec3 BUTTON_HOVER_COLOR        = glm::vec3(0.7f);
+const  glm::vec3 BUTTON_CLICK_COLOR        = glm::vec3(0.3f, 0.3f, 0.8f);
+const  glm::vec3 BUTTON_TEXT_COLOR         = glm::vec3(1.0f);
+
+const  float     SLIDER_OPACITY            = 1.0f;
+const  float     SLIDER_HANDLE_OPACITY     = 1.0f;
+const  float     SLIDER_TEXT_OPACITY       = 1.0f;
+const  glm::vec3 SLIDER_COLOR              = glm::vec3(0.5f);
+const  glm::vec3 SLIDER_HANDLE_COLOR       = glm::vec3(0.7f);
+const  glm::vec3 SLIDER_HANDLE_HOVER_COLOR = glm::vec3(0.9f);
+const  glm::vec3 SLIDER_HANDLE_CLICK_COLOR = glm::vec3(0.3f, 0.3f, 0.8f);
+const  glm::vec3 SLIDER_TEXT_COLOR         = glm::vec3(1.0f);
+
+const  float     BAR_OPACITY               = 1.0f;
+const  float     BAR_TEXT_OPACITY          = 1.0f;
+const  float     BAR_BACKGROUND_OPACITY    = 1.0f;
+const  glm::vec3 BAR_BACKGROUND_COLOR      = glm::vec3(0.0f, 1.0f, 0.0f);
+const  glm::vec3 BAR_COLOR                 = glm::vec3(0.2f);
+const  glm::vec3 BAR_TEXT_COLOR            = glm::vec3(1.0f);
+
+const  float     BACKGROUND_OPACITY        = 0.7f;
+const  glm::vec3 BACKGROUND_COLOR          = glm::vec3(0.0f);
+const  glm::vec3 BACKGROUND_BORDER_COLOR   = glm::vec3(0.5f);
 
 const std::map<char, glm::vec3> ColorCodes = {
     {'0', {0.000, 0.000, 0.000} }, // Black
@@ -431,7 +442,13 @@ Button::Button(std::string name, std::string text, float x, float y, float w, fl
 inline void Button::Hover() { Color = BUTTON_HOVER_COLOR; }
 inline void Button::Stop_Hover() { Color = BUTTON_COLOR; }
 inline void Button::Press() { Color = BUTTON_CLICK_COLOR; }
-inline void Button::Release() { Color = BUTTON_COLOR; Function(this); }
+inline void Button::Release() {
+    Color = BUTTON_COLOR;
+    Function(this);
+
+    Interface::HoveringType = "";
+    Interface::HoveringElement = nullptr;
+}
 
 Slider::Slider(std::string name, std::string text, float x, float y, float w, float h, float min,
     float max, float value, Func &function) : Value(value), Min(min), Max(max) {
@@ -691,6 +708,8 @@ void Background::Draw() {
 OrthoElement::OrthoElement(std::string name, int type, int data, float x, float y, float scale) {
     OrthoBuffer.Init(UI3DShader);
 
+    X = x;
+    Y = y;
     Name = name;
     Type = type;
     Scale = scale;
@@ -699,11 +718,19 @@ OrthoElement::OrthoElement(std::string name, int type, int data, float x, float 
         OrthoBuffer.Create(3, 3, 2);
     }
     else {
-        OrthoBuffer.Create(3, 3, 2, Get_3D_Mesh(Blocks::Get_Block(Type, data), x, y, true));
+        OrthoBuffer.Create(3, 3, 2, Get_3D_Mesh(Blocks::Get_Block(Type, data), X, Y, true));
     }
 }
 
 void OrthoElement::Mesh(int type, int data, float x, float y) {
+    if (x != 0) {
+        X = x;
+    }
+
+    if (y != 0) {
+        Y = y;
+    }
+
     Type = type;
 
     if (Type == 0) {
@@ -718,7 +745,7 @@ void OrthoElement::Mesh(int type, int data, float x, float y) {
         ModelMatrix = glm::rotate(ModelMatrix, 45.0f, glm::vec3(0, 1, 0));
     }
 
-    OrthoBuffer.Upload(Get_3D_Mesh(block, x, y, true));
+    OrthoBuffer.Upload(Get_3D_Mesh(block, X, Y, true));
 }
 
 void OrthoElement::Draw() {
@@ -735,8 +762,8 @@ TextBox::TextBox(std::string name, float x, float y, float w, float h) {
     X = x;
     Y = y;
     Width = w;
-    Name = name;
     Height = h;
+    Name = name;
 
     BG = Background(name, x, y, w, h, true);
 
@@ -815,9 +842,98 @@ void TextBox::Draw() {
     }
 }
 
+Slot::Slot(std::string name, float x, float y, float scale, int type, int data, int size) : SlotSize(scale), ID(type), Data(data), Size(size) {
+    X = x;
+    Y = y;
+    Name = name;
+    Width = Scale_X(SlotSize);
+    Height = Scale_Y(SlotSize);
+
+    glm::vec2 textPos  = glm::vec2(X, Y) + SLOT_TEXT_PADDING * (SlotSize / 80);
+    glm::vec2 modelPos = glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80);
+
+    BG = Background(Name, X, Y, Width, Height, true, Scale(scale));
+    BG.Color = SLOT_BG_COLOR;
+    ItemCount.Create(Name, std::to_string(Size), textPos.x, textPos.y, static_cast<float>(Size > 0));
+    ItemModel = OrthoElement(Name, ID, Data, modelPos.x, modelPos.y, Width);
+
+    Mesh();
+}
+
+void Slot::Swap_Stacks(Stack &stack) {
+    Stack content(ID, Data, Size);
+    Set_Contents(stack);
+    stack = content;
+}
+
+void Slot::Set_Contents(const Stack &stack) {
+    Set_Contents(stack.Type, stack.Data, stack.Size);
+}
+
+void Slot::Set_Contents(int type, int data, int size) {
+    ItemCount.Opacity = (size > 0 && type > 0);
+
+    if (size != Size) {
+        Size = size;
+        ItemCount.Set_Text(std::to_string(Size));
+    }
+
+    if (type != ID || data != Data) {
+        ID = type;
+        Data = data;
+
+        Mesh();
+    }
+}
+
+void Slot::Hover() {
+    Hovering = true;
+    BG.Color = SLOT_HOVER_COLOR;
+}
+
+void Slot::Stop_Hover() {
+    Hovering = false;
+    BG.Color = SLOT_BG_COLOR;
+}
+
+void Slot::Mesh() {
+    ItemModel.Mesh(ID, Data, glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80));
+}
+
+void Slot::Draw() {
+    if (Hovering) {
+        ItemModel.Draw();
+        ItemCount.Draw();
+        BG.Draw();
+    }
+    else {
+        BG.Draw();
+        ItemModel.Draw();
+        ItemCount.Draw();
+    }
+}
+
 void Interface::Init() {
+    Init_UI_Scale();
     Init_Shaders();
     Init_Text();
+}
+
+void Interface::Init_UI_Scale() {
+    TEXT_BOX_HORZ_PADDING = static_cast<int>(Scale_X(10));
+    SLOT_BLOCK_SCALE      = std::min(Scale_X(80), Scale_Y(80));
+
+    SLOT_PADDING          = Scale(10, 20);
+    SLOT_TEXT_PADDING     = Scale(5, 10);
+
+    SLIDER_WIDTH          = Scale_X(10);
+
+    BUTTON_PADDING        = Scale_Y(20);
+    SLIDER_PADDING        = Scale_Y(20);
+    TEXT_PADDING          = Scale_Y(20);
+    BAR_PADDING           = Scale_Y(20);
+
+    SLOT_SIZE             = glm::vec2(SLOT_BLOCK_SCALE);
 }
 
 void Interface::Init_Shaders() {
@@ -931,6 +1047,25 @@ void Interface::Mouse_Handler(double x, double y) {
         return;
     }
 
+    if (HoveringType == "slot") { static_cast<Slot*>(HoveringElement)->Stop_Hover(); }
+    else if (HoveringType == "button") { static_cast<Button*>(HoveringElement)->Stop_Hover(); }
+    else if (HoveringType == "slider") { static_cast<Slider*>(HoveringElement)->Stop_Hover(); }
+    else if (HoveringType == "textBox") { static_cast<TextBox*>(HoveringElement)->Set_Cursor_Visibility(false); }
+
+    for (auto &slot : Slots[ActiveDocument]) {
+        if (In_Range(x, glm::vec2(slot.second.X, slot.second.Width))) {
+            if (In_Range(y, glm::vec2(slot.second.Y, slot.second.Height))) {
+                if (!Holding) {
+                    slot.second.Hover();
+                }
+
+                HoveringType = "slot";
+                HoveringElement = &slot.second;
+                return;
+            }
+        }
+    }
+
     for (auto &button : Buttons[ActiveDocument]) {
         if (In_Range(x, glm::vec2(button.second.X, button.second.Width))) {
             if (In_Range(y, glm::vec2(button.second.Y, button.second.Height))) {
@@ -941,8 +1076,6 @@ void Interface::Mouse_Handler(double x, double y) {
                 return;
             }
         }
-
-        button.second.Stop_Hover();
     }
 
     for (auto &slider : Sliders[ActiveDocument]) {
@@ -955,8 +1088,6 @@ void Interface::Mouse_Handler(double x, double y) {
                 return;
             }
         }
-
-        slider.second.Stop_Hover();
     }
 
     for (auto &box : TextBoxes[ActiveDocument]) {
@@ -968,8 +1099,6 @@ void Interface::Mouse_Handler(double x, double y) {
                 return;
             }
         }
-
-        box.second.Set_Cursor_Visibility(false);
     }
 
     HoveringType = "";
@@ -984,7 +1113,30 @@ void Interface::Click(int mouseButton, int action) {
 
     Holding = (action == GLFW_PRESS);
 
-    if (HoveringType == "button") {
+    if (HoveringType == "slot") {
+        Slot* slot = static_cast<Slot*>(HoveringElement);
+
+        if (Holding) {
+            slot->Swap_Stacks(Inventory::HoldingStack);
+
+            Interface::Set_Document("inventory");
+
+            TextElement* mouseStack = Interface::Get_Text_Element("mouseStack");
+            mouseStack->Opacity = float(Inventory::HoldingStack.Size > 0);
+
+            if (Inventory::HoldingStack.Type) {
+                mouseStack->Set_Text(std::to_string(Inventory::HoldingStack.Size));
+            }
+
+            Interface::Get_3D_Element("mouseStack")->Mesh(
+                Inventory::HoldingStack.Type, Inventory::HoldingStack.Data
+            );
+
+            Interface::Set_Document("");
+        }
+    }
+
+    else if (HoveringType == "button") {
         Button* button = static_cast<Button*>(HoveringElement);
         Holding ? button->Press() : button->Release();
     }
@@ -992,11 +1144,6 @@ void Interface::Click(int mouseButton, int action) {
     else if (HoveringType == "slider") {
         Slider* slider = static_cast<Slider*>(HoveringElement);
         Holding ? slider->Press() : slider->Release();
-    }
-
-    if (!Holding) {
-        HoveringType = "";
-        HoveringElement = nullptr;
     }
 }
 
@@ -1008,6 +1155,7 @@ void Interface::Draw_Document(std::string document) {
     for (auto &button : Buttons      [document]) { button.second.Draw(); }
     for (auto &slider : Sliders      [document]) { slider.second.Draw(); }
     for (auto &bar    : Bars         [document]) { bar   .second.Draw(); }
+    for (auto &slot   : Slots        [document]) { slot  .second.Draw(); }
     for (auto &object : OrthoElements[document]) { object.second.Draw(); }
     for (auto &box    : TextBoxes    [document]) { box   .second.Draw(); }
     for (auto &text   : TextElements [document]) { text  .second.Draw(); }
@@ -1082,6 +1230,9 @@ namespace Interface {
     void Add_Text(std::string name, std::string text, float x, float y) {
         TextElements[ActiveDocument].emplace(name, TextElement(name, text, std::floor(x), std::floor(y)));
     }
+    void Add_Slot(std::string name, float x, float y, float scale, int type, int data, int size) {
+        Slots[ActiveDocument].emplace(name, Slot(name, x, y, scale, type, data, size));
+    }
     void Add_Text_Box(std::string name, float x, float y, float w, float h) {
         TextBoxes[ActiveDocument].emplace(name, TextBox(name, x, y, w, h));
     }
@@ -1106,6 +1257,7 @@ namespace Interface {
 
     void Delete_Bar       (std::string name) { Bars         [ActiveDocument].erase(name); }
     void Delete_Text      (std::string name) { TextElements [ActiveDocument].erase(name); }
+    void Delete_Slot      (std::string name) { Slots        [ActiveDocument].erase(name); }
     void Delete_Image     (std::string name) { Images       [ActiveDocument].erase(name); }
     void Delete_Button    (std::string name) { Buttons      [ActiveDocument].erase(name); }
     void Delete_Slider    (std::string name) { Sliders      [ActiveDocument].erase(name); }
@@ -1113,6 +1265,7 @@ namespace Interface {
     void Delete_Background(std::string name) { Backgrounds  [ActiveDocument].erase(name); }
     void Delete_3D_Element(std::string name) { OrthoElements[ActiveDocument].erase(name); }
 
+    Slot*         Get_Slot        (std::string name) { return &Slots        [ActiveDocument][name]; }
     Image*        Get_Image       (std::string name) { return &Images       [ActiveDocument][name]; }
     Button*       Get_Button      (std::string name) { return &Buttons      [ActiveDocument][name]; }
     Slider*       Get_Slider      (std::string name) { return &Sliders      [ActiveDocument][name]; }

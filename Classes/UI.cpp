@@ -131,14 +131,7 @@ void UI::Draw() {
 
 void UI::Click(int action, int button) {
     Bind_Current_Document();
-
-    if (ShowInventory && !ShowGameMenu) {
-        Inventory::Click_Handler(button, action);
-    }
-    else {
-        Interface::Click(button, action);
-    }
-
+    Interface::Click(button, action);
     Interface::Set_Document("");
 
     if (!GamePaused) {
@@ -224,28 +217,21 @@ void UI::Toggle_Mouse(bool enable) {
 void Bind_Current_Document() {
     std::string name;
 
-    if (UI::ShowTitle) {
-        if (UI::ShowOptions) {
-            name = "titleOptions";
-        }
-        else if (UI::ShowServers) {
-            name = "servers";
-        }
-        else if (UI::ShowWorlds) {
-            name = "worlds";
-        }
-        else {
-            name = "title";
-        }
+    if (UI::CustomDocument != "") {
+        name = UI::CustomDocument;
+    }
+
+    else if (UI::ShowTitle) {
+        if (UI::ShowOptions) { name = "titleOptions"; }
+        else if (UI::ShowServers) { name = "servers"; }
+        else if (UI::ShowWorlds) { name = "worlds"; }
+        else { name = "title"; }
     }
     else if (UI::ShowGameMenu) {
-        if (UI::ShowOptions) {
-            name = "options";
-        }
-        else {
-            name = "gameMenu";
-        }
+        if (UI::ShowOptions) { name = "options"; }
+        else { name = "gameMenu"; }
     }
+    else if (UI::ShowInventory) { name = "inventory"; }
 
     Interface::Set_Document(name);
 }

@@ -32,5 +32,3 @@ namespace UI {
 
     void Toggle_Mouse(bool enable);
 };
-
-std::string Format_Vector(glm::vec3 vector);

@@ -66,35 +66,33 @@ void Craft_Item();
 
 Stack& Get_Stack(int slot);
 
-void Swap_Stacks(Stack &stack);
+static void Swap_Stacks(Stack &stack);
 bool Left_Click_Stack(Stack &a, Stack &b, bool swap = false);
 void Right_Click_Stack(Stack &stack);
 
 void Left_Drag(int slot);
 
 void Inventory::Init() {
-    invPad    = Scale(10);
-    textPad   = Scale(5);
-    slotPad   = Scale(10);
-    slotWidth = Scale(80);
+    invPad    = Scale(5);
+    textPad   = Scale(2.5f);
+    slotPad   = Scale(5);
+    slotWidth = Scale(40);
 
-    BLOCK_SCALE = Scale_X(80);
+    BLOCK_SCALE = Scale_X(40);
 
     barDims    = glm::vec4(Scale(520, 40),   Scale(400, 40));
-    invDims    = glm::vec4(Scale(220),       Scale(800, 480));
-    craftDims  = glm::vec4(Scale(1100, 460), Scale(240));
-    outputDims = glm::vec4(Scale(1180, 300), Scale(80));
-    invBarDims = glm::vec4(Scale(220, 100),  Scale(800, 80));
+    invDims    = glm::vec4(Scale(520, 340),  Scale(400, 240));
+    craftDims  = glm::vec4(Scale(1000, 460), Scale(120));
+    outputDims = glm::vec4(Scale(1040, 340), Scale(40));
+    invBarDims = glm::vec4(Scale(520, 260),  Scale(400, 40));
 
     Interface::Set_Document("toolbar");
 
     for (int i = 0; i < SLOTS_X; i++) {
         std::string name = std::to_string(i);
-        glm::vec2 pos(std::floor(barDims.x + i * (slotWidth.x / 2.0f)), std::floor(barDims.y));
+        glm::vec2 pos(std::floor(barDims.x + i * slotWidth.x), std::floor(barDims.y));
 
-        Interface::Add_Text(name, "0", pos + textPad / 2.0f);
-        Interface::Get_Text_Element(name)->Opacity = 0.0f;
-        Interface::Add_3D_Element(name, 0, 0, pos + glm::vec2(0, slotPad.y), BLOCK_SCALE / 2.0f);
+        Interface::Add_Slot(name, pos + textPad, 40);
     }
 
     Interface::Set_Document("inventory");
@@ -107,9 +105,7 @@ void Inventory::Init() {
         );
 
         Inv.push_back(Stack());
-        Interface::Add_Text(name, "0", pos + slotPad);
-        Interface::Get_Text_Element(name)->Opacity = 0.0f;
-        Interface::Add_3D_Element(name, 0, 0, pos + glm::vec2(0, slotPad.y), BLOCK_SCALE);
+        Interface::Add_Slot(name, pos + slotPad, 40);
     }
 
     for (int i = 0; i < 9; i++) {
@@ -117,35 +113,16 @@ void Inventory::Init() {
         glm::vec2 pos = glm::vec2(i % 3, i / 3) * slotWidth + craftDims.xy() + slotPad;
 
         Craft.push_back(Stack());
-        Interface::Add_Text(name, "0", pos);
-        Interface::Get_Text_Element(name)->Opacity = 0.0f;
-        Interface::Add_3D_Element(name, 0, 0, pos, BLOCK_SCALE);
+        Interface::Add_Slot(name, pos, 40);
     }
 
-    Interface::Add_Text(std::to_string(INV_SIZE + 9), "0", outputDims.xy() + slotPad);
-    Interface::Get_Text_Element(std::to_string(INV_SIZE + 9))->Opacity = 0.0f;
-    Interface::Add_3D_Element(std::to_string(INV_SIZE + 9), 0, 0, outputDims.xy() + glm::vec2(slotPad.x, slotPad.y * 2), BLOCK_SCALE);
-
-    Interface::Add_Background("invInv", glm::vec4(invDims.xy() - invPad, invDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
-    Interface::Add_Background("invCraft", glm::vec4(craftDims.xy() - invPad, craftDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
-    Interface::Add_Background("invOutput", glm::vec4(outputDims.xy() - invPad, outputDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
-    Interface::Add_Background("invToolbar", glm::vec4(invBarDims.xy() - invPad, invBarDims.zw() + invPad * 2.0f), true, slotWidth, invPad);
-
-    Interface::Add_Background("invHover", glm::vec4(0, 0, slotWidth));
-    Interface::Get_Background("invHover")->Color = glm::vec3(0.7f);
+    Interface::Add_Slot(std::to_string(INV_SIZE + 9), outputDims.xy() + slotPad, 40);
 
     Interface::Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
     Interface::Get_Text_Element("mouseStack")->Opacity = 0.0f;
-
     Interface::Add_3D_Element("mouseStack", 0, 0, 0, 0, BLOCK_SCALE);
 
-    Interface::Set_Document("toolbar");
-        Interface::Add_Background("bgToolbar", barDims, true, slotWidth / 2.0f);
-        Interface::Add_Background("selectToolbar", glm::vec4(barDims.xy(), slotWidth.x / 2.0f, barDims.w), true, slotWidth / 2.0f);
-        Interface::Get_Background("selectToolbar")->Color = glm::vec3(0.7f);
-    Interface::Set_Document("");
-
-    Switch_Slot();
+    Switch_Slot(0);
 }
 
 void Inventory::Clear() {
@@ -262,7 +239,7 @@ void Click_Slot(int slot, int button) {
     }
 }
 
-void Swap_Stacks(Stack &stack) {
+static void Swap_Stacks(Stack &stack) {
     Stack toBePlaced = Inventory::HoldingStack;
     Inventory::HoldingStack = stack;
     stack = toBePlaced;
@@ -400,10 +377,13 @@ void Craft_Item() {
     }
 }
 
-void Inventory::Switch_Slot() {
-    glm::vec2 pos = barDims.xy() + glm::vec2(ActiveToolbarSlot * slotWidth.x / 2.0f, 0);
+void Inventory::Switch_Slot(int slot) {
     Interface::Set_Document("toolbar");
-    Interface::Get_Background("selectToolbar")->Move(pos, true);
+
+    Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Stop_Hover();
+    ActiveToolbarSlot = slot;
+    Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Hover();
+
     Interface::Set_Document("");
 }
 
@@ -481,7 +461,6 @@ void Inventory::Mouse_Handler(double x, double y) {
             glm::vec2 pos = slot * slotWidth + invDims.xy();
 
             HoveringSlot = int(slot.y * SLOTS_X + slot.x + SLOTS_X);
-            Interface::Get_Background("invHover")->Move(pos, true);
         }
 
         else if (In_Range(x, craftDims.xz())) {
@@ -490,13 +469,11 @@ void Inventory::Mouse_Handler(double x, double y) {
                 glm::vec2 pos = slot * slotWidth + craftDims.xy();
 
                 HoveringSlot = INV_SIZE + int(slot.y * 3 + slot.x);
-                Interface::Get_Background("invHover")->Move(pos, true);
             }
 
             else if (In_Range(mouseY, outputDims.yw())) {
                 if (In_Range(x, outputDims.xz())) {
                     HoveringSlot = OUTPUT_SLOT;
-                    Interface::Get_Background("invHover")->Move(outputDims.xy(), true);
                 }
             }
         }
@@ -507,11 +484,8 @@ void Inventory::Mouse_Handler(double x, double y) {
             glm::vec2 pos = static_cast<glm::vec2>(slot) * slotWidth + invBarDims.xy();
 
             HoveringSlot = slot.x;
-            Interface::Get_Background("invHover")->Move(pos, true);
         }
     }
-
-    Interface::Get_Background("invHover")->Opacity = 0.5f * (HoveringSlot != -1);
 
     if (HoveringSlot != LastSlot && HoveringSlot != -1) {
         LastSlot = HoveringSlot;
@@ -563,76 +537,19 @@ void Inventory::Mesh() {
     Interface::Set_Document(Is_Open ? "inventory" : "toolbar");
 
     for (auto const &stack : Inv) {
-        glm::vec2 pos;
+        Interface::Get_Slot(std::to_string(index++))->Set_Contents(stack);
 
-        if (Is_Open) {
-            if (index < SLOTS_X) {
-                pos = invBarDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth + slotPad;
-            }
-            else {
-                pos = invDims.xy() + glm::vec2(index % SLOTS_X, index / SLOTS_X - 1) * slotWidth + slotPad;
-            }
-        }
-        else {
-            pos = barDims.xy() + glm::vec2(index % SLOTS_X, 0) * slotWidth / 2.0f + glm::vec2(slotPad.x, 0) / 2.0f;
-        }
-
-        std::string textName = std::to_string(index);
-        Interface::Get_Text_Element(textName)->Opacity = static_cast<float>(stack.Type > 0);
-        Interface::Get_3D_Element(textName)->Mesh(stack.Type, stack.Data, pos + glm::vec2(0, 10));
-
-        if (stack.Type) {
-            TextElement* text = Interface::Get_Text_Element(textName);
-
-            if (text->Text != std::to_string(stack.Size)) {
-                text->Set_Text(std::to_string(stack.Size));
-            }
-        }
-
-        if (!Is_Open && index == 9) {
+        if (!Is_Open && index == 10) {
             break;
         }
-
-        index++;
     }
 
     if (Is_Open) {
-        index = 0;
-
         for (auto const &stack : Craft) {
-            std::string textName = std::to_string(INV_SIZE + index);
-            glm::vec2 pos = craftDims.xy() + glm::vec2(index % 3, index / 3) * slotWidth + slotPad;
-
-            Interface::Get_Text_Element(textName)->Opacity = static_cast<float>(stack.Type > 0);
-            Interface::Get_3D_Element(textName)->Mesh(
-                stack.Type, stack.Data, pos + glm::vec2(0, 10)
-            );
-
-            if (stack.Type) {
-                TextElement* text = Interface::Get_Text_Element(textName);
-
-                if (text->Text != std::to_string(stack.Size)) {
-                    text->Set_Text(std::to_string(stack.Size));
-                }
-            }
-
-            ++index;
+            Interface::Get_Slot(std::to_string(index++))->Set_Contents(stack);
         }
 
-        std::string outputName = std::to_string(OUTPUT_SLOT);
-        Interface::Get_Text_Element(outputName)->Opacity = float(CraftingOutput.Type > 0);
-        Interface::Get_3D_Element(outputName)->Mesh(
-            CraftingOutput.Type, CraftingOutput.Data,
-            outputDims.xy() + glm::vec2(invPad.x, invPad.y * 2)
-        );
-
-        if (CraftingOutput.Type) {
-            TextElement* text = Interface::Get_Text_Element(outputName);
-
-            if (text->Text != std::to_string(CraftingOutput.Size)) {
-                text->Set_Text(std::to_string(CraftingOutput.Size));
-            }
-        }
+        Interface::Get_Slot(std::to_string(OUTPUT_SLOT))->Set_Contents(CraftingOutput);
     }
 
     Interface::Set_Document("");

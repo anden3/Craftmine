@@ -12,12 +12,11 @@ typedef void (Func)(void*);
 typedef std::vector<float> Data;
 
 struct Block;
+struct Stack;
 
 inline std::string Format_Vector(glm::vec3 vector) {
     return std::string(
-        "X: " + std::to_string(int(vector.x)) + "\t\t" +
-        "Y: " + std::to_string(int(vector.y)) + "\t\t" +
-        "Z: " + std::to_string(int(vector.z))
+        std::to_string(int(vector.x)) + ", " + std::to_string(int(vector.y)) + ", " + std::to_string(int(vector.z))
     );
 }
 
@@ -282,21 +281,54 @@ private:
 
 class OrthoElement {
 public:
-    std::string Name;
-
     int Type;
+
+    float X;
+    float Y;
     float Scale;
+
+    std::string Name;
 
     OrthoElement() {}
     OrthoElement(std::string name, int type, int data, float x, float y, float scale);
 
     inline void Mesh(int type, int data, glm::vec2 pos) { Mesh(type, data, pos.x, pos.y); }
-    void Mesh(int type, int data, float x, float y);
+    void Mesh(int type, int data, float x = 0, float y = 0);
     void Draw();
 
 private:
     glm::mat4 ModelMatrix;
     Buffer OrthoBuffer;
+};
+
+class Slot : public UIElement {
+public:
+    Slot() {}
+    Slot(std::string name, float x, float y, float scale, int type, int data, int size);
+
+    void Hover();
+    void Stop_Hover();
+
+    void Swap_Stacks(Stack &stack);
+
+    void Set_Contents(const Stack &stack);
+    void Set_Contents(int type, int data, int size);
+
+    void Mesh();
+    void Draw();
+
+private:
+    bool Hovering = false;
+
+    int ID;
+    int Data;
+    int Size;
+
+    float SlotSize;
+
+    Background BG;
+    TextElement ItemCount;
+    OrthoElement ItemModel;
 };
 
 namespace Interface {
@@ -308,6 +340,7 @@ namespace Interface {
     void Init();
     void Init_Text();
     void Init_Shaders();
+    void Init_UI_Scale();
 
     void Mouse_Handler(double x, double y);
     void Click(int mouseButton, int action);
@@ -321,6 +354,7 @@ namespace Interface {
     void Add_Text      (std::string name, std::string text, float x, float y);
     void Add_Text_Box  (std::string name, float x, float y, float w, float h);
     void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale);
+    void Add_Slot      (std::string name, float x, float y, float scale, int type = 0, int data = 0, int size = 0);
     void Add_Image     (std::string name, std::string path, int texID, float x, float y, float scale);
     void Add_Button    (std::string name, std::string text, float x, float y, float w, float h, Func &function);
     void Add_Bar       (std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value);
@@ -329,6 +363,10 @@ namespace Interface {
 
     inline void Add_Text(std::string name, std::string text, glm::vec2 pos) {
         Add_Text(name, text, EXPAND_VEC2(pos));
+    }
+
+    inline void Add_Slot(std::string name, glm::vec2 pos, float scale, int type = 0, int data = 0, int size = 0) {
+        Add_Slot(name, pos.x, pos.y, scale, type, data, size);
     }
 
     inline void Add_Text_Box(std::string name, glm::vec4 dims) {
@@ -357,6 +395,7 @@ namespace Interface {
 
     void Delete_Bar       (std::string name);
     void Delete_Text      (std::string name);
+    void Delete_Slot      (std::string name);
     void Delete_Image     (std::string name);
     void Delete_Button    (std::string name);
     void Delete_Slider    (std::string name);
@@ -364,6 +403,7 @@ namespace Interface {
     void Delete_Background(std::string name);
     void Delete_3D_Element(std::string name);
 
+    Slot*         Get_Slot        (std::string name);
     Image*        Get_Image       (std::string name);
     Button*       Get_Button      (std::string name);
     Slider*       Get_Slider      (std::string name);

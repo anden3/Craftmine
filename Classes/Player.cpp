@@ -754,8 +754,7 @@ void Player::Key_Handler(int key, int action) {
         if (!Inventory::Is_Open) {
             for (int i = 0; i < 10; i++) {
                 if (key == NumKeys[i]) {
-                    Inventory::ActiveToolbarSlot = i;
-                    Inventory::Switch_Slot();
+                    Inventory::Switch_Slot(i);
                     Mesh_Holding();
                     break;
                 }
@@ -834,17 +833,17 @@ void Player::Scroll_Handler(double offsetY) {
         Chat::Scroll(int(std::copysign(1, offsetY)));
     }
     else {
-        Inventory::ActiveToolbarSlot += int(std::copysign(1, offsetY));
+        int slot = Inventory::ActiveToolbarSlot + int(std::copysign(1, offsetY));
 
-        if (Inventory::ActiveToolbarSlot > 9) {
-            Inventory::ActiveToolbarSlot = 0;
+        if (slot > 9) {
+            slot = 0;
         }
 
-        else if (Inventory::ActiveToolbarSlot < 0) {
-            Inventory::ActiveToolbarSlot = 9;
+        else if (slot < 0) {
+            slot = 9;
         }
 
-        Inventory::Switch_Slot();
+        Inventory::Switch_Slot(slot);
         Mesh_Holding();
     }
 }
