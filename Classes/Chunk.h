@@ -5,6 +5,7 @@
 #include <queue>
 #include <atomic>
 #include <thread>
+#include <unordered_set>
 
 #include "Buffer.h"
 #include "Comparators.h"
@@ -31,6 +32,8 @@ extern std::map<glm::vec3, std::map<glm::vec3, std::pair<int, int>, VectorCompar
 extern std::map<glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator> TopBlocks;
 
 namespace Chunks {
+    void Load_Structures();
+
     void Seed(int seed);
 	void Delete(glm::vec3 chunk);
 };
@@ -125,7 +128,7 @@ private:
     Array3D<unsigned char, CHUNK_SIZE> LightMap = {0};
     Array3D<unsigned char, CHUNK_SIZE> SeesAir  = {0};
 
-    std::set<glm::vec3, VectorComparator> Blocks;
+    std::unordered_set<glm::vec3, VectorHasher> Blocks;
     std::map<glm::vec3, int, VectorComparator> DataMap;
     std::set<glm::vec3, VectorComparator> TransparentBlocks;
 };

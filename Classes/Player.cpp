@@ -465,9 +465,10 @@ void Player::Update(bool update) {
     }
 
     if (update || WorldPos != prevPos) {
+        glm::vec3 prevTile = CurrentTile;
         std::tie(CurrentChunk, CurrentTile) = Get_Chunk_Pos(WorldPos);
 
-        if (Exists(CurrentChunk)) {
+        if (prevTile != CurrentTile && Exists(CurrentChunk)) {
             if (WorldPos.y >= ChunkMap[CurrentChunk]->Get_Top(CurrentTile)) {
                 LightLevel = SUN_LIGHT_LEVEL;
             }

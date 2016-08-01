@@ -9,7 +9,7 @@ void Furnace::Init() {
     glm::vec2 bgPad = Scale(10);
     glm::vec2 slotWidth = Scale(80);
 
-    glm::vec4 bgDims = glm::vec4(Scale(320), Scale(800, 480));
+    glm::vec4 bgDims = glm::vec4(Scale(520, 250), Scale(400, 400));
 
     Interface::Set_Document("furnace");
 

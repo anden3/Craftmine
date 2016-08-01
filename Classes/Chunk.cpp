@@ -2,12 +2,21 @@
 
 #include <chrono>
 #include <random>
+#include <fstream>
+
+#include <json.hpp>
+#include <dirent.h>
 #include <noise/noise.h>
 
 #include "main.h"
 #include "Blocks.h"
 #include "Worlds.h"
 #include "Interface.h"
+
+struct Structure {
+    glm::ivec3 Size = {0, 0, 0};
+    std::map<glm::ivec3, std::pair<int, int>, VectorComparator> Blocks = {};
+};
 
 class LightNodeComparator {
   public:
@@ -79,10 +88,13 @@ const glm::vec3 AOOffsets[6][2][2][3]={
 static noise::module::RidgedMulti ridgedNoise;
 static noise::module::RidgedMulti oreNoise;
 static noise::module::Perlin noiseModule;
+static noise::module::Perlin treeNoise;
 
 static std::map<
     glm::vec3, std::set<LightNode, LightNodeComparator>, ChunkPosComparator
 > UnloadedLightQueue;
+
+static std::map<std::string, Structure> Structures;
 
 std::map<
     glm::vec2, std::map<glm::vec2, int, VectorComparator>, VectorComparator
@@ -93,10 +105,62 @@ std::map<
 > ChangedBlocks;
 
 static std::mt19937_64 rng;
-static std::uniform_real_distribution<double> rngVal(0, 1);
 
-double RNG() {
-    return rngVal(rng);
+static nlohmann::json Parse_JSON(std::string path) {
+    std::stringstream file_content;
+    nlohmann::json json;
+
+    std::ifstream file(path);
+    file_content << file.rdbuf();
+    file.close();
+
+    json << file_content;
+    return json;
+}
+
+void Chunks::Load_Structures() {
+    DIR* structDir = opendir("Structures");
+    struct dirent* structEnt;
+
+    while ((structEnt = readdir(structDir)) != nullptr) {
+        std::string fileName(structEnt->d_name);
+
+        if (fileName.find(".json") == std::string::npos) {
+            continue;
+        }
+
+        Structure blockStruct;
+        nlohmann::json json = Parse_JSON("Structures/" + fileName);
+
+        blockStruct.Size = glm::ivec3(
+            json["size"][0], json["size"][1], json["size"][2]
+        );
+
+        for (auto const &element : json["elements"]) {
+            const Block* block = Blocks::Get_Block(element["material"].get<std::string>());
+
+            for (auto const &position : element["positions"]) {
+                glm::ivec3 start(
+                    position[0][0], position[0][1], position[0][2]
+                );
+
+                glm::ivec3 end(
+                    position[1][0], position[1][1], position[1][2]
+                );
+
+                for (int x = start.x; x <= end.x; ++x) {
+                    for (int y = start.y; y <= end.y; ++y) {
+                        for (int z = start.z; z <= end.z; ++z) {
+                            glm::ivec3 pos(x, y, z);
+                            blockStruct.Blocks[pos] = {block->ID, block->Data};
+                        }
+                    }
+                }
+            }
+        }
+
+        Structures[json["name"]] = blockStruct;
+    }
 }
 
 void Chunks::Seed(int seed) {
@@ -117,6 +181,9 @@ void Chunks::Seed(int seed) {
     noiseModule.SetSeed(seed);
     noiseModule.SetPersistence(0.5);
     noiseModule.SetOctaveCount(3);
+
+    treeNoise.SetSeed(seed);
+    treeNoise.SetFrequency(2.0);
 
     ridgedNoise.SetSeed(seed);
     ridgedNoise.SetOctaveCount(2);
@@ -247,11 +314,9 @@ void Chunk::Generate_Block(glm::ivec3 pos) {
         return;
     }
 
-    glm::dvec3 nPos = glm::fma(
-        static_cast<glm::dvec3>(Position),
-        glm::dvec3(CHUNK_SIZE),
-        static_cast<glm::dvec3>(pos)
-    ) / static_cast<double>(CHUNK_ZOOM);
+    glm::dvec3 nPos = static_cast<glm::dvec3>(
+        Get_World_Pos(Position, pos) / static_cast<float>(CHUNK_ZOOM)
+    );
 
     double noiseValue = underground ?
         ridgedNoise.GetValue(nPos.x, nPos.y, nPos.z) :
@@ -320,86 +385,11 @@ void Chunk::Generate() {
 }
 
 void Chunk::Generate_Tree(glm::vec3 tile) {
-    static std::map<glm::ivec3, std::pair<int, int>, VectorComparator> TreeModel = {
-        {{0, 1, 0}, {17, 0}},
-        {{0, 2, 0}, {17, 0}},
-        {{0, 3, 0}, {17, 0}},
-        {{0, 4, 0}, {17, 0}},
-        {{0, 5, 0}, {17, 0}},
+    glm::dvec3 treePos = static_cast<glm::dvec3>(
+        Get_World_Pos(Position, tile) / static_cast<float>(CHUNK_ZOOM)
+    );
 
-        {{-2, 4, -2}, {18, 0}},
-        {{-1, 4, -2}, {18, 0}},
-        {{ 0, 4, -2}, {18, 0}},
-        {{ 1, 4, -2}, {18, 0}},
-        {{ 2, 4, -2}, {18, 0}},
-
-        {{-2, 4, -1}, {18, 0}},
-        {{-1, 4, -1}, {18, 0}},
-        {{ 0, 4, -1}, {18, 0}},
-        {{ 1, 4, -1}, {18, 0}},
-        {{ 2, 4, -1}, {18, 0}},
-
-        {{-2, 4,  0}, {18, 0}},
-        {{-1, 4,  0}, {18, 0}},
-        {{ 1, 4,  0}, {18, 0}},
-        {{ 2, 4,  0}, {18, 0}},
-
-        {{-2, 4,  1}, {18, 0}},
-        {{-1, 4,  1}, {18, 0}},
-        {{ 0, 4,  1}, {18, 0}},
-        {{ 1, 4,  1}, {18, 0}},
-        {{ 2, 4,  1}, {18, 0}},
-
-        {{-2, 4,  2}, {18, 0}},
-        {{-1, 4,  2}, {18, 0}},
-        {{ 0, 4,  2}, {18, 0}},
-        {{ 1, 4,  2}, {18, 0}},
-        {{ 2, 4,  2}, {18, 0}},
-
-
-        {{-2, 5, -2}, {18, 0}},
-        {{-1, 5, -2}, {18, 0}},
-        {{ 0, 5, -2}, {18, 0}},
-        {{ 1, 5, -2}, {18, 0}},
-        {{ 2, 5, -2}, {18, 0}},
-
-        {{-2, 5, -1}, {18, 0}},
-        {{-1, 5, -1}, {18, 0}},
-        {{ 0, 5, -1}, {18, 0}},
-        {{ 1, 5, -1}, {18, 0}},
-        {{ 2, 5, -1}, {18, 0}},
-
-        {{-2, 5,  0}, {18, 0}},
-        {{-1, 5,  0}, {18, 0}},
-        {{ 1, 5,  0}, {18, 0}},
-        {{ 2, 5,  0}, {18, 0}},
-
-        {{-2, 5,  1}, {18, 0}},
-        {{-1, 5,  1}, {18, 0}},
-        {{ 0, 5,  1}, {18, 0}},
-        {{ 1, 5,  1}, {18, 0}},
-        {{ 2, 5,  1}, {18, 0}},
-
-        {{-2, 5,  2}, {18, 0}},
-        {{-1, 5,  2}, {18, 0}},
-        {{ 0, 5,  2}, {18, 0}},
-        {{ 1, 5,  2}, {18, 0}},
-        {{ 2, 5,  2}, {18, 0}},
-
-        {{-1, 6,  0}, {18, 0}},
-        {{ 1, 6,  0}, {18, 0}},
-        {{ 0, 6,  0}, {18, 0}},
-        {{ 0, 6, -1}, {18, 0}},
-        {{ 0, 6,  1}, {18, 0}},
-
-        {{-1, 7,  0}, {18, 0}},
-        {{ 1, 7,  0}, {18, 0}},
-        {{ 0, 7,  0}, {18, 0}},
-        {{ 0, 7, -1}, {18, 0}},
-        {{ 0, 7,  1}, {18, 0}}
-    };
-
-    if (RNG() <= 0.2) {
+    if (treeNoise.GetValue(treePos.x, 0, treePos.z) > 0.5) {
         glm::ivec3 root = Get_World_Pos(Position, tile);
 
         for (int y = 1; y <= 4; ++y) {
@@ -412,7 +402,7 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
             }
         }
 
-        for (auto const &block : TreeModel) {
+        for (auto const &block : Structures["Tree"].Blocks) {
             glm::ivec3 pos = root + block.first;
             glm::ivec3 chunkPos, tilePos;
             std::tie(chunkPos, tilePos) = Get_Chunk_Pos(pos);
@@ -422,11 +412,34 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
                 continue;
             }
 
-            if (ChunkMap[chunkPos]->Get_Type(tilePos) == 0) {
-                ChunkMap[chunkPos]->Set_Type(tilePos, block.second.first);
-                ChunkMap[chunkPos]->Set_Data(tilePos, block.second.second);
-                ChunkMap[chunkPos]->Blocks.insert(tilePos);
+            Chunk* ch = ChunkMap[chunkPos];
+
+            if (ch->Get_Type(tilePos) != 0) {
+                continue;
             }
+
+            int height = static_cast<int>(Position.y) * CHUNK_SIZE + tilePos.y;
+
+            if (!Top_Exists(tilePos) || height > Get_Top(tilePos)) {
+                ch->Set_Top(tilePos, height);
+                ch->Set_Light(tilePos, SUN_LIGHT_LEVEL);
+                ch->LightQueue.emplace(chunkPos, tilePos);
+            }
+
+            ch->Set_Type(tilePos, block.second.first);
+            ch->Set_Data(tilePos, block.second.second);
+
+            const Block* blockType = Blocks::Get_Block(block.second.first, block.second.second);
+
+            if (!blockType->FullBlock || blockType->Transparent) {
+                ch->ContainsTransparentBlocks = true;
+                ch->Update_Air(tilePos, glm::bvec3(true));
+            }
+            else {
+                ch->Get_Air_Ref(tilePos) &= ~(1 << DOWN | 1 << UP);
+            }
+
+            ch->Blocks.insert(tilePos);
         }
     }
 }
@@ -438,7 +451,7 @@ bool Check_If_Node(LightNode node) {
         return false;
     }
 
-    c->Set_Light(node.Tile, node.LightLevel - (!node.Down));
+    c->Set_Light(node.Tile, node.LightLevel - (!(node.Down && node.LightLevel == SUN_LIGHT_LEVEL)));
     return true;
 }
 
@@ -567,7 +580,7 @@ int Chunk::Get_Extra_Texture(glm::ivec3 tile) {
 void Chunk::Mesh() {
     VBOData.clear();
 
-    std::set<glm::vec3>::iterator block = Blocks.begin();
+    auto block = Blocks.begin();
 
     while (block != Blocks.end()) {
         unsigned char seesAir = Get_Air(*block);

@@ -146,6 +146,7 @@ int main() {
 
     Parse_Config();
     Blocks::Init();
+    Chunks::Load_Structures();
 
     Init_GL();
     Init_Textures();

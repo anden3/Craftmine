@@ -62,7 +62,7 @@ class Player {
     bool MovedMouse = false;
     bool ThirdPerson = false;
 
-    int LightLevel;
+    int LightLevel = 15;
 
     int CurrentBlock;
     int CurrentBlockData = 0;
