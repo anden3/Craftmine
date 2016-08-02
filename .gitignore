@@ -1,6 +1,7 @@
 .vscode/
 Build/
 CMakeFiles/
+Screenshots/
 Worlds/*
 
 config.conf

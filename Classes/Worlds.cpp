@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "Player.h"
 #include "Network.h"
+#include "Interface.h"
 #include "Inventory.h"
 
 #include <fstream>
@@ -71,26 +72,6 @@ void Worlds::Delete_World(std::string name) {
     boost::filesystem::remove_all("Worlds/" + name);
 }
 
-void Add_Storage_Data(nlohmann::json &dest, std::string type, std::vector<Stack> &storage) {
-    int currentSlot = 0;
-
-    for (auto const &item : storage) {
-        if (!item.Type) {
-            ++currentSlot;
-            continue;
-        }
-
-        if (item.Data) {
-            dest["Storage"][type][std::to_string(currentSlot)] = { item.Type, item.Data, item.Size };
-        }
-        else {
-            dest["Storage"][type][std::to_string(currentSlot)] = { item.Type, item.Size };
-        }
-
-        ++currentSlot;
-    }
-}
-
 void Worlds::Save_World() {
     nlohmann::json playerData;
 
@@ -102,18 +83,18 @@ void Worlds::Save_World() {
     playerData["Pitch"] = Cam.Pitch;
 
     if (Inventory::HoldingStack.Type) {
-        Inventory::Add_Stack(Inventory::HoldingStack);
+        Inventory::Add_Stack(&Inventory::HoldingStack);
         Inventory::HoldingStack.Clear();
     }
 
-    Add_Storage_Data(playerData, "Inventory", Inventory::Inv);
-    Add_Storage_Data(playerData, "Crafting", Inventory::Craft);
+    Inventory::Save(playerData, "Inventory");
+    Inventory::Save(playerData, "Crafting");
 
-    if (Inventory::CraftingOutput.Type) {
+    if (Inventory::CraftingOutput->Contents.Type) {
         playerData["Storage"]["CraftingOutput"] = {
-            Inventory::CraftingOutput.Type,
-            Inventory::CraftingOutput.Data,
-            Inventory::CraftingOutput.Size
+            Inventory::CraftingOutput->Contents.Type,
+            Inventory::CraftingOutput->Contents.Data,
+            Inventory::CraftingOutput->Contents.Size
         };
     }
 
@@ -129,16 +110,22 @@ void Worlds::Save_World() {
 }
 
 void Worlds::Load_World(int seed) {
-    Inventory::Clear();
-    ChunkMap.clear();
+    if (Multiplayer) {
+        Inventory::Clear();
+        ChunkMap.clear();
+    }
 
-    if (!Multiplayer) {
+    else {
         std::ifstream dataFile("Worlds/" + WORLD_NAME + "/Player.json");
 
         if (dataFile.good()) {
             std::stringstream ss;
             ss << dataFile.rdbuf();
             player.Load_Data(ss.str());
+        }
+        else {
+            Inventory::Clear();
+            ChunkMap.clear();
         }
     }
 

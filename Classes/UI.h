@@ -2,12 +2,6 @@
 
 #include <string>
 
-#define GLM_SWIZZLE
-#include <glm/glm.hpp>
-
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
 namespace UI {
     extern bool ShowDebug;
     extern bool ShowTitle;
@@ -16,6 +10,9 @@ namespace UI {
     extern bool ShowServers;
     extern bool ShowGameMenu;
     extern bool ShowInventory;
+
+    extern double MouseX;
+    extern double MouseY;
 
     extern std::string CustomDocument;
 

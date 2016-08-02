@@ -168,8 +168,8 @@ void Player::Init_Sounds() {
 
 
 void Player::Mesh_Holding() {
-    CurrentBlock = Inventory::Get_Info().Type;
-    CurrentBlockData = Inventory::Get_Info().Data;
+    CurrentBlock = Inventory::Get_Info()->Type;
+    CurrentBlockData = Inventory::Get_Info()->Data;
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
 
     if (CurrentBlock > 0) {
@@ -576,7 +576,7 @@ void Player::Check_Pickup() {
         it = (dist < PICKUP_RANGE) ? Entities.erase(it) : it + 1;
     }
 
-    if (CurrentBlock == 0 && Inventory::Get_Info().Type) {
+    if (CurrentBlock == 0 && Inventory::Get_Info()->Type) {
         Mesh_Holding();
     }
 }
@@ -732,7 +732,6 @@ void Player::Key_Handler(int key, int action) {
 
         else if (key == GLFW_KEY_TAB) {
             Inventory::Is_Open = !Inventory::Is_Open;
-            Inventory::Mesh();
 
             if (Inventory::Is_Open) {
                 Inventory::Mouse_Handler();
@@ -890,8 +889,8 @@ void Player::Click_Handler(int button, int action) {
 
     Inventory::Decrease_Size();
 
-    CurrentBlock = Inventory::Get_Info().Type;
-    CurrentBlockData = Inventory::Get_Info().Data;
+    CurrentBlock = Inventory::Get_Info()->Type;
+    CurrentBlockData = Inventory::Get_Info()->Data;
     CurrentBlockType = Blocks::Get_Block(CurrentBlock, CurrentBlockData);
 
     if (CurrentBlockType->Luminosity > 0) {
@@ -1104,11 +1103,11 @@ void Player::Load_Data(const std::string data) {
 
     if (playerData.count("Storage")) {
         if (playerData["Storage"].count("Inventory")) {
-            Inventory::Load(playerData["Storage"]["Inventory"], Inventory::Inv);
+            Inventory::Load(playerData["Storage"]["Inventory"]);
         }
 
         if (playerData["Storage"].count("Crafting")) {
-            Inventory::Load(playerData["Storage"]["Crafting"], Inventory::Craft);
+            Inventory::Load(playerData["Storage"]["Crafting"]);
         }
     }
 }

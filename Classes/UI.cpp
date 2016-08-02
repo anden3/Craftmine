@@ -12,6 +12,9 @@
 
 #include <numeric>
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
 
@@ -27,6 +30,9 @@ bool UI::ShowOptions   = false;
 bool UI::ShowServers   = false;
 bool UI::ShowGameMenu  = false;
 bool UI::ShowInventory = false;
+
+double UI::MouseX = 0.0;
+double UI::MouseY = 0.0;
 
 std::string UI::CustomDocument = "";
 
@@ -150,6 +156,9 @@ void UI::Load_World(int seed) {
 }
 
 void UI::Mouse_Handler(double x, double y) {
+    MouseX = x;
+    MouseY = y;
+
     Bind_Current_Document();
     Interface::Mouse_Handler(x, SCREEN_HEIGHT - y);
     Interface::Set_Document("");
@@ -444,6 +453,7 @@ void Toggle_Title(void* caller) {
 
     if (UI::ShowTitle) {
         Worlds::Save_World();
+        WORLD_NAME = "";
 
         if (Multiplayer) {
             Network::Disconnect();

@@ -463,7 +463,7 @@ void Render_Scene() {
 		chunk.second->Draw(true);
     }
 
-    if (!player.LookingAtBlock) {
+    if (!player.LookingAtBlock || player.LookingBlockType == nullptr) {
         return;
     }
 

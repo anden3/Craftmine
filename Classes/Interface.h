@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "Stack.h"
 #include "Buffer.h"
 
 #define EXPAND_VEC2(V) V.x, V.y
@@ -12,7 +13,6 @@ typedef void (Func)(void*);
 typedef std::vector<float> Data;
 
 struct Block;
-struct Stack;
 
 inline std::string Format_Vector(glm::vec3 vector) {
     return std::string(
@@ -303,26 +303,28 @@ private:
 
 class Slot : public UIElement {
 public:
-    Slot() {}
-    Slot(std::string name, float x, float y, float scale, int type, int data, int size);
+    bool OutputOnly = false;
+    bool CraftingInput = false;
+    bool CraftingOutput = false;
 
+    Stack Contents = Stack();
+
+    Slot() {}
+    Slot(std::string name, float x, float y, float scale, Stack contents);
+
+    void Click(int button);
     void Hover();
     void Stop_Hover();
 
     void Swap_Stacks(Stack &stack);
 
     void Set_Contents(const Stack &stack);
-    void Set_Contents(int type, int data, int size);
 
     void Mesh();
     void Draw();
 
 private:
     bool Hovering = false;
-
-    int ID;
-    int Data;
-    int Size;
 
     float SlotSize;
 
@@ -354,7 +356,7 @@ namespace Interface {
     void Add_Text      (std::string name, std::string text, float x, float y);
     void Add_Text_Box  (std::string name, float x, float y, float w, float h);
     void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale);
-    void Add_Slot      (std::string name, float x, float y, float scale, int type = 0, int data = 0, int size = 0);
+    void Add_Slot      (std::string name, float x, float y, float scale, Stack contents = Stack());
     void Add_Image     (std::string name, std::string path, int texID, float x, float y, float scale);
     void Add_Button    (std::string name, std::string text, float x, float y, float w, float h, Func &function);
     void Add_Bar       (std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value);
@@ -365,8 +367,8 @@ namespace Interface {
         Add_Text(name, text, EXPAND_VEC2(pos));
     }
 
-    inline void Add_Slot(std::string name, glm::vec2 pos, float scale, int type = 0, int data = 0, int size = 0) {
-        Add_Slot(name, pos.x, pos.y, scale, type, data, size);
+    inline void Add_Slot(std::string name, glm::vec2 pos, float scale, Stack contents = Stack()) {
+        Add_Slot(name, pos.x, pos.y, scale, contents);
     }
 
     inline void Add_Text_Box(std::string name, glm::vec4 dims) {

@@ -12,6 +12,7 @@
 
 #include <unicode/ustream.h>
 
+#include "UI.h"
 #include "main.h"
 #include "Blocks.h"
 #include "Shader.h"
@@ -271,8 +272,15 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 }
 
 void Take_Screenshot() {
+    std::time_t t = std::time(nullptr);
+    std::tm tm = *std::localtime(&t);
+    std::stringstream ss;
+
+    ss << std::put_time(&tm, "%F %T");
+    std::string fileName = "Screenshots/" + ss.str() + ".bmp";
+
     SOIL_save_screenshot(
-        "/Users/mac/Desktop/screenshot.bmp", SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+        fileName.c_str(), SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
     );
 }
 
@@ -842,7 +850,7 @@ void TextBox::Draw() {
     }
 }
 
-Slot::Slot(std::string name, float x, float y, float scale, int type, int data, int size) : SlotSize(scale), ID(type), Data(data), Size(size) {
+Slot::Slot(std::string name, float x, float y, float scale, Stack contents) : SlotSize(scale), Contents(contents) {
     X = x;
     Y = y;
     Name = name;
@@ -850,40 +858,23 @@ Slot::Slot(std::string name, float x, float y, float scale, int type, int data, 
     Height = Scale_Y(SlotSize);
 
     glm::vec2 textPos  = glm::vec2(X, Y) + SLOT_TEXT_PADDING * (SlotSize / 80);
-    glm::vec2 modelPos = glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80);
+    glm::vec2 modelPos = glm::vec2(X, Y) + SLOT_PADDING      * (SlotSize / 80);
 
     BG = Background(Name, X, Y, Width, Height, true, Scale(scale));
     BG.Color = SLOT_BG_COLOR;
-    ItemCount.Create(Name, std::to_string(Size), textPos.x, textPos.y, static_cast<float>(Size > 0));
-    ItemModel = OrthoElement(Name, ID, Data, modelPos.x, modelPos.y, Width);
+    ItemCount.Create(Name, std::to_string(Contents.Size), textPos.x, textPos.y, static_cast<float>(Contents.Size > 0));
+    ItemModel = OrthoElement(Name, Contents.Type, Contents.Data, modelPos.x, modelPos.y, Width);
 
     Mesh();
 }
 
-void Slot::Swap_Stacks(Stack &stack) {
-    Stack content(ID, Data, Size);
-    Set_Contents(stack);
-    stack = content;
+void Slot::Click(int button) {
+
 }
 
 void Slot::Set_Contents(const Stack &stack) {
-    Set_Contents(stack.Type, stack.Data, stack.Size);
-}
-
-void Slot::Set_Contents(int type, int data, int size) {
-    ItemCount.Opacity = (size > 0 && type > 0);
-
-    if (size != Size) {
-        Size = size;
-        ItemCount.Set_Text(std::to_string(Size));
-    }
-
-    if (type != ID || data != Data) {
-        ID = type;
-        Data = data;
-
-        Mesh();
-    }
+    Contents = stack;
+    Mesh();
 }
 
 void Slot::Hover() {
@@ -897,7 +888,9 @@ void Slot::Stop_Hover() {
 }
 
 void Slot::Mesh() {
-    ItemModel.Mesh(ID, Data, glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80));
+    ItemCount.Opacity = (Contents.Size > 0 && Contents.Type > 0);
+    ItemCount.Set_Text(std::to_string(Contents.Size));
+    ItemModel.Mesh(Contents.Type, Contents.Data, glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80));
 }
 
 void Slot::Draw() {
@@ -1055,8 +1048,10 @@ void Interface::Mouse_Handler(double x, double y) {
     for (auto &slot : Slots[ActiveDocument]) {
         if (In_Range(x, glm::vec2(slot.second.X, slot.second.Width))) {
             if (In_Range(y, glm::vec2(slot.second.Y, slot.second.Height))) {
-                if (!Holding) {
-                    slot.second.Hover();
+                slot.second.Hover();
+
+                if (Holding) {
+                    Inventory::Dragging_Slot(&slot.second);
                 }
 
                 HoveringType = "slot";
@@ -1106,7 +1101,7 @@ void Interface::Mouse_Handler(double x, double y) {
 }
 
 void Interface::Click(int mouseButton, int action) {
-    if (HoveringType == "" || mouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
+    if (HoveringType == "") {
         Holding = false;
         return;
     }
@@ -1117,23 +1112,13 @@ void Interface::Click(int mouseButton, int action) {
         Slot* slot = static_cast<Slot*>(HoveringElement);
 
         if (Holding) {
-            slot->Swap_Stacks(Inventory::HoldingStack);
-
-            Interface::Set_Document("inventory");
-
-            TextElement* mouseStack = Interface::Get_Text_Element("mouseStack");
-            mouseStack->Opacity = float(Inventory::HoldingStack.Size > 0);
-
-            if (Inventory::HoldingStack.Type) {
-                mouseStack->Set_Text(std::to_string(Inventory::HoldingStack.Size));
-            }
-
-            Interface::Get_3D_Element("mouseStack")->Mesh(
-                Inventory::HoldingStack.Type, Inventory::HoldingStack.Data
-            );
-
-            Interface::Set_Document("");
+            Inventory::Press_Slot(slot, mouseButton);
         }
+        else {
+            Inventory::Release_Slot();
+        }
+
+        Inventory::Mouse_Handler(UI::MouseX, UI::MouseY);
     }
 
     else if (HoveringType == "button") {
@@ -1230,8 +1215,8 @@ namespace Interface {
     void Add_Text(std::string name, std::string text, float x, float y) {
         TextElements[ActiveDocument].emplace(name, TextElement(name, text, std::floor(x), std::floor(y)));
     }
-    void Add_Slot(std::string name, float x, float y, float scale, int type, int data, int size) {
-        Slots[ActiveDocument].emplace(name, Slot(name, x, y, scale, type, data, size));
+    void Add_Slot(std::string name, float x, float y, float scale, Stack contents) {
+        Slots[ActiveDocument].emplace(name, Slot(name, x, y, scale, contents));
     }
     void Add_Text_Box(std::string name, float x, float y, float w, float h) {
         TextBoxes[ActiveDocument].emplace(name, TextBox(name, x, y, w, h));

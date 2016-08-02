@@ -12,6 +12,9 @@
 
 #include "main.h"
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 const double MESSAGE_TIME = 10.0;
 const double FADE_TIME = 4.0;
 const double CURSOR_BLINK_SPEED = 1.0;
@@ -101,10 +104,12 @@ void Chat::Key_Handler(int key) {
                 break;
 
             case GLFW_KEY_BACKSPACE:
-                NewMessage.pop_back();
-                --CursorPos;
+				if (NewMessage.length() > 0) {
+					NewMessage.pop_back();
+					--CursorPos;
 
-                Update_Message();
+					Update_Message();
+				}
                 break;
 
             case GLFW_KEY_ENTER:
