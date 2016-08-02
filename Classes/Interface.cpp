@@ -891,6 +891,10 @@ void Slot::Mesh() {
     ItemCount.Opacity = (Contents.Size > 0 && Contents.Type > 0);
     ItemCount.Set_Text(std::to_string(Contents.Size));
     ItemModel.Mesh(Contents.Type, Contents.Data, glm::vec2(X, Y) + SLOT_PADDING * (SlotSize / 80));
+
+    if (SyncedSlot != nullptr) {
+        SyncedSlot->Set_Contents(Contents);
+    }
 }
 
 void Slot::Draw() {

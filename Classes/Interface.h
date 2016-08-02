@@ -308,6 +308,7 @@ public:
     bool CraftingOutput = false;
 
     Stack Contents = Stack();
+    Slot* SyncedSlot = nullptr;
 
     Slot() {}
     Slot(std::string name, float x, float y, float scale, Stack contents);

@@ -78,6 +78,11 @@ void Inventory::Init() {
         );
 
         Interface::Add_Slot(name, pos + slotPad, 40);
+
+        if (i < SLOTS_X) {
+            Interface::Get_Slot(name)->SyncedSlot = Toolbar[i];
+        }
+
         Inv.push_back(Interface::Get_Slot(name));
     }
 
@@ -178,12 +183,14 @@ void Inventory::Click_Slot(Slot* slot) {
             return;
         }
 
+        bool craft = false;
+
         if (keys[GLFW_KEY_LEFT_SHIFT]) {
             Add_Stack(&slot->Contents);
             slot->Contents.Clear();
 
             if (slot->CraftingOutput) {
-                Craft_Item();
+                craft = true;
             }
         }
 
@@ -191,17 +198,22 @@ void Inventory::Click_Slot(Slot* slot) {
             Swap_Stacks(slot);
 
             if (slot->CraftingOutput) {
-                Craft_Item();
+                craft = true;
             }
         }
 
         else if (Left_Click_Stack(&slot->Contents, &HoldingStack)) {
             if (slot->CraftingOutput) {
-                Craft_Item();
+                craft = true;
             }
         }
 
         slot->Mesh();
+
+        if (craft) {
+            Craft_Item();
+            Check_Crafting();
+        }
     }
     else {
         if (MouseButton == GLFW_MOUSE_BUTTON_LEFT) {
