@@ -64,6 +64,7 @@ public:
     std::queue<LightNode> LightRemovalQueue;
 
     std::map<glm::ivec3, int, VectorComparator> ExtraTextures;
+    std::map<glm::ivec3, std::pair<unsigned int, unsigned int>, VectorComparator> ExtraOffsets;
 
 	std::atomic_bool Meshed           = ATOMIC_VAR_INIT(false);
 	std::atomic_bool Visible          = ATOMIC_VAR_INIT(true);
@@ -122,7 +123,6 @@ private:
     void Check_Ore(glm::ivec3 pos, glm::dvec3 noisePos);
 
     float GetAO(glm::vec3 block, int face, int offset);
-    int Get_Extra_Texture(glm::ivec3 tile);
 
     Array3D<int, CHUNK_SIZE>           BlockMap = {0};
     Array3D<unsigned char, CHUNK_SIZE> LightMap = {0};

@@ -12,6 +12,10 @@ void Buffer::Init(Shader *shader) {
     BufferShader = shader;
 }
 
+void Buffer::Bind() {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+}
+
 void Buffer::Create(const std::vector<int> &config, const Data &data) {
     VertexSize = 0;
 

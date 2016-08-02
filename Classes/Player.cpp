@@ -178,9 +178,34 @@ void Player::Mesh_Holding() {
 }
 
 void Player::Mesh_Damage(int index) {
-    ChunkMap[LookingChunk]->ExtraTextures[LookingTile] = Blocks::Get_Block(255, index + 1)->Texture;
-	ChunkMap[LookingChunk]->HasExtraTextures = true;
-    ChunkMap[LookingChunk]->Mesh();
+    Chunk* ch = ChunkMap[LookingChunk];
+
+    int offset, sides;
+    std::tie(offset, sides) = ch->ExtraOffsets[LookingTile];
+
+    int bufferSize = 54 * sides;
+
+    ch->buffer.Bind();
+
+    while (glGetError() != GL_NO_ERROR) {
+        ;
+    }
+
+    float* texPointer = static_cast<float*>(glMapBufferRange(GL_ARRAY_BUFFER, offset * sizeof(float), bufferSize * sizeof(float), GL_MAP_WRITE_BIT));
+
+	if (texPointer == nullptr) {
+        // TODO: Find some way to fix this, for now just ignore it.
+        // The error occurs when the memory mapping reaches 32 bytes too far.
+        // No consequences detected as of yet...
+		return;
+	}
+
+    for (int o = 0; o < bufferSize; o += 9) {
+        *(texPointer + o) = static_cast<float>(Blocks::Get_Block(255, index + 1)->Texture);
+    }
+
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Player::Draw_Model() {

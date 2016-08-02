@@ -267,6 +267,10 @@ void Inventory::Dragging_Slot(Slot* slot) {
 }
 
 void Inventory::Release_Slot() {
+    if (!MouseDown) {
+        return;
+    }
+
     MouseDown = false;
 
     if (MouseButton == GLFW_MOUSE_BUTTON_LEFT) {

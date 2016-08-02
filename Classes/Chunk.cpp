@@ -70,7 +70,7 @@ const std::map<int, glm::dvec2> OreRanges = {
     {2, { 1.20,  1.30}}, // Iron Ore
 };
 
-const glm::vec3 AOOffsets[6][2][2][3]={
+static const glm::vec3 AOOffsets[6][2][2][3]={
     {{{{-1,-1,0},{-1,0,-1},{-1,-1,-1}},{{-1,1,0},{-1,0,-1},{-1,1,-1}}},
     {{{-1,-1,0},{-1,0,1},{-1,-1,1}},{{-1,1,0},{-1,0,1},{-1,1,1}}}},
     {{{{1,-1,0},{1,0,-1},{1,-1,-1}},{{1,1,0},{1,0,-1},{1,1,-1}}},
@@ -414,6 +414,12 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
 
             Chunk* ch = ChunkMap[chunkPos];
 
+            if (ch->ContainsChangedBlocks) {
+                if (ChangedBlocks[chunkPos].count(tilePos)) {
+                    continue;
+                }
+            }
+
             if (ch->Get_Type(tilePos) != 0) {
                 continue;
             }
@@ -569,18 +575,13 @@ float Chunk::GetAO(glm::vec3 block, int face, int index) {
     return ao;
 }
 
-int Chunk::Get_Extra_Texture(glm::ivec3 tile) {
-    if (HasExtraTextures && ExtraTextures.count(tile)) {
-        return ExtraTextures[tile];
-    }
-
-    return 0;
-}
-
 void Chunk::Mesh() {
     VBOData.clear();
+    ExtraOffsets.clear();
 
     auto block = Blocks.begin();
+
+    int offset = 0;
 
     while (block != Blocks.end()) {
         unsigned char seesAir = Get_Air(*block);
@@ -596,18 +597,28 @@ void Chunk::Mesh() {
 
         if (blockInstance->HasCustomData) {
             for (auto const &element : blockInstance->CustomData) {
+                bool extraTextures = false;
+
                 for (unsigned long i = 0; i < 6; i++) {
                     for (unsigned long j = 0; j < 6; j++) {
                         Extend(VBOData, element[i][j].first + posOffset);
                         Extend(VBOData, element[i][j].second);
                         VBOData.push_back(lightValue);
                         VBOData.push_back(0);
-                        VBOData.push_back(static_cast<float>(Get_Extra_Texture(*block)));
+                        VBOData.push_back(0);
+
+                        if (!extraTextures) {
+                            extraTextures = true;
+                            ExtraOffsets[*block] = {VBOData.size() - 1, 6};
+                        }
                     }
                 }
             }
         }
         else {
+            unsigned int extraOffset = 0;
+            unsigned int extraSides = 0;
+
             for (int bit = 0; bit < 6; ++bit, seesAir >>= 1) {
                 if (!(seesAir & 1)) {
                     continue;
@@ -634,8 +645,18 @@ void Chunk::Mesh() {
                         VBOData.push_back(0);
                     }
 
-                    VBOData.push_back(static_cast<float>(Get_Extra_Texture(*block)));
+                    VBOData.push_back(0);
+
+                    if (extraOffset == 0) {
+                        extraOffset = VBOData.size() - 1;
+                    }
                 }
+
+                ++extraSides;
+            }
+
+            if (extraSides != 0) {
+                ExtraOffsets[*block] = {extraOffset, extraSides};
             }
         }
 
