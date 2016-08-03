@@ -31,8 +31,8 @@ bool UI::ShowServers   = false;
 bool UI::ShowGameMenu  = false;
 bool UI::ShowInventory = false;
 
-double UI::MouseX = 0.0;
-double UI::MouseY = 0.0;
+int UI::MouseX = 0;
+int UI::MouseY = 0;
 
 std::string UI::CustomDocument = "";
 
@@ -155,7 +155,7 @@ void UI::Load_World(int seed) {
     UI::Toggle_Mouse(false);
 }
 
-void UI::Mouse_Handler(double x, double y) {
+void UI::Mouse_Handler(int x, int y) {
     MouseX = x;
     MouseY = y;
 

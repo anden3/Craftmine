@@ -28,7 +28,7 @@ namespace Chat {
 
     void Input(unsigned int key);
     void Key_Handler(int key);
-    void Mouse_Handler(double x, double y);
+    void Mouse_Handler(int x, int y);
     void Scroll(int direction);
 
     void Write(std::string text);

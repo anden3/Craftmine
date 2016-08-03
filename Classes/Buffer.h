@@ -17,8 +17,6 @@ class Buffer {
 
     Shader* BufferShader;
 
-    void Bind();
-
     inline void Create(const int &a, const Data &data = Data {}) { Create(std::vector<int> {a}, data); }
     inline void Create(const int &a, const int &b, const Data &data = Data {}) { Create(std::vector<int> {a, b}, data); }
     inline void Create(const int &a, const int &b, const int &c, const Data &data = Data {}) { Create(std::vector<int> {a, b, c}, data); }
@@ -28,6 +26,9 @@ class Buffer {
     void Init(Shader *shader);
     void Upload(const Data &data, int start = 0, bool sub = false);
     void Draw(int start = 0, int length = 0);
+
+    float* Get_Pointer(int offset, int length);
+    void Unbind_Pointer();
 
   private:
     unsigned int VAO;

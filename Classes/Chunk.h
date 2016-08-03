@@ -63,14 +63,12 @@ public:
     std::queue<LightNode> LightQueue;
     std::queue<LightNode> LightRemovalQueue;
 
-    std::map<glm::ivec3, int, VectorComparator> ExtraTextures;
     std::map<glm::ivec3, std::pair<unsigned int, unsigned int>, VectorComparator> ExtraOffsets;
 
 	std::atomic_bool Meshed           = ATOMIC_VAR_INIT(false);
 	std::atomic_bool Visible          = ATOMIC_VAR_INIT(true);
 	std::atomic_bool Generated        = ATOMIC_VAR_INIT(false);
 	std::atomic_bool DataUploaded     = ATOMIC_VAR_INIT(false);
-	std::atomic_bool HasExtraTextures = ATOMIC_VAR_INIT(false);
 
     Chunk(glm::vec3 position) {
         Position = position;
@@ -83,6 +81,8 @@ public:
 
     inline int Get_Data(glm::vec3 pos) { return DataMap.count(pos) ? DataMap[pos] : 0; }
     inline void Set_Data(glm::vec3 pos, int data) { DataMap[pos] = data; }
+
+    void Set_Extra_Texture(glm::ivec3 pos, int texture);
 
     void Generate();
     void Light(bool flag = true);

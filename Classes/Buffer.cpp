@@ -12,10 +12,6 @@ void Buffer::Init(Shader *shader) {
     BufferShader = shader;
 }
 
-void Buffer::Bind() {
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-}
-
 void Buffer::Create(const std::vector<int> &config, const Data &data) {
     VertexSize = 0;
 
@@ -89,6 +85,20 @@ void Buffer::Draw(int start, int length) {
     glBindVertexArray(0);
 
     BufferShader->Unbind();
+}
+
+float* Buffer::Get_Pointer(int offset, int length) {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    float* texPointer = static_cast<float*>(glMapBufferRange(GL_ARRAY_BUFFER, offset * sizeof(float), length * sizeof(float), GL_MAP_WRITE_BIT));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return texPointer;
+}
+
+void Buffer::Unbind_Pointer() {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void UniformBuffer::Create(std::string name, unsigned int bufferID, int size, std::vector<Shader*> shaders) {

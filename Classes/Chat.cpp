@@ -36,8 +36,8 @@ unsigned int CursorPos = 0;
 double LastCursorToggle = 0.0;
 bool CursorVisible = true;
 
-float MouseX;
-float MouseY;
+int MouseX;
+int MouseY;
 
 bool MouseOverChat = false;
 
@@ -153,9 +153,9 @@ void Chat::Key_Handler(int key) {
     }
 }
 
-void Chat::Mouse_Handler(double x, double y) {
+void Chat::Mouse_Handler(int x, int y) {
     MouseX = static_cast<float>(x);
-    MouseY = static_cast<float>(SCREEN_HEIGHT - y);
+    MouseY = SCREEN_HEIGHT - y;
 
     MouseOverChat = false;
 

@@ -23,7 +23,7 @@
 const float PLAYER_BASE_SPEED      = 3.0f;
 const float PLAYER_SPRINT_MODIFIER = 1.5f;
 
-const double PLAYER_SENSITIVITY = 0.25;
+const float PLAYER_SENSITIVITY = 0.25f;
 const float PLAYER_RANGE = 5.0f;
 
 const float PLAYER_WIDTH = 0.1f;
@@ -91,8 +91,12 @@ bool Check_Col(glm::vec3 pos) {
     glm::vec3 chunk, tile;
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
 
+    if (!Exists(chunk)) {
+        return false;
+    }
+
     int blockID = ChunkMap[chunk]->Get_Type(tile);
-    return Exists(chunk) && blockID != 0 && Blocks::Get_Block(blockID)->Collision;
+    return blockID != 0 && Blocks::Get_Block(blockID)->Collision;
 }
 
 void Player::Init() {
@@ -178,34 +182,7 @@ void Player::Mesh_Holding() {
 }
 
 void Player::Mesh_Damage(int index) {
-    Chunk* ch = ChunkMap[LookingChunk];
-
-    int offset, sides;
-    std::tie(offset, sides) = ch->ExtraOffsets[LookingTile];
-
-    int bufferSize = 54 * sides;
-
-    ch->buffer.Bind();
-
-    while (glGetError() != GL_NO_ERROR) {
-        ;
-    }
-
-    float* texPointer = static_cast<float*>(glMapBufferRange(GL_ARRAY_BUFFER, offset * sizeof(float), bufferSize * sizeof(float), GL_MAP_WRITE_BIT));
-
-	if (texPointer == nullptr) {
-        // TODO: Find some way to fix this, for now just ignore it.
-        // The error occurs when the memory mapping reaches 32 bytes too far.
-        // No consequences detected as of yet...
-		return;
-	}
-
-    for (int o = 0; o < bufferSize; o += 9) {
-        *(texPointer + o) = static_cast<float>(Blocks::Get_Block(255, index + 1)->Texture);
-    }
-
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    ChunkMap[LookingChunk]->Set_Extra_Texture(LookingTile, Blocks::Get_Block(255, index + 1)->Texture);
 }
 
 void Player::Draw_Model() {
@@ -454,11 +431,6 @@ void Player::Update(bool update) {
 
                 if (MouseTimer >= requiredTime) {
                     Break_Block(Get_World_Pos(LookingChunk, LookingTile));
-    				lookingChunk->ExtraTextures.erase(LookingTile);
-
-    				if (lookingChunk->ExtraTextures.size() == 0) {
-    					lookingChunk->HasExtraTextures = false;
-    				}
 
                     MouseTimer = 0.0;
                     update = true;
@@ -477,15 +449,7 @@ void Player::Update(bool update) {
             }
         }
         else {
-            if (lookingChunk->ExtraTextures.count(LookingTile)) {
-    			lookingChunk->ExtraTextures.erase(LookingTile);
 
-    			if (lookingChunk->ExtraTextures.size() == 0) {
-    				lookingChunk->HasExtraTextures = false;
-    			}
-
-    			lookingChunk->Mesh();
-            }
         }
     }
 
@@ -707,8 +671,8 @@ void Player::Check_Hit() {
             break;
         }
 
-        std::tie(airChunk, airTile) = Get_Chunk_Pos(lastPos);
         LookingAtBlock = true;
+        std::tie(airChunk, airTile) = Get_Chunk_Pos(lastPos);
 
         glm::vec3 prevChunk = LookingChunk;
         glm::vec3 prevTile  = LookingTile;
@@ -722,16 +686,10 @@ void Player::Check_Hit() {
 			return;
 		}
 
-        MouseTimer = 0.0f;
+        MouseTimer = 0;
 
-        if (Exists(prevChunk) && ChunkMap[prevChunk]->ExtraTextures.count(prevTile)) {
-            ChunkMap[prevChunk]->ExtraTextures.erase(prevTile);
-
-			if (ChunkMap[prevChunk]->ExtraTextures.size() == 0) {
-				ChunkMap[prevChunk]->HasExtraTextures = false;
-			}
-
-            ChunkMap[prevChunk]->Mesh();
+        if (Exists(prevChunk)) {
+            ChunkMap[prevChunk]->Set_Extra_Texture(prevTile, 0);
         }
 
         LookingBlockType = Blocks::Get_Block(
@@ -794,9 +752,9 @@ void Player::Key_Handler(int key, int action) {
     }
 }
 
-void Player::Mouse_Handler(double posX, double posY) {
+void Player::Mouse_Handler(int posX, int posY) {
     if (!MovedMouse) {
-        LastMousePos = glm::dvec2(posX, posY);
+        LastMousePos = glm::ivec2(posX, posY);
         MovedMouse = true;
     }
 
@@ -805,12 +763,12 @@ void Player::Mouse_Handler(double posX, double posY) {
             Inventory::Mouse_Handler(posX, posY);
         }
 
-        LastMousePos = glm::dvec2(posX, posY);
+        LastMousePos = glm::ivec2(posX, posY);
         return;
     }
 
-    Cam.Yaw   += static_cast<float>((posX - LastMousePos.x) * PLAYER_SENSITIVITY);
-    Cam.Pitch += static_cast<float>((LastMousePos.y - posY) * PLAYER_SENSITIVITY);
+    Cam.Yaw   += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
+    Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
 
     if (Cam.Pitch > 89.9f) {
         Cam.Pitch = 89.9f;
@@ -828,7 +786,7 @@ void Player::Mouse_Handler(double posX, double posY) {
         Cam.Yaw += 360.0f;
     }
 
-    LastMousePos = glm::dvec2(posX, posY);
+    LastMousePos = glm::ivec2(posX, posY);
     Cam.UpdateCameraVectors();
 
     if (ThirdPerson) {
@@ -881,6 +839,10 @@ void Player::Click_Handler(int button, int action) {
 
     if (!MouseDown || Creative) {
         MouseTimer = 0.0;
+
+        if (LookingAtBlock) {
+            ChunkMap[LookingChunk]->Set_Extra_Texture(LookingTile, 0);
+        }
     }
 
     if (MouseDown && LookingAtBlock && Creative) {
@@ -891,7 +853,7 @@ void Player::Click_Handler(int button, int action) {
         }
     }
 
-    if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT ||!LookingAtBlock) {
+    if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT || !LookingAtBlock) {
         return;
     }
 
@@ -923,7 +885,11 @@ void Player::Click_Handler(int button, int action) {
     }
 }
 
-void Player::Break_Block(glm::vec3 pos) {
+void Player::Break_Block(glm::vec3 pos, bool external) {
+    if (!external) {
+        MouseTimer = 0;
+    }
+
     glm::vec3 chunk, tile;
     std::tie(chunk, tile) = Get_Chunk_Pos(pos);
     const Block* block = Blocks::Get_Block(
@@ -931,7 +897,7 @@ void Player::Break_Block(glm::vec3 pos) {
     );
     int blockType = block->ID;
 
-    if (blockType == 50) {
+    if (block->Luminosity > 0) {
         Remove_Light();
     }
 
@@ -1070,7 +1036,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
             std::tie(chunk, tile) = Get_Chunk_Pos(pos);
 
             if (Exists(chunk)) {
-                Break_Block(pos);
+                Break_Block(pos, true);
             }
             else {
                 ChangedBlocks[chunk][tile] = std::make_pair(0, 0);

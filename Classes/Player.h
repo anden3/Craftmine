@@ -23,7 +23,7 @@ class Player {
     bool Creative = false;
     bool LookingAtBlock = false;
 
-    const Block* LookingBlockType;
+    const Block* LookingBlockType = nullptr;
 
     glm::vec3 LookingChunk;
     glm::vec3 LookingAirChunk;
@@ -31,7 +31,7 @@ class Player {
     glm::vec3 LookingTile;
     glm::vec3 LookingAirTile;
 
-    glm::dvec2 LastMousePos = glm::dvec2(0.0, 0.0);
+    glm::ivec2 LastMousePos = glm::ivec2(0, 0);
 
     void Init();
 
@@ -50,7 +50,7 @@ class Player {
     void Clear_Keys();
 
     void Key_Handler(int key, int action);
-    void Mouse_Handler(double posX, double posY);
+    void Mouse_Handler(int posX, int posY);
     void Scroll_Handler(double offsetY);
     void Click_Handler(int button, int action);
     void Request_Handler(std::string packet, bool sending);
@@ -67,7 +67,7 @@ class Player {
     int CurrentBlock;
     int CurrentBlockData = 0;
 
-    const Block* CurrentBlockType;
+    const Block* CurrentBlockType = nullptr;
 
     float Rotation;
     float MouseTimer = 0.0f;
@@ -87,7 +87,7 @@ class Player {
     void Check_Pickup();
 
     void Drop_Item();
-    void Break_Block(glm::vec3 pos);
+    void Break_Block(glm::vec3 pos, bool external = false);
 
     void Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile);
 

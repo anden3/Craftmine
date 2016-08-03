@@ -11,8 +11,8 @@ namespace UI {
     extern bool ShowGameMenu;
     extern bool ShowInventory;
 
-    extern double MouseX;
-    extern double MouseY;
+    extern int MouseX;
+    extern int MouseY;
 
     extern std::string CustomDocument;
 
@@ -23,7 +23,7 @@ namespace UI {
     void Load_World(int seed);
 
     void Click(int action, int button);
-    void Mouse_Handler(double x, double y);
+    void Mouse_Handler(int x, int y);
     void Key_Handler(int key, int action);
     void Text_Handler(unsigned int codepoint);
 

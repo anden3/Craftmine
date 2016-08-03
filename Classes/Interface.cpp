@@ -115,9 +115,9 @@ const std::map<char, glm::vec3> ColorCodes = {
 };
 
 float Scale_X(const float x) { return (x / 1440.0f) * SCREEN_WIDTH; }
-float Scale_Y(const float y) { return (y / 900.0f) * SCREEN_HEIGHT; }
+float Scale_Y(const float y) { return (y / 900.0f)  * SCREEN_HEIGHT; }
 
-glm::vec2 Scale(const float t) { return glm::vec2(Scale_X(t), Scale_Y(t)); }
+glm::vec2 Scale(const float t)                { return glm::vec2(Scale_X(t), Scale_Y(t)); }
 glm::vec2 Scale(const float x, const float y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
 
 struct CharacterInfo {
@@ -1034,7 +1034,7 @@ void Interface::Init_Text() {
     ));
 }
 
-void Interface::Mouse_Handler(double x, double y) {
+void Interface::Mouse_Handler(int x, int y) {
     if (ActiveDocument == "") {
         return;
     }
@@ -1044,9 +1044,9 @@ void Interface::Mouse_Handler(double x, double y) {
         return;
     }
 
-    if (HoveringType == "slot") { static_cast<Slot*>(HoveringElement)->Stop_Hover(); }
-    else if (HoveringType == "button") { static_cast<Button*>(HoveringElement)->Stop_Hover(); }
-    else if (HoveringType == "slider") { static_cast<Slider*>(HoveringElement)->Stop_Hover(); }
+    if (HoveringType == "slot")         { static_cast<Slot*>   (HoveringElement)->Stop_Hover(); }
+    else if (HoveringType == "button")  { static_cast<Button*> (HoveringElement)->Stop_Hover(); }
+    else if (HoveringType == "slider")  { static_cast<Slider*> (HoveringElement)->Stop_Hover(); }
     else if (HoveringType == "textBox") { static_cast<TextBox*>(HoveringElement)->Set_Cursor_Visibility(false); }
 
     for (auto &slot : Slots[ActiveDocument]) {

@@ -345,7 +345,7 @@ namespace Interface {
     void Init_Shaders();
     void Init_UI_Scale();
 
-    void Mouse_Handler(double x, double y);
+    void Mouse_Handler(int x, int y);
     void Click(int mouseButton, int action);
 
     void Set_Document(std::string document);

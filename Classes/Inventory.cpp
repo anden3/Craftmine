@@ -110,6 +110,7 @@ void Inventory::Init() {
 void Inventory::Clear() {
     for (unsigned long i = 0; i < Inv.size(); ++i) {
         Inv[i]->Contents.Clear();
+        Inv[i]->Mesh();
     }
 }
 
@@ -162,6 +163,8 @@ void Inventory::Decrease_Size(int slot) {
     if (Inv[uSlot]->Contents.Size == 0) {
         Inv[uSlot]->Contents.Clear();
     }
+
+    Inv[uSlot]->Mesh();
 }
 
 Stack* Inventory::Get_Info(int slot) {
@@ -217,13 +220,12 @@ void Inventory::Click_Slot(Slot* slot) {
     }
     else {
         if (MouseButton == GLFW_MOUSE_BUTTON_LEFT) {
-            bool result = Left_Click_Stack(&HoldingStack, &slot->Contents);
-
-            if (!result) {
+            if (Left_Click_Stack(&HoldingStack, &slot->Contents)) {
+                slot->Mesh();
+            }
+            else {
                 Swap_Stacks(slot);
             }
-
-            slot->Mesh();
         }
         else if (MouseButton == GLFW_MOUSE_BUTTON_RIGHT) {
             Right_Click_Stack(slot);

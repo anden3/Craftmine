@@ -577,9 +577,17 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
         }
     }
 }
+
+void Mouse_Proxy(GLFWwindow* window, double posX, double posY) {
+    UI::Mouse_Handler(
+        static_cast<int>(posX),
+        static_cast<int>(posY)
+    );
+}
+
 // Proxy for receiving Unicode codepoints, very useful for getting text input.
 void Text_Proxy(GLFWwindow* window, unsigned int codepoint) { UI::Text_Handler(codepoint); }
-void Mouse_Proxy(GLFWwindow* window, double posX, double posY) { UI::Mouse_Handler(posX, posY); }
+
 void Scroll_Proxy(GLFWwindow* window, double offsetX, double offsetY) { if (!GamePaused) { player.Scroll_Handler(offsetY); } }
 void Click_Proxy(GLFWwindow* window, int button, int action, int mods) { UI::Click(action, button); }
 

@@ -581,8 +581,6 @@ void Chunk::Mesh() {
 
     auto block = Blocks.begin();
 
-    int offset = 0;
-
     while (block != Blocks.end()) {
         unsigned char seesAir = Get_Air(*block);
 
@@ -685,6 +683,33 @@ void Chunk::Draw(bool transparentPass) {
             buffer.Draw();
         }
     }
+}
+
+void Chunk::Set_Extra_Texture(glm::ivec3 pos, int texture) {
+    if (!Blocks.count(pos)) {
+        return;
+    }
+
+    int offset, sides;
+    std::tie(offset, sides) = ExtraOffsets[pos];
+
+    if (sides == 0) {
+        return;
+    }
+
+    int bufferSize = 54 * sides;
+    float* texPointer = buffer.Get_Pointer(offset, bufferSize);
+
+    // TODO: Find some way to fix this, for now just ignore it.
+    // The error occurs when the memory mapping reaches 32 bytes too far.
+    // No consequences detected as of yet...
+	if (texPointer != nullptr) {
+        for (int o = 0; o < bufferSize; o += 9) {
+            *(texPointer + o) = static_cast<float>(texture);
+        }
+	}
+
+    buffer.Unbind_Pointer();
 }
 
 void Chunk::Remove_Multiblock(glm::ivec3 position, const Block* block) {
