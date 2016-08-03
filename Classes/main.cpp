@@ -188,6 +188,8 @@ int main() {
                 LastNetworkUpdate = currentFrame;
                 Network::Update();
             }
+
+            Network::Render_Players();
         }
 
         if (!GamePaused) {

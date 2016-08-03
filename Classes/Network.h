@@ -9,6 +9,8 @@ namespace Network {
     void Init();
     void Update(unsigned int timeout = 0);
 
+    void Render_Players();
+
     std::string Connect(std::string name, std::string host);
     void Disconnect();
 

@@ -8,6 +8,15 @@
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
+#include "Buffer.h"
+
+extern Buffer HeadBuffer;
+extern Buffer BodyBuffer;
+extern Buffer LeftArmBuffer;
+extern Buffer RightArmBuffer;
+extern Buffer LeftLegBuffer;
+extern Buffer RightLegBuffer;
+
 typedef std::vector<float> Data;
 
 struct Block;

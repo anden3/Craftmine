@@ -38,8 +38,6 @@ const float ATTRACT_RANGE = 4.0f;
 const float PICKUP_RANGE  = 1.5f;
 const float ATTRACT_SPEED = 1.0f;
 
-const int PLAYER_TEXTURE_UNIT = 5;
-
 const float MOVEMENT_ANGLE_START = -45.0f;
 const float MOVEMENT_ANGLE_END   =  45.0f;
 
@@ -60,12 +58,12 @@ bool keys[1024] = {0};
 
 static Buffer HoldingBuffer;
 
-static Buffer HeadBuffer;
-static Buffer BodyBuffer;
-static Buffer LeftArmBuffer;
-static Buffer RightArmBuffer;
-static Buffer LeftLegBuffer;
-static Buffer RightLegBuffer;
+Buffer HeadBuffer = Buffer();
+Buffer BodyBuffer = Buffer();
+Buffer LeftArmBuffer = Buffer();
+Buffer RightArmBuffer = Buffer();
+Buffer LeftLegBuffer = Buffer();
+Buffer RightLegBuffer = Buffer();
 
 static int PunchingAngleDirection = 200;
 static int MovementAngleDirection = 5000;
@@ -130,7 +128,7 @@ void Player::Init_Model() {
         &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer
     };
     glm::vec3 offsets[6] = {
-        {0.5f, 0.0f, 0.5f}, {0.5f, 0.0f, 0.5f}, {2.0f, 1.0f, 0.5f},
+        { 0.5f, 0.0f, 0.5f}, {0.5f, 0.0f, 0.5f}, {2.0f, 1.0f, 0.5f},
         {-1.0f, 1.0f, 0.5f}, {1.0f, 1.0f, 0.5f}, {0.0f, 1.0f, 0.5f}
     };
     std::string parts[6] = { "head", "body", "arm", "arm", "leg", "leg" };

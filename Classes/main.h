@@ -57,6 +57,8 @@ const glm::vec3 DIFFUSE_LIGHT = glm::vec3(0.7f);
 // The light level of blocks in direct sunlight.
 const int SUN_LIGHT_LEVEL = 15;
 
+const int PLAYER_TEXTURE_UNIT = 5;
+
 // The number that all noise coordinates are divided by.
 // Higher values equals more zoom.
 const int CHUNK_ZOOM = 50;

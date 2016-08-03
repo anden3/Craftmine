@@ -5,8 +5,10 @@
 
 #include "Chat.h"
 #include "main.h"
+#include "Buffer.h"
 #include "Camera.h"
 #include "Player.h"
+#include "Shader.h"
 
 #include <json.hpp>
 
@@ -16,6 +18,7 @@ static ENetPeer* peer;
 static std::string ClientName = "";
 
 static const int DEFAULT_PORT = 1234;
+static const int MAX_PLAYERS  = 16;
 
 static glm::vec3 LastPos = {0, 0, 0};
 static float LastPitch = 0.0f;
@@ -79,11 +82,11 @@ void Network::Update(unsigned int timeout) {
             nlohmann::json j = nlohmann::json::parse(data);
 
             if (j["event"] == "update") {
-                if (!Players.count(j["name"])) {
-                    Players[j["name"]] = PlayerChar();
+                if (!Players.count(j["player"])) {
+                    Players[j["player"]] = PlayerChar();
                 }
 
-                PlayerChar &p = Players[j["name"]];
+                PlayerChar &p = Players[j["player"]];
 
                 if (j.count("pos")) {
                     p.Position = glm::vec3(
@@ -105,6 +108,42 @@ void Network::Update(unsigned int timeout) {
             }
 
             enet_packet_destroy(event.packet);
+        }
+    }
+}
+
+void Network::Render_Players() {
+    Buffer* buffers[6] = {
+        &HeadBuffer, &BodyBuffer, &LeftArmBuffer,
+        &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer
+    };
+
+    static glm::vec3 translateOffsets[6] = {
+        {0, 1.5, 0}, {0, 0.75, 0}, {0, 1.50, 0},
+        {0, 1.5, 0}, {0, 0.75, 0}, {0, 0.75, 0}
+    };
+
+    static glm::vec3 scalingFactors[6] = {
+        {0.5, 0.5, 0.5}, {0.5, 0.75, 0.25}, {0.25, 0.75, 0.25},
+        {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}
+    };
+
+    for (auto const &player : Players) {
+        const PlayerChar &p = player.second;
+
+        for (int i = 0; i < 6; i++) {
+            glm::mat4 model;
+            model = glm::translate(model, p.Position + translateOffsets[i]);
+            model = glm::rotate(model, p.Yaw, {0, 1, 0});
+
+            if (i == 0) { // Rotate head up/down
+                model = glm::rotate(model, float(glm::radians(p.Pitch)), {1, 0, 0});
+            }
+
+            model = glm::scale(model, scalingFactors[i]);
+
+            mobShader->Upload("model", model);
+            buffers[i]->Draw();
         }
     }
 }

@@ -154,7 +154,7 @@ void Chat::Key_Handler(int key) {
 }
 
 void Chat::Mouse_Handler(int x, int y) {
-    MouseX = static_cast<float>(x);
+    MouseX = x;
     MouseY = SCREEN_HEIGHT - y;
 
     MouseOverChat = false;
