@@ -20,23 +20,10 @@
 
 #include <json.hpp>
 
-const float PLAYER_BASE_SPEED      = 3.0f;
-const float PLAYER_SPRINT_MODIFIER = 1.5f;
-
 const float PLAYER_SENSITIVITY = 0.25f;
 const float PLAYER_RANGE = 5.0f;
 
-const float PLAYER_WIDTH = 0.1f;
-
-const float CAMERA_HEIGHT = 1.7f;
-
 const float HITSCAN_STEP_SIZE = 0.1f;
-
-const float JUMP_HEIGHT = 0.1f;
-
-const float ATTRACT_RANGE = 4.0f;
-const float PICKUP_RANGE  = 1.5f;
-const float ATTRACT_SPEED = 1.0f;
 
 const float MOVEMENT_ANGLE_START = -45.0f;
 const float MOVEMENT_ANGLE_END   =  45.0f;
@@ -417,10 +404,6 @@ void Player::Update(bool update) {
             if (Creative) {
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
                 MouseTimer = 0.0;
-
-                if (Multiplayer) {
-                    Request_Handler("blockBreak", true);
-                }
             }
             else {
                 float requiredTime = Get_Block_Break_Time();
@@ -432,10 +415,6 @@ void Player::Update(bool update) {
 
                     MouseTimer = 0.0;
                     update = true;
-
-                    if (Multiplayer) {
-                        Request_Handler("blockBreak", true);
-                    }
                 }
                 else {
                     int damageIndex = static_cast<int>(std::floor(MouseTimer / requiredTime * 10));
@@ -445,9 +424,6 @@ void Player::Update(bool update) {
                     }
                 }
             }
-        }
-        else {
-
         }
     }
 
@@ -765,6 +741,9 @@ void Player::Mouse_Handler(int posX, int posY) {
         return;
     }
 
+    float prevYaw = Cam.Yaw;
+    float prevPitch = Cam.Pitch;
+
     Cam.Yaw   += (posX - LastMousePos.x) * PLAYER_SENSITIVITY;
     Cam.Pitch += (LastMousePos.y - posY) * PLAYER_SENSITIVITY;
 
@@ -782,6 +761,12 @@ void Player::Mouse_Handler(int posX, int posY) {
 
     else if (Cam.Yaw < 0.0f) {
         Cam.Yaw += 360.0f;
+    }
+
+    if (Multiplayer) {
+        if (std::abs(Cam.Yaw - prevYaw) >= 1 || std::abs(Cam.Pitch - prevPitch) >= 1) {
+            Network::Send_Look_Event();
+        }
     }
 
     LastMousePos = glm::ivec2(posX, posY);
@@ -845,10 +830,6 @@ void Player::Click_Handler(int button, int action) {
 
     if (MouseDown && LookingAtBlock && Creative) {
         Break_Block(Get_World_Pos(LookingChunk, LookingTile));
-
-        if (Multiplayer) {
-            Request_Handler("blockBreak", true);
-        }
     }
 
     if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT || !LookingAtBlock) {
@@ -871,6 +852,10 @@ void Player::Click_Handler(int button, int action) {
     ChunkMap[LookingAirChunk]->Add_Block(
         LookingAirTile, CurrentBlock, CurrentBlockData
     );
+
+    if (Multiplayer) {
+        Request_Handler("blockPlace", true);
+    }
 
     Inventory::Decrease_Size();
 
@@ -912,6 +897,10 @@ void Player::Break_Block(glm::vec3 pos, bool external) {
     }
 
     ChunkMap[chunk]->Remove_Block(tile);
+
+    if (Multiplayer) {
+        Request_Handler("blockBreak", true);
+    }
 
     if (block->MultiBlock) {
         Entity::Spawn(pos, blockType);
@@ -1009,9 +998,18 @@ void Player::Request_Handler(std::string packet, bool sending) {
 
     if (sending) {
         if (packet == "blockBreak") {
+            glm::vec3 breakPos = Get_World_Pos(LookingChunk, LookingTile);
+
             data["event"] = "blockBreak";
-            data["player"] = PLAYER_NAME;
-            data["pos"] = Network::Format_Vector(Get_World_Pos(LookingChunk, LookingTile));
+            data["pos"] = { breakPos.x, breakPos.y, breakPos.z };
+        }
+
+        if (packet == "blockPlace") {
+            glm::vec3 placePos = Get_World_Pos(LookingAirChunk, LookingAirTile);
+
+            data["event"] = "blockPlace";
+            data["pos"] = { placePos.x, placePos.y, placePos.z };
+            data["type"] = { CurrentBlock, CurrentBlockData };
         }
 
         Network::Send(data.dump());
@@ -1020,16 +1018,10 @@ void Player::Request_Handler(std::string packet, bool sending) {
         data = nlohmann::json::parse(packet);
 
         if (data["event"] == "blockBreak") {
-            if (data["player"] == PLAYER_NAME) {
-                return;
-            }
-
-            std::vector<std::string> coords = Split(data["pos"], ',');
-            glm::vec3 pos, chunk, tile;
-
-            for (unsigned long i = 0; i < 3; i++) {
-                pos[static_cast<int>(i)] = std::stof(coords[i]);
-            }
+            glm::vec3 chunk, tile;
+            glm::vec3 pos(
+                data["pos"][0], data["pos"][1], data["pos"][2]
+            );
 
             std::tie(chunk, tile) = Get_Chunk_Pos(pos);
 
@@ -1037,16 +1029,44 @@ void Player::Request_Handler(std::string packet, bool sending) {
                 Break_Block(pos, true);
             }
             else {
-                ChangedBlocks[chunk][tile] = std::make_pair(0, 0);
+                ChangedBlocks[chunk][tile] = {0, 0};
+                Worlds::Save_Chunk(WORLD_NAME, chunk);
+            }
+        }
+
+        else if (data["event"] == "blockPlace") {
+            glm::vec3 chunk, tile;
+            glm::vec3 pos(
+                data["pos"][0], data["pos"][1], data["pos"][2]
+            );
+
+            std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+
+            int type = data["type"][0];
+            int typeData = data["type"][0];
+
+            const Block* block = Blocks::Get_Block(type, typeData);
+
+            if (Exists(chunk)) {
+                ChunkMap[LookingAirChunk]->Add_Block(
+                    LookingAirTile, CurrentBlock, CurrentBlockData
+                );
+
+                if (block->Luminosity > 0) {
+                    ChunkMap[chunk]->Set_Light(tile, block->Luminosity);
+                    ChunkMap[chunk]->LightQueue.emplace(chunk, tile);
+
+                    ChunkMap[chunk]->Light();
+                    ChunkMap[chunk]->Mesh();
+                }
+            }
+            else {
+                ChangedBlocks[chunk][tile] = {type, typeData};
                 Worlds::Save_Chunk(WORLD_NAME, chunk);
             }
         }
 
         else if (data["event"] == "message") {
-            if (data["player"] == PLAYER_NAME) {
-                return;
-            }
-
             Chat::Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
         }
 

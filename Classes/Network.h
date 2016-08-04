@@ -9,7 +9,12 @@ namespace Network {
     void Init();
     void Update(unsigned int timeout = 0);
 
+    void Update_Players();
     void Render_Players();
+
+    void Send_Player_Position();
+    void Send_Key_Event(int key, int action);
+    void Send_Look_Event();
 
     std::string Connect(std::string name, std::string host);
     void Disconnect();

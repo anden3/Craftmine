@@ -5,8 +5,11 @@
 
 #include "Chat.h"
 #include "main.h"
+#include "Chunk.h"
+#include "Blocks.h"
 #include "Buffer.h"
 #include "Camera.h"
+#include "Entity.h"
 #include "Player.h"
 #include "Shader.h"
 
@@ -18,19 +21,54 @@ static ENetPeer* peer;
 static std::string ClientName = "";
 
 static const int DEFAULT_PORT = 1234;
-static const int MAX_PLAYERS  = 16;
 
 static glm::vec3 LastPos = {0, 0, 0};
-static float LastPitch = 0.0f;
-static float LastYaw = 0.0f;
+static float LastPitch   = 0.0f;
+static float LastYaw     = 0.0f;
 
 struct PlayerChar {
-    glm::vec3 Position;
-    float Pitch;
-    float Yaw;
+    glm::vec3 Tile     = {0, 0, 0};
+    glm::vec3 Chunk    = {0, 0, 0};
+    glm::vec3 Position = {0, 0, 0};
+    glm::vec3 Velocity = {0, 0, 0};
+
+    glm::vec3 Front;
+    glm::vec3 Right;
+
+    glm::vec3 FrontDirection;
+    glm::vec3 RightDirection;
+
+    float Pitch = 0.0f;
+    float Yaw   = 0.0f;
+
+    int LightLevel = SUN_LIGHT_LEVEL;
+
+    bool Flying  = false;
+    bool Jumping = false;
+    bool OnGround = true;
+
+    std::map<int, bool> Keys = {};
 };
 
 static std::map<std::string, PlayerChar> Players;
+
+void Move_Player(PlayerChar &p);
+void Update_Player(PlayerChar &p);
+void Check_Player_Pickup(PlayerChar &p);
+void Collision_Detection(PlayerChar &p);
+void Calculate_View_Vectors(PlayerChar &p);
+
+static bool Check_Col(glm::vec3 pos) {
+    glm::vec3 chunk, tile;
+    std::tie(chunk, tile) = Get_Chunk_Pos(pos);
+
+    if (!Exists(chunk)) {
+        return false;
+    }
+
+    int blockID = ChunkMap[chunk]->Get_Type(tile);
+    return blockID != 0 && Blocks::Get_Block(blockID)->Collision;
+}
 
 void Network::Init() {
     enet_initialize();
@@ -40,31 +78,7 @@ void Network::Init() {
 }
 
 void Network::Update(unsigned int timeout) {
-    nlohmann::json message;
     ENetEvent event;
-
-    message["event"] = "update";
-
-    if (player.WorldPos != LastPos) {
-        LastPos = player.WorldPos;
-        message["pos"] = {
-            player.WorldPos.x, player.WorldPos.y, player.WorldPos.z
-        };
-    }
-
-    if (std::abs(Cam.Pitch - LastPitch) >= 1.0f) {
-        LastPitch = Cam.Pitch;
-        message["pitch"] = Cam.Pitch;
-    }
-
-    if (std::abs(Cam.Yaw - LastYaw) >= 1.0f) {
-        LastYaw = Cam.Yaw;
-        message["yaw"] = Cam.Yaw;
-    }
-
-    if (message.size() > 1) {
-        Send(message.dump());
-    }
 
     while (enet_host_service(client, &event, timeout) > 0) {
         if (event.type == ENET_EVENT_TYPE_NONE) {
@@ -81,26 +95,40 @@ void Network::Update(unsigned int timeout) {
             std::string data(reinterpret_cast<char*>(event.packet->data));
             nlohmann::json j = nlohmann::json::parse(data);
 
-            if (j["event"] == "update") {
-                if (!Players.count(j["player"])) {
-                    Players[j["player"]] = PlayerChar();
-                }
+            PlayerChar* p;
 
-                PlayerChar &p = Players[j["player"]];
+            if (j.count("player")) {
+                p = &Players[j["player"]];
+            }
 
-                if (j.count("pos")) {
-                    p.Position = glm::vec3(
-                        j["pos"][0], j["pos"][1], j["pos"][2]
-                    );
-                }
+            if (j["event"] == "key") {
+                int key = j["key"];
+                int keyState = j["state"];
 
-                if (j.count("pitch")) {
-                    p.Pitch = j["pitch"];
-                }
+                p->Keys[key] = (keyState == GLFW_PRESS);
 
-                if (j.count("yaw")) {
-                    p.Yaw = j["yaw"];
+                if (keyState == GLFW_PRESS) {
+                    if (key == GLFW_KEY_SPACE && p->OnGround) {
+                        p->Jumping = true;
+                    }
+
+                    else if (key == GLFW_KEY_F) {
+                        p->Flying = !p->Flying;
+                    }
                 }
+            }
+
+            else if (j["event"] == "look") {
+                p->Yaw = j["yaw"];
+                p->Pitch = j["pitch"];
+
+                Calculate_View_Vectors(*p);
+            }
+
+            else if (j["event"] == "position") {
+                p->Position = {
+                    j["pos"][0], j["pos"][1], j["pos"][2]
+                };
             }
 
             else {
@@ -112,8 +140,14 @@ void Network::Update(unsigned int timeout) {
     }
 }
 
+void Network::Update_Players() {
+    for (auto &player : Players) {
+        Update_Player(player.second);
+    }
+}
+
 void Network::Render_Players() {
-    Buffer* buffers[6] = {
+    static Buffer* buffers[6] = {
         &HeadBuffer, &BodyBuffer, &LeftArmBuffer,
         &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer
     };
@@ -131,13 +165,19 @@ void Network::Render_Players() {
     for (auto const &player : Players) {
         const PlayerChar &p = player.second;
 
+        if (!Exists(p.Chunk) || !ChunkMap[p.Chunk]->Visible) {
+            continue;
+        }
+
+        mobShader->Upload("lightLevel", p.LightLevel);
+
         for (int i = 0; i < 6; i++) {
             glm::mat4 model;
             model = glm::translate(model, p.Position + translateOffsets[i]);
-            model = glm::rotate(model, p.Yaw, {0, 1, 0});
+            model = glm::rotate(model, glm::radians(270.0f - p.Yaw), {0, 1, 0});
 
             if (i == 0) { // Rotate head up/down
-                model = glm::rotate(model, float(glm::radians(p.Pitch)), {1, 0, 0});
+                model = glm::rotate(model, glm::radians(p.Pitch), {1, 0, 0});
             }
 
             model = glm::scale(model, scalingFactors[i]);
@@ -146,6 +186,200 @@ void Network::Render_Players() {
             buffers[i]->Draw();
         }
     }
+}
+
+void Update_Player(PlayerChar &p) {
+    static bool FirstUpdate = true;
+
+    glm::vec3 prevPos = p.Position;
+
+    Move_Player(p);
+    Check_Player_Pickup(p);
+
+    if (FirstUpdate || p.Position != prevPos) {
+        FirstUpdate = false;
+
+        glm::vec3 prevTile = p.Tile;
+        std::tie(p.Chunk, p.Tile) = Get_Chunk_Pos(p.Position);
+
+        if (prevTile != p.Tile && Exists(p.Chunk)) {
+            if (p.Position.y >= ChunkMap[p.Chunk]->Get_Top(p.Tile)) {
+                p.LightLevel = SUN_LIGHT_LEVEL;
+            }
+            else {
+                p.LightLevel = ChunkMap[p.Chunk]->Get_Light(p.Tile);
+            }
+        }
+    }
+}
+
+void Move_Player(PlayerChar &p) {
+    p.Velocity.x = 0;
+    p.Velocity.z = 0;
+
+    float speed = PLAYER_BASE_SPEED * static_cast<float>(DeltaTime);
+
+    if (p.Keys[GLFW_KEY_LEFT_SHIFT]) {
+        speed *= PLAYER_SPRINT_MODIFIER * (p.Flying + 1);
+    }
+
+    static int moveKeys[4] = {GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_A};
+    static float signs[2]  = {1.0f, -1.0f};
+
+    glm::vec3 flyDirs[2]  = {p.Front, p.Right};
+    glm::vec3 walkDirs[2] = {p.FrontDirection, p.RightDirection};
+
+    if (p.Flying) {
+        p.Velocity = glm::vec3(0);
+
+        for (int i = 0; i < 4; i++) {
+            if (p.Keys[moveKeys[i]]) {
+                p.Position += flyDirs[i / 2] * speed * signs[i % 2];
+            }
+        }
+
+        std::tie(p.Chunk, p.Tile) = Get_Chunk_Pos(p.Position);
+    }
+    else {
+        for (int i = 0; i < 4; i++) {
+            if (p.Keys[moveKeys[i]]) {
+                p.Velocity += walkDirs[i / 2] * speed * signs[i % 2];
+            }
+        }
+
+        if (p.Jumping) {
+            p.Jumping = false;
+            p.Velocity.y += JUMP_HEIGHT;
+        }
+
+        Collision_Detection(p);
+    }
+}
+
+void Collision_Detection(PlayerChar &p) {
+    if (!Exists(p.Chunk)) {
+        return;
+    }
+
+    p.Velocity.y -= GRAVITY;
+    p.OnGround = (p.Velocity.y <= 0 && Check_Col(
+        {p.Position.x, p.Position.y + p.Velocity.y - 0.01f, p.Position.z}
+    ));
+
+    if (p.OnGround) {
+        p.Velocity.y = 0;
+    }
+
+    else if (p.Velocity.y != 0) {
+        glm::vec3 checkPos = p.Position + glm::vec3(0, p.Velocity.y, 0);
+
+        if (p.Velocity.y > 0) {
+            checkPos.y += CAMERA_HEIGHT;
+        }
+
+        if (!Check_Col(checkPos)) {
+            p.Position.y += p.Velocity.y;
+        }
+        else if (p.Velocity.y > 0) {
+            p.Velocity.y = 0;
+        }
+    }
+
+    glm::vec3 offsets[2] = {
+        {p.Velocity.x + PLAYER_WIDTH * std::copysign(1.0f, p.Velocity.x), 0, 0},
+        {0, 0, p.Velocity.z + PLAYER_WIDTH * std::copysign(1.0f, p.Velocity.z)}
+    };
+
+    for (int i = 0; i < 3; i += 2) {
+        if (p.Velocity[i] == 0) {
+            continue;
+        }
+
+        glm::vec3 checkingPos = p.Position + offsets[i / 2];
+
+        if (Check_Col(checkingPos)) {
+            continue;
+        }
+
+        checkingPos.y += CAMERA_HEIGHT;
+
+        if (!Check_Col(checkingPos)) {
+            p.Position[i] += p.Velocity[i];
+        }
+    }
+}
+
+void Check_Player_Pickup(PlayerChar &p) {
+    if (Entities.empty()) {
+        return;
+    }
+
+    glm::vec3 playerCenter = p.Position + glm::vec3(0, 1, 0);
+    std::vector<EntityInstance*>::iterator it = Entities.begin();
+
+    while (it != Entities.end()) {
+        if (!(*it)->Can_Move) {
+            ++it;
+            continue;
+        }
+
+        float dist = glm::distance((*it)->Position, playerCenter);
+
+        if (dist < PICKUP_RANGE) {
+            player.Play_Sound("pickup", p.Chunk, p.Tile);
+            delete *it;
+        }
+        else if (dist < ATTRACT_RANGE && (*it)->Size > 0) {
+            glm::vec3 vector = glm::normalize(
+                playerCenter - (*it)->Position) * ATTRACT_SPEED * (ATTRACT_RANGE - dist
+            );
+            (*it)->Velocity += glm::vec3(vector.x, 0, vector.z);
+        }
+
+        it = (dist < PICKUP_RANGE) ? Entities.erase(it) : it + 1;
+    }
+}
+
+void Calculate_View_Vectors(PlayerChar &p) {
+    glm::vec3 front(
+        glm::cos(glm::radians(p.Yaw)) * glm::cos(glm::radians(p.Pitch)),
+        glm::sin(glm::radians(p.Pitch)),
+        glm::sin(glm::radians(p.Yaw)) * glm::cos(glm::radians(p.Pitch))
+    );
+
+    p.FrontDirection = glm::normalize(glm::vec3(front.x, 0, front.z));
+    p.RightDirection = glm::vec3(-p.FrontDirection.z, 0, p.FrontDirection.x);
+
+    p.Front = glm::normalize(front);
+    p.Right = glm::normalize(glm::cross(p.Front, glm::vec3(0, 1, 0)));
+}
+
+void Network::Send_Player_Position() {
+    nlohmann::json data;
+    data["event"] = "position";
+    data["pos"] = {
+        player.WorldPos.x, player.WorldPos.y, player.WorldPos.z
+    };
+
+    Send(data.dump());
+}
+
+void Network::Send_Key_Event(int key, int action) {
+    nlohmann::json data;
+    data["event"] = "key";
+    data["key"] = key;
+    data["state"] = action;
+
+    Send(data.dump());
+}
+
+void Network::Send_Look_Event() {
+    nlohmann::json data;
+    data["event"] = "look";
+    data["yaw"] = Cam.Yaw;
+    data["pitch"] = Cam.Pitch;
+
+    Send(data.dump());
 }
 
 std::string Network::Connect(std::string name, std::string host) {

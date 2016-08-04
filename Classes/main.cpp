@@ -70,6 +70,7 @@ static bool WindowFocused = true;
 static bool WindowMinimized = false;
 
 static double LastNetworkUpdate = 0.0;
+static double LastNetworkPositionUpdate = 0.0;
 
 // Initializing objects.
 Camera Cam = Camera();
@@ -184,11 +185,13 @@ int main() {
         glfwPollEvents();
 
         if (Multiplayer) {
-            if (currentFrame - LastNetworkUpdate >= 0.1) {
-                LastNetworkUpdate = currentFrame;
-                Network::Update();
+            if (currentFrame - LastNetworkPositionUpdate >= 0.1) {
+                LastNetworkPositionUpdate = currentFrame;
+                Network::Send_Player_Position();
             }
 
+            Network::Update();
+            Network::Update_Players();
             Network::Render_Players();
         }
 
@@ -572,6 +575,10 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
         else {
             UI::Key_Handler(key, action);
             player.Key_Handler(key, action);
+
+            if (Multiplayer && action != GLFW_REPEAT) {
+                Network::Send_Key_Event(key, action);
+            }
         }
 
         if (action == GLFW_PRESS) {

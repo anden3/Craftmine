@@ -9,7 +9,9 @@ static const float IGNORE_TIMER = 1.0f;
 
 static const float MERGING_RADIUS = 1.0f;
 
-const float GRAVITY = 0.004f;
+const float ATTRACT_RANGE = 4.0f;
+const float PICKUP_RANGE  = 1.5f;
+const float ATTRACT_SPEED = 1.0f;
 
 extern void Upload_Data(const unsigned int vbo, const Data &data);
 

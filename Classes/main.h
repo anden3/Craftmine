@@ -69,6 +69,15 @@ const double NOISE_DENSITY_BLOCK = 0.5;
 // The minimum noise density required to be a solid block during cave generation.
 const double NOISE_DENSITY_CAVE = -0.85;
 
+const float GRAVITY = 0.004f;
+
+const float PLAYER_BASE_SPEED      = 3.0f;
+const float PLAYER_SPRINT_MODIFIER = 1.5f;
+const float PLAYER_WIDTH           = 0.1f;
+
+const float CAMERA_HEIGHT          = 1.7f;
+const float JUMP_HEIGHT            = 0.1f;
+
 // The file to load settings from.
 const char CONFIG_FILE[] = "config.conf";
 

@@ -52,6 +52,8 @@ class Player {
     void Update(bool update = false);
     void Draw();
 
+    void Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile);
+
     void Teleport(glm::vec3 pos);
 
     void Queue_Chunks(bool regenerate = false);
@@ -89,16 +91,14 @@ class Player {
     void Draw_Model();
     void Draw_Holding();
 
-    void Col_Detection();
     void Check_Hit();
+    void Col_Detection();
 
     float Get_Block_Break_Time();
     void Check_Pickup();
 
     void Drop_Item();
     void Break_Block(glm::vec3 pos, bool external = false);
-
-    void Play_Sound(std::string type, glm::vec3 chunk, glm::vec3 tile);
 
     void Place_Light(int lightLevel);
     void Remove_Light();
