@@ -185,7 +185,7 @@ void Player::Draw_Model() {
     };
 
     static glm::vec3 scalingFactors[6] = {
-        {0.5, 0.5, 0.5}, {0.5, 0.75, 0.25}, {0.25, 0.75, 0.25},
+        {0.5,  0.5,  0.5 }, {0.5,  0.75, 0.25}, {0.25, 0.75, 0.25},
         {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}
     };
 
@@ -206,9 +206,19 @@ void Player::Draw_Model() {
     else {
         for (int i = 0; i < 6; i++) {
             glm::mat4 model;
+            float angle = MovementAngle;
+
+            if (i == 3 && MouseDown) {
+                angle = PunchingAngle;
+            }
+
+            angle = glm::radians(angle);
+
+            if (i == 2 || i == 5) {
+                angle = -angle;
+            }
+
             model = glm::translate(model, WorldPos + translateOffsets[i]);
-            float angle = glm::radians((i == 3 && MouseDown) ? PunchingAngle : MovementAngle)
-                * ((i == 2 || i == 5) ? -1 : 1);
 
             if (i >= 2) { // Rotate body parts
                 model = glm::rotate(model, angle, Cam.Right);
@@ -832,6 +842,10 @@ void Player::Click_Handler(int button, int action) {
 
     if (MouseDown && LookingAtBlock && Creative) {
         Break_Block(Get_World_Pos(LookingChunk, LookingTile));
+    }
+
+    if (Multiplayer) {
+        Network::Send_Key_Event(button, action);
     }
 
     if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_RIGHT || !LookingAtBlock) {

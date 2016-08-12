@@ -22,6 +22,12 @@ static std::string ClientName = "";
 
 static const int DEFAULT_PORT = 1234;
 
+static const float MOVEMENT_ANGLE_START = -45.0f;
+static const float MOVEMENT_ANGLE_END   =  45.0f;
+
+static const float PUNCHING_ANGLE_START = 90.0f;
+static const float PUNCHING_ANGLE_END   = 120.0f;
+
 static glm::vec3 LastPos = {0, 0, 0};
 
 struct PlayerChar {
@@ -39,11 +45,17 @@ struct PlayerChar {
     float Pitch = 0.0f;
     float Yaw   = 0.0f;
 
+    float MovementAngle = 0.0f;
+    float PunchingAngle = 0.0f;
+
+    float PunchingAngleDirection = 200;
+    float MovementAngleDirection = 5000;
+
     int LightLevel = SUN_LIGHT_LEVEL;
 
-    bool Flying  = false;
-    bool Jumping = false;
-    bool OnGround = true;
+    bool Flying    = false;
+    bool Jumping   = false;
+    bool OnGround  = true;
 
     std::map<int, bool> Keys = {};
 };
@@ -181,7 +193,24 @@ void Network::Render_Players() {
 
         for (int i = 0; i < 6; i++) {
             glm::mat4 model;
+            float angle = p.MovementAngle;
+
+            if (i == 3 && p.Keys.at(GLFW_MOUSE_BUTTON_LEFT)) {
+                angle = p.PunchingAngle + p.Pitch;
+            }
+
+            angle = glm::radians(angle);
+
+            if (i == 2 || i == 5) {
+                angle = -angle;
+            }
+
             model = glm::translate(model, p.Position + translateOffsets[i]);
+
+            if (i >= 2) { // Rotate body parts
+                model = glm::rotate(model, angle, p.Right);
+            }
+
             model = glm::rotate(model, glm::radians(270.0f - p.Yaw), {0, 1, 0});
 
             if (i == 0) { // Rotate head up/down
@@ -203,6 +232,22 @@ void Update_Player(PlayerChar &p) {
 
     Move_Player(p);
     Check_Player_Pickup(p);
+
+    if (p.Keys.at(GLFW_MOUSE_BUTTON_LEFT)) {
+        p.PunchingAngle += static_cast<float>(DeltaTime) * p.PunchingAngleDirection;
+
+        if (p.PunchingAngle >= PUNCHING_ANGLE_END && p.PunchingAngleDirection > 0) {
+            p.PunchingAngle = PUNCHING_ANGLE_END;
+            p.PunchingAngleDirection *= -1;
+        }
+        else if (p.PunchingAngle <= PUNCHING_ANGLE_START && p.PunchingAngleDirection < 0) {
+            p.PunchingAngle = PUNCHING_ANGLE_START;
+            p.PunchingAngleDirection *= -1;
+        }
+    }
+    else {
+        p.PunchingAngle = PUNCHING_ANGLE_START;
+    }
 
     if (FirstUpdate || p.Position != prevPos) {
         FirstUpdate = false;
@@ -238,6 +283,7 @@ void Move_Player(PlayerChar &p) {
     glm::vec3 walkDirs[2] = {p.FrontDirection, p.RightDirection};
 
     if (p.Flying) {
+        p.MovementAngle = 0.0f;
         p.Velocity = glm::vec3(0);
 
         for (int i = 0; i < 4; i++) {
@@ -261,6 +307,20 @@ void Move_Player(PlayerChar &p) {
         }
 
         Collision_Detection(p);
+
+        if (p.Velocity.xz() != glm::vec2(0)) {
+            if (p.MovementAngle >= MOVEMENT_ANGLE_END && p.MovementAngleDirection > 0) {
+                p.MovementAngleDirection *= -1;
+            }
+            else if (p.MovementAngle <= MOVEMENT_ANGLE_START && p.MovementAngleDirection < 0) {
+                p.MovementAngleDirection *= -1;
+            }
+
+            p.MovementAngle += p.MovementAngleDirection * speed * static_cast<float>(DeltaTime);
+        }
+        else {
+            p.MovementAngle = 0.0f;
+        }
     }
 }
 
