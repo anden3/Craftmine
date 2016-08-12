@@ -13,6 +13,8 @@
 #include "Worlds.h"
 #include "Interface.h"
 
+static const glm::dvec2 TREE_NOISE_THRESHOLD = glm::dvec2(0.7, 0.8);
+
 struct Structure {
     glm::ivec3 Size = {0, 0, 0};
     std::map<glm::ivec3, std::pair<int, int>, VectorComparator> Blocks = {};
@@ -183,7 +185,7 @@ void Chunks::Seed(int seed) {
     noiseModule.SetOctaveCount(3);
 
     treeNoise.SetSeed(seed);
-    treeNoise.SetFrequency(2.0);
+    treeNoise.SetFrequency(5.0);
 
     ridgedNoise.SetSeed(seed);
     ridgedNoise.SetOctaveCount(2);
@@ -389,7 +391,9 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
         Get_World_Pos(Position, tile) / static_cast<float>(CHUNK_ZOOM)
     );
 
-    if (treeNoise.GetValue(treePos.x, 0, treePos.z) > 0.5) {
+    double treeValue = treeNoise.GetValue(treePos.x, 0, treePos.z);
+
+    if (treeValue >= TREE_NOISE_THRESHOLD.x && treeValue <= TREE_NOISE_THRESHOLD.y) {
         glm::ivec3 root = Get_World_Pos(Position, tile);
 
         for (int y = 1; y <= 4; ++y) {
@@ -403,9 +407,8 @@ void Chunk::Generate_Tree(glm::vec3 tile) {
         }
 
         for (auto const &block : Structures["Tree"].Blocks) {
-            glm::ivec3 pos = root + block.first;
             glm::ivec3 chunkPos, tilePos;
-            std::tie(chunkPos, tilePos) = Get_Chunk_Pos(pos);
+            std::tie(chunkPos, tilePos) = Get_Chunk_Pos(root + block.first);
 
             if (!Exists(chunkPos)) {
                 ChangedBlocks[chunkPos][tilePos] = block.second;
@@ -607,7 +610,7 @@ void Chunk::Mesh() {
 
                         if (!extraTextures) {
                             extraTextures = true;
-                            ExtraOffsets[*block] = {VBOData.size() - 1, 6};
+                            ExtraOffsets[*block] = {static_cast<unsigned int>(VBOData.size()) - 1, 6};
                         }
                     }
                 }
@@ -646,7 +649,7 @@ void Chunk::Mesh() {
                     VBOData.push_back(0);
 
                     if (extraOffset == 0) {
-                        extraOffset = VBOData.size() - 1;
+                        extraOffset = static_cast<unsigned int>(VBOData.size() - 1);
                     }
                 }
 

@@ -23,8 +23,6 @@ static std::string ClientName = "";
 static const int DEFAULT_PORT = 1234;
 
 static glm::vec3 LastPos = {0, 0, 0};
-static float LastPitch   = 0.0f;
-static float LastYaw     = 0.0f;
 
 struct PlayerChar {
     glm::vec3 Tile     = {0, 0, 0};
@@ -148,7 +146,7 @@ void Network::Update_Players() {
 
 void Network::Render_Players() {
     static Buffer* buffers[6] = {
-        &HeadBuffer, &BodyBuffer, &LeftArmBuffer,
+        &HeadBuffer,     &BodyBuffer,    &LeftArmBuffer,
         &RightArmBuffer, &LeftLegBuffer, &RightLegBuffer
     };
 

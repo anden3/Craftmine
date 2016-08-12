@@ -142,7 +142,7 @@ std::vector<World> Worlds::Get_Worlds() {
     while ((worldEnt = readdir(worldDir)) != nullptr) {
         std::string dirName(worldEnt->d_name);
 
-        if (dirName == "." || dirName == "..") {
+        if (dirName == "." || dirName == ".." || dirName == ".DS_Store") {
             continue;
         }
 

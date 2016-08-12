@@ -145,6 +145,10 @@ void Player::Init_Sounds() {
     while ((ent = readdir(dir)) != nullptr) {
         std::string name(ent->d_name);
 
+        if (name == ".DS_Store") {
+            continue;
+        }
+
         if (name.find('_') != std::string::npos) {
             Sounds[name.substr(0, name.find('_'))].push_back(
                 Sound(name.substr(0, name.find('.')))
@@ -398,8 +402,6 @@ void Player::Update(bool update) {
     Check_Pickup();
 
     if (LookingAtBlock && ChunkMap.count(LookingChunk)) {
-        Chunk* lookingChunk = ChunkMap[LookingChunk];
-
         if (MouseDown) {
             if (Creative) {
                 Break_Block(Get_World_Pos(LookingChunk, LookingTile));
@@ -898,7 +900,7 @@ void Player::Break_Block(glm::vec3 pos, bool external) {
 
     ChunkMap[chunk]->Remove_Block(tile);
 
-    if (Multiplayer) {
+    if (Multiplayer && !external) {
         Request_Handler("blockBreak", true);
     }
 
@@ -1043,14 +1045,12 @@ void Player::Request_Handler(std::string packet, bool sending) {
             std::tie(chunk, tile) = Get_Chunk_Pos(pos);
 
             int type = data["type"][0];
-            int typeData = data["type"][0];
+            int typeData = data["type"][1];
 
             const Block* block = Blocks::Get_Block(type, typeData);
 
             if (Exists(chunk)) {
-                ChunkMap[LookingAirChunk]->Add_Block(
-                    LookingAirTile, CurrentBlock, CurrentBlockData
-                );
+                ChunkMap[chunk]->Add_Block(tile, type, typeData);
 
                 if (block->Luminosity > 0) {
                     ChunkMap[chunk]->Set_Light(tile, block->Luminosity);

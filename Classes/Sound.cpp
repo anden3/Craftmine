@@ -2,6 +2,15 @@
 
 #include <iostream>
 
+#ifdef __APPLE__
+
+int fopen_s(FILE** file, const char* path, const char* mode) {
+    *file = fopen(path, mode);
+    return file == nullptr;
+}
+
+#endif
+
 const int MAX_SOUND_BUFFER_SIZE = 10240;
 static char SOUND_BUFFER[MAX_SOUND_BUFFER_SIZE]; // 10 KiB
 

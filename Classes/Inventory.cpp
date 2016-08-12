@@ -467,8 +467,6 @@ void Check_Crafting() {
 }
 
 void Craft_Item() {
-    int index = 0;
-
     for (auto &slot : Craft) {
         if (slot->Contents.Type) {
             slot->Contents.Size -= 1;

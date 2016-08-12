@@ -4,15 +4,17 @@ source=Block_Scripts.cpp
 : > ${header}
 : > ${source}
 
-echo -e "#pragma once\n" >> ${header}
+echo "#pragma once\n" >> ${header}
 
 echo "#include <map>" >> ${header}
 echo "#include <string>" >> ${header}
 echo "#include <functional>" >> ${header}
 
-echo -e "\nextern std::map<std::string, std::function<void()>> BlockFunctions;" >> ${header}
+echo "\nextern std::map<std::string, std::function<void()>> BlockFunctions;" >> ${header}
 
-echo -e "#include \"Block_Scripts.h\"\n" >> ${source}
+echo "\nvoid Init_Block_Scripts();" >> ${header}
+
+echo "#include \"Block_Scripts.h\"\n" >> ${source}
 
 for f in *.h; do
     if [ $f != $header ]; then
@@ -20,11 +22,21 @@ for f in *.h; do
     fi
 done
 
-echo -e "\nstd::map<std::string, std::function<void()>> BlockFunctions = {" >> ${source}
+echo "\nstd::map<std::string, std::function<void()>> BlockFunctions = {" >> ${source}
 
 for f in *.h; do
     if [ $f != $header ]; then
-        echo -e "\t{\"$(basename "$f" .h)\", $(basename "$f" .h)::Right_Click}," >> ${source}
+        echo "\t{\"$(basename "$f" .h)\", $(basename "$f" .h)::Right_Click}," >> ${source}
+    fi
+done
+
+echo "};" >> ${source}
+
+echo "void Init_Block_Scripts() {" >> ${source}
+
+for f in *.h; do
+    if [ $f != $header ]; then
+        echo "\t$(basename $f .h)::Init();" >> ${source}
     fi
 done
 

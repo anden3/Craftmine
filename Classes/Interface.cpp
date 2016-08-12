@@ -273,15 +273,12 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
 void Take_Screenshot() {
     std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
+    std::tm* tm = std::localtime(&t);
     std::stringstream ss;
 
-    ss << std::put_time(&tm, "%F %T");
+    ss << std::put_time(tm, "%F %H-%M-%S");
     std::string fileName = "Screenshots/" + ss.str() + ".bmp";
-
-    SOIL_save_screenshot(
-        fileName.c_str(), SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
-    );
+    SOIL_save_screenshot(fileName.c_str(), SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
 void TextElement::Create(std::string name, std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {

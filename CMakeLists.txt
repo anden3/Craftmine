@@ -26,15 +26,15 @@ set (SOURCES
 file (GLOB BLOCK_SCRIPTS "BlockScripts/*.cpp")
 list (APPEND SOURCES ${BLOCK_SCRIPTS})
 
-set (LIBRARIES enet freeimage freetype glew glfw3 icuuc noise OpenAL32 opengl32 SOIL vorbisfile)
+set (LIBRARIES optimized enet debug enet_debug FreeImage freetype glew glfw3 icuuc noise ogg SOIL vorbis vorbisfile)
 
 if (WIN32)
-	set (CMAKE_EXE_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
-	set (CMAKE_MODULE_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
-	set (CMAKE_SHARED_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
-	set (CMAKE_STATIC_LINKER_FLAGS "/MACHINE:X64 /ignore:4099")
+	set (CMAKE_EXE_LINKER_FLAGS "/MACHINE:X64")
+	set (CMAKE_MODULE_LINKER_FLAGS "/MACHINE:X64")
+	set (CMAKE_SHARED_LINKER_FLAGS "/MACHINE:X64")
+	set (CMAKE_STATIC_LINKER_FLAGS "/MACHINE:X64")
 
-	list(APPEND LIBRARIES winmm ws2_32)
+	list(APPEND LIBRARIES OpenAL32 opengl32 winmm ws2_32)
     set (LIBRARY_DIRS F:/lib F:/lib/boost)
     set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
 
@@ -47,7 +47,17 @@ if (WIN32)
 
 elseif (APPLE)
     set (INCLUDE_DIRS ${SOURCE_PATH} /usr/local/include /usr/local/include/freetype2)
-    set (LIBRARY_DIRS /usr/local/lib /usr/local/boost)
+    set (LIBRARY_DIRS /usr/local/lib)
+
+    find_library(OPENGL_LIB OpenGL)
+    find_library(OPENAL_LIB OpenAL)
+    find_library(BOOST_SYSTEM boost_system)
+    find_library(BOOST_FILESYSTEM boost_filesystem)
+
+    list (APPEND LIBRARIES
+        ${OPENGL_LIB} ${OPENAL_LIB}
+        ${BOOST_SYSTEM} ${BOOST_FILESYSTEM}
+    )
 
     execute_process(
         COMMAND BlockScripts/Load_Scripts.sh
@@ -55,6 +65,7 @@ elseif (APPLE)
     )
 endif()
 
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_LIST_DIR})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_LIST_DIR})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_LIST_DIR})
@@ -63,12 +74,10 @@ include_directories(${INCLUDE_DIRS})
 link_directories(${LIBRARY_DIRS})
 add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.cpp)
 
-set_target_properties(Craftmine PROPERTIES
-    LINKER_LANGUAGE CXX
-)
+set_target_properties(Craftmine PROPERTIES LINKER_LANGUAGE CXX)
 
 if (APPLE)
-    target_compile_options(Craftmine PUBLIC -arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies -O0 -g)
+    target_compile_options(Craftmine PUBLIC -arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies -O0 -g -Wall)
 endif()
 
 target_link_libraries(Craftmine ${LIBRARIES})

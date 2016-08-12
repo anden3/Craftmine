@@ -67,9 +67,9 @@ bool ToggleWireframe = false;
 std::atomic_flag ChunkMapBusy = ATOMIC_FLAG_INIT;
 
 static bool WindowFocused = true;
+static bool TakeScreenshot = false;
 static bool WindowMinimized = false;
 
-static double LastNetworkUpdate = 0.0;
 static double LastNetworkPositionUpdate = 0.0;
 
 // Initializing objects.
@@ -99,9 +99,9 @@ int VSYNC = 1;
 
 // Defining shaders.
 Shader* shader = nullptr;
+Shader* mobShader = nullptr;
 Shader* modelShader = nullptr;
 Shader* outlineShader = nullptr;
-Shader* mobShader = nullptr;
 
 static Time T("Timer");
 
@@ -211,7 +211,8 @@ int main() {
 
         UI::Draw();
 
-        if (keys[GLFW_KEY_L]) {
+        if (TakeScreenshot) {
+            TakeScreenshot = false;
             Take_Screenshot();
         }
 
@@ -565,6 +566,10 @@ void Background_Thread() {
 #endif
 
 void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_L && action == GLFW_PRESS) {
+        TakeScreenshot = true;
+    }
+
     if (GamePaused) {
         UI::Key_Handler(key, action);
     }
