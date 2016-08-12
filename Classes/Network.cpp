@@ -182,7 +182,7 @@ void Network::Render_Players() {
         {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}, {0.25, 0.75, 0.25}
     };
 
-    for (auto const &player : Players) {
+    for (auto &player : Players) {
         const PlayerChar &p = player.second;
 
         if (!Exists(p.Chunk) || !ChunkMap[p.Chunk]->Visible) {
@@ -195,7 +195,7 @@ void Network::Render_Players() {
             glm::mat4 model;
             float angle = p.MovementAngle;
 
-            if (i == 3 && p.Keys.at(GLFW_MOUSE_BUTTON_LEFT)) {
+            if (i == 3 && p.Keys[GLFW_MOUSE_BUTTON_LEFT]) {
                 angle = p.PunchingAngle + p.Pitch;
             }
 
@@ -233,7 +233,7 @@ void Update_Player(PlayerChar &p) {
     Move_Player(p);
     Check_Player_Pickup(p);
 
-    if (p.Keys.at(GLFW_MOUSE_BUTTON_LEFT)) {
+    if (p.Keys[GLFW_MOUSE_BUTTON_LEFT]) {
         p.PunchingAngle += static_cast<float>(DeltaTime) * p.PunchingAngleDirection;
 
         if (p.PunchingAngle >= PUNCHING_ANGLE_END && p.PunchingAngleDirection > 0) {
