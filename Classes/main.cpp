@@ -246,6 +246,8 @@ void Parse_Config() {
     std::ifstream file(CONFIG_FILE);
 
     if (!file.good()) {
+        file.close();
+        Write_Config();
         return;
     }
 

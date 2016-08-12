@@ -366,11 +366,6 @@ void Chunk::Generate() {
         ContainsChangedBlocks = true;
     }
 
-    bool underground = Position.y < -3;
-    double densityThreshold = underground ?
-                              NOISE_DENSITY_CAVE :
-                              NOISE_DENSITY_BLOCK;
-
     if (Position.y == 3) {
         TopBlocks[topPos].clear();
     }

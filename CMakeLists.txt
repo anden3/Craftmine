@@ -77,7 +77,10 @@ add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.cpp)
 set_target_properties(Craftmine PROPERTIES LINKER_LANGUAGE CXX)
 
 if (APPLE)
-    target_compile_options(Craftmine PUBLIC -arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies -O0 -g -Wall)
+    target_compile_options(Craftmine PUBLIC
+        -arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies -O0 -g -Wall
+        -Wno-missing-braces
+    )
 endif()
 
 target_link_libraries(Craftmine ${LIBRARIES})

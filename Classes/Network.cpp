@@ -92,6 +92,7 @@ void Network::Update(unsigned int timeout) {
         else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
             std::string data(reinterpret_cast<char*>(event.packet->data));
             nlohmann::json j = nlohmann::json::parse(data);
+            std::string eventType = j["event"];
 
             PlayerChar* p;
 
@@ -99,7 +100,16 @@ void Network::Update(unsigned int timeout) {
                 p = &Players[j["player"]];
             }
 
-            if (j["event"] == "key") {
+            if (eventType == "connect") {
+                Chat::Write("&a" + j["player"].get<std::string>() + " has connected.");
+            }
+
+            else if (eventType == "disconnect") {
+                Chat::Write("&c" + j["player"].get<std::string>() + " has disconnected.");
+                Players.erase(j["player"].get<std::string>());
+            }
+
+            else if (eventType == "key") {
                 int key = j["key"];
                 int keyState = j["state"];
 
@@ -116,14 +126,14 @@ void Network::Update(unsigned int timeout) {
                 }
             }
 
-            else if (j["event"] == "look") {
+            else if (eventType == "look") {
                 p->Yaw = j["yaw"];
                 p->Pitch = j["pitch"];
 
                 Calculate_View_Vectors(*p);
             }
 
-            else if (j["event"] == "position") {
+            else if (eventType == "position") {
                 p->Position = {
                     j["pos"][0], j["pos"][1], j["pos"][2]
                 };
