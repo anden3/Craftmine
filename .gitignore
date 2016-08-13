@@ -10,5 +10,6 @@ Craftmine.exe
 Craftmine.ilk
 Craftmine.pdb
 Makefile
+servers.json
 
 *.dll

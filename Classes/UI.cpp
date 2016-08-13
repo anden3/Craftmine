@@ -10,7 +10,9 @@
 #include "Interface.h"
 #include "Inventory.h"
 
+#include <fstream>
 #include <numeric>
+#include <iostream>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -45,6 +47,7 @@ void Init_World_Select();
 void Init_Server_Screen();
 
 void Create_World_List();
+void Create_Server_List();
 
 void Toggle_Debug();
 void Toggle_Inventory();
@@ -68,7 +71,9 @@ void Create_World(void* caller);
 void Load_World(void* caller);
 void Delete_World(void* caller);
 
-void Connect_To_Server(void* caller);
+void Add_Server(void* caller);
+void Load_Server(void* caller);
+void Delete_Server(void* caller);
 
 void UI::Init() {
     Interface::Init();
@@ -358,14 +363,14 @@ void Init_World_Select() {
 }
 
 void Create_World_List() {
-    float worldStartY = 800;
-    float worldSpacing = 100;
+    static float worldStartY = 800;
+    static float worldSpacing = 100;
 
-    float worldXPos = Scale_X(520);
-    glm::vec2 worldSize(Scale(350, 40));
+    static float worldXPos = Scale_X(520);
+    static glm::vec2 worldSize(Scale(350, 40));
 
-    float deleteButtonXPos = Scale_X(880);
-    glm::vec2 deleteButtonSize(Scale(40, 40));
+    static float deleteButtonXPos = Scale_X(880);
+    static glm::vec2 deleteButtonSize(Scale(40, 40));
 
     Interface::Set_Document("worlds");
         for (auto const &world : Worlds::Get_Worlds()) {
@@ -388,16 +393,20 @@ void Create_World_List() {
 void Init_Server_Screen() {
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    glm::vec2 nameLabelPos(Scale(570, 640));
-    glm::vec4 nameDims(Scale(570, 600), Scale(300, 35));
+    glm::vec2 nameLabelPos(Scale(100, 840));
+    glm::vec4 nameDims(Scale(100, 800), Scale(200, 35));
 
-    glm::vec2 ipLabelPos(Scale(570, 540));
-    glm::vec4 ipDims(Scale(570, 500), Scale(300, 35));
+    glm::vec2 serverNamePos(Scale(100, 740));
+    glm::vec4 serverNameDims(Scale(100, 700), Scale(200, 35));
 
-    glm::vec2 errMsgPos(Scale(570, 440));
+    glm::vec2 ipLabelPos(Scale(100, 640));
+    glm::vec4 ipDims(Scale(100, 600), Scale(200, 35));
+
+    glm::vec4 addServerDims(Scale(100, 500), Scale(200, 40));
+
+    glm::vec2 errMsgPos(Scale(50, 570));
     float errMsgWidth = Scale_X(300);
 
-    glm::vec4 connectDims(Scale(620, 300), Scale(200, 40));
     glm::vec4 backDims(Scale(620, 200), Scale(200, 40));
 
     Interface::Set_Document("servers");
@@ -408,14 +417,63 @@ void Init_Server_Screen() {
         Interface::Add_Text("nameLabel", "User Name", nameLabelPos);
         Interface::Add_Text_Box("name", nameDims);
 
+        Interface::Add_Text("serverNameLabel", "Server Name", serverNamePos);
+        Interface::Add_Text_Box("serverName", serverNameDims);
+
         Interface::Add_Text("ipLabel", "Server Address", ipLabelPos);
         Interface::Add_Text_Box("ip", ipDims);
+
+        Interface::Add_Button("addServer", "Add", addServerDims, Add_Server);
 
         Interface::Add_Text("errMsg", "", errMsgPos);
         Interface::Get_Text_Element("errMsg")->Center(errMsgPos, errMsgWidth, glm::bvec2(true, false));
 
-        Interface::Add_Button("connectToServer", "Connect", connectDims, Connect_To_Server);
         Interface::Add_Button("back", "Back", backDims, Toggle_Server_Screen);
+    Interface::Set_Document("");
+    
+    Create_Server_List();
+}
+
+void Create_Server_List() {
+    static float serverStartY = 800;
+    static float serverSpacing = 100;
+
+    static float serverXPos = Scale_X(520);
+    static glm::vec2 serverSize(Scale(350, 40));
+
+    static float deleteButtonXPos = Scale_X(880);
+    static glm::vec2 deleteButtonSize(Scale(40, 40));
+    
+    std::fstream serverFile("servers.json");
+    bool fileExists = serverFile.is_open();
+    serverFile.close();
+    
+    if (!fileExists) {
+        return;
+    }
+    
+    nlohmann::json json;
+    serverFile.open("servers.json", std::ifstream::in);
+    json << serverFile;
+    serverFile.close();
+
+    Interface::Set_Document("servers");
+        for (auto it = json.begin(); it != json.end(); ++it) {
+            std::string serverName = it.key();
+            
+            Interface::Delete_Button(serverName);
+            Interface::Delete_Button("remove_" + serverName);
+            
+            Interface::Add_Button(
+                serverName, serverName, glm::vec4(serverXPos, Scale_Y(serverStartY), serverSize), Load_Server
+            );
+
+            Interface::Add_Button(
+                "remove_" + serverName, "X", glm::vec4(deleteButtonXPos, Scale_Y(serverStartY), deleteButtonSize), Delete_Server
+            );
+
+            serverStartY -= serverSpacing;
+        }
     Interface::Set_Document("");
 }
 
@@ -640,21 +698,163 @@ void Delete_World(void* caller) {
     Create_World_List();
 }
 
-void Connect_To_Server(void* caller) {
+void Add_Server(void* caller) {
     Interface::Set_Document("servers");
-        TextElement* errMsg = Interface::Get_Text_Element("errMsg");
-        std::string  name   = Interface::Get_Text_Box("name")->Text;
-        std::string  ip     = Interface::Get_Text_Box("ip")->Text;
+        TextElement* errMsg     = Interface::Get_Text_Element("errMsg");
+        TextBox*     serverName = Interface::Get_Text_Box("serverName");
+        TextBox*     username   = Interface::Get_Text_Box("name");
+        TextBox*     ipEl       = Interface::Get_Text_Box("ip");
     Interface::Set_Document("");
+    
+    std::string host = ipEl->Text;
+    
+    if (username->Text == "") {
+        errMsg->Set_Text("&cError! &fPlease input a user name.");
+        return;
+    }
+    
+    if (serverName->Text == "") {
+        errMsg->Set_Text("&cError! &fPlease input a server name.");
+        return;
+    }
+    
+    if (host == "") {
+        errMsg->Set_Text("&cError! &fPlease input an IP address.");
+        return;
+    }
 
-    PLAYER_NAME = name;
+    if (std::count(host.begin(), host.end(), '.') != 3) {
+        errMsg->Set_Text("&cError! &fInvalid IP address.");
+        return;
+    }
+    
+    std::string ip;
+    unsigned short port;
 
-    std::string connectionStatus = Network::Connect(name, ip);
-    errMsg->Set_Text(connectionStatus);
+    if (host.find(':') == std::string::npos || host.find(':') == host.length() - 1) {
+        if (ip.find(':') != std::string::npos) {
+            ip = host.substr(0, host.length() - 1);
+        }
+        else {
+            ip = host;
+        }
+    }
+    else {
+        try {
+            port = static_cast<unsigned short>(std::stoi(host.substr(host.find(':') + 1)));
+            ip = host.substr(0, host.find(':'));
+        }
+        catch (...) {
+            errMsg->Set_Text("&cError! &fInvalid port.");
+            return;
+        }
+    }
+    
+    auto ipParts = Split(ip, '.');
+    
+    if (ipParts.size() < 4) {
+        errMsg->Set_Text("&cError! &fMissing IP value.");
+        return;
+    }
+    else if (ipParts.size() > 4) {
+        errMsg->Set_Text("&cError! &Too many IP values.");
+        return;
+    }
 
-    if (connectionStatus == "") {
+    for (std::string const &part : ipParts) {
+        if (part.length() > 1 && part.front() == '0') {
+            errMsg->Set_Text("&cError! &fPlease remove leading zeroes from IP values.");
+            return;
+        }
+
+        try {
+            int partNum = std::stoi(part);
+
+            if (partNum > 255) {
+                errMsg->Set_Text("&cError! &fIP value out of range. Value &6" + part + " &fis out of range (&60 &f- &6255&f).");
+                return;
+            }
+        }
+        catch (const std::invalid_argument) {
+            errMsg->Set_Text("&cError! &fNon-numeric characters in IP.");
+            return;
+        }
+    }
+
+    nlohmann::json servers;
+    std::fstream serverFile("servers.json");
+
+    bool fileExists = serverFile.is_open();
+    
+    if (fileExists) {
+        serverFile.close();
+
+        serverFile.open("servers.json", std::ifstream::in);
+        servers << serverFile;
+        serverFile.close();
+    }
+    else {
+        serverFile.open("servers.json", std::ifstream::out | std::ifstream::trunc);
+    }
+
+    servers[serverName->Text] = {{"username", username->Text}, {"ip", host}};
+
+    serverName->Clear();
+    username->Clear();
+    ipEl->Clear();
+
+    if (fileExists) {
+        serverFile.open("servers.json", std::ifstream::out | std::ifstream::trunc);
+    }
+
+    servers >> serverFile;
+    serverFile.close();
+    
+    Create_Server_List();
+}
+
+void Load_Server(void* caller) {
+    nlohmann::json json;
+    std::ifstream file("servers.json");
+    json << file;
+    file.close();
+    
+    std::string serverName = static_cast<Button*>(caller)->Name;
+    std::string serverIP = json[serverName]["ip"];
+    
+    PLAYER_NAME = json[serverName]["username"];
+
+    if (Network::Connect(PLAYER_NAME, serverIP)) {
         Multiplayer = true;
     }
+    else {
+        Interface::Set_Document("servers");
+        Interface::Get_Text_Element("errMsg")->Set_Text("&cError! &fCould not connect to server!");
+        Interface::Set_Document("");
+    }
+}
+
+void Delete_Server(void* caller) {
+    // Remove remove_ prefix.
+    std::string serverName = static_cast<Button*>(caller)->Name.substr(7);
+
+    Interface::Set_Document("servers");
+        Interface::Delete_Button(serverName);
+        Interface::Delete_Button("remove_" + serverName);
+    Interface::Set_Document("");
+
+    nlohmann::json json;
+    std::ifstream file("servers.json");
+    json << file;
+    file.close();
+    
+    json.erase(serverName);
+    
+    std::ofstream outFile("servers.json");
+    json >> outFile;
+    outFile.close();
+    
+    Create_Server_List();
 }
 
 #ifdef __clang__

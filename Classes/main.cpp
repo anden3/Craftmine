@@ -568,10 +568,6 @@ void Background_Thread() {
 #endif
 
 void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_L && action == GLFW_PRESS) {
-        TakeScreenshot = true;
-    }
-
     if (GamePaused) {
         UI::Key_Handler(key, action);
     }
@@ -580,6 +576,10 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
             player.Clear_Keys();
         }
         else {
+            if (key == GLFW_KEY_L && action == GLFW_PRESS) {
+                TakeScreenshot = true;
+            }
+
             UI::Key_Handler(key, action);
             player.Key_Handler(key, action);
 
@@ -588,7 +588,7 @@ void Key_Proxy(GLFWwindow* window, int key, int scancode, int action, int mods) 
             }
         }
 
-        if (action == GLFW_PRESS) {
+        if (action != GLFW_RELEASE) {
             Chat::Key_Handler(key);
         }
     }

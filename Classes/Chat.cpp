@@ -265,7 +265,7 @@ void Update_Message() {
     TextElement* cursor = Interface::Get_Text_Element("cursor");
 
     message->Text = NewMessage;
-    cursor->X = static_cast<int>(chatDims.x + Interface::Get_String_Width(NewMessage.substr(0, CursorPos)));
+    cursor->X = std::floor(chatDims.x + Interface::Get_String_Width(NewMessage.substr(0, CursorPos)));
     message->Mesh();
 
     Interface::Set_Document("");
@@ -275,7 +275,7 @@ void Move_Up(int spacing) {
     Interface::Set_Document("chat");
 
     for (auto &message : Messages) {
-        message.second.Y += spacing;
+        message.second.Y += static_cast<float>(spacing);
         TextElement* text = Interface::Get_Text_Element(std::to_string(message.first));
         text->Y = message.second.Y;
 
