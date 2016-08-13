@@ -453,17 +453,12 @@ void Network::Send_Look_Event() {
 bool Network::Connect(std::string name, std::string host) {
     ClientName = name;
 
-    std::string ip;
-    unsigned short port;
+    std::string    ip   = host;
+    unsigned short port = DEFAULT_PORT;
 
     if (host.find(':') == std::string::npos || host.find(':') == host.length() - 1) {
-        port = DEFAULT_PORT;
-
         if (ip.find(':') != std::string::npos) {
             ip = host.substr(0, host.length() - 1);
-        }
-        else {
-            ip = host;
         }
     }
     else {
