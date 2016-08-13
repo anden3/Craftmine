@@ -46,7 +46,7 @@ struct PlayerChar {
     float Yaw   = 0.0f;
 
     float MovementAngle = 0.0f;
-    float PunchingAngle = 0.0f;
+    float PunchingAngle = 105.0f;
 
     float PunchingAngleDirection = 200;
     float MovementAngleDirection = 5000;
@@ -183,7 +183,7 @@ void Network::Render_Players() {
     };
 
     for (auto &player : Players) {
-        const PlayerChar &p = player.second;
+        PlayerChar &p = player.second;
 
         if (!Exists(p.Chunk) || !ChunkMap[p.Chunk]->Visible) {
             continue;

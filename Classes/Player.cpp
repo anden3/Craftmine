@@ -1081,7 +1081,7 @@ void Player::Request_Handler(std::string packet, bool sending) {
         }
 
         else if (data["event"] == "message") {
-            Chat::Write(data["player"].get<std::string>() + ": " + data["message"].get<std::string>());
+            Chat::Write("&b" + data["player"].get<std::string>() + "&f: " + data["message"].get<std::string>());
         }
 
         else if (data["event"] == "config") {

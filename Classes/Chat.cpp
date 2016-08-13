@@ -48,7 +48,7 @@ void Get_Next();
 
 void Toggle_Cursor(float opacity = -1.0f);
 void Update_Message();
-void Move_Up(float spacing);
+void Move_Up(int spacing);
 void Submit();
 
 std::vector<std::string> Process_Commands(std::string message);
@@ -78,10 +78,10 @@ void Chat::Write(std::string text) {
     int index = 1;
 
     for (auto const &string : strings) {
-        Move_Up((index++ == 1) ? 30.0f : 20.0f);
+        Move_Up((index++ == 1) ? 30 : 20);
 
         ++MessageCount;
-        Messages.emplace(MessageCount, Message(MessageCount, chatDims.y, string, MESSAGE_TIME));
+        Messages.emplace(MessageCount, Message(MessageCount, std::floor(chatDims.y), string, MESSAGE_TIME));
 
         Interface::Set_Document("chat");
         Interface::Add_Text(std::to_string(MessageCount), string, chatDims.xy());
@@ -172,7 +172,7 @@ void Chat::Scroll(int direction) {
             return;
         }
 
-        float offset = -SCROLL_AMOUNT * direction;
+        int offset = static_cast<int>(-SCROLL_AMOUNT * direction);
 
         if (Messages[MessageCount].Y + offset > chatDims.y + chatPad.y) {
             return;
@@ -230,7 +230,7 @@ void Submit() {
         }
     }
     else {
-        Chat::Write("&4" + std::string(PLAYER_NAME) + ": &f" + NewMessage);
+        Chat::Write("&b" + std::string(PLAYER_NAME) + "&f: " + NewMessage);
     }
 
     if (Multiplayer) {
@@ -265,13 +265,13 @@ void Update_Message() {
     TextElement* cursor = Interface::Get_Text_Element("cursor");
 
     message->Text = NewMessage;
-    cursor->X = chatDims.x + Interface::Get_String_Width(NewMessage.substr(0, CursorPos));
+    cursor->X = static_cast<int>(chatDims.x + Interface::Get_String_Width(NewMessage.substr(0, CursorPos)));
     message->Mesh();
 
     Interface::Set_Document("");
 }
 
-void Move_Up(float spacing) {
+void Move_Up(int spacing) {
     Interface::Set_Document("chat");
 
     for (auto &message : Messages) {
@@ -384,7 +384,8 @@ std::vector<std::string> Process_Commands(std::string message) {
             "&a/clear&f: Clears the player's inventory.",
             "&a/gamemode&f <&2MODE&f>: Sets the player's gamemode to &6Creative&f \
                 if &2MODE&f is &5'c'&f, or &6Survival&f if &2MODE&f is &5's'&f.",
-            "&a/pos&f: Displays player's position, current chunk, and current tile."
+            "&a/pos&f: Displays player's position, current chunk, and current tile.",
+            "&a/seed&f: Returns the seed of the current world."
         };
     }
 
@@ -491,7 +492,7 @@ std::vector<std::string> Process_Commands(std::string message) {
                 std::string(((parameters[1] == "c") ? "Creative&f." : "Survival&f."))};
         }
 
-        return std::vector<std::string> {"&4Error! %fInvalid gamemode."};
+        return std::vector<std::string> {"&4Error! &fInvalid gamemode."};
     }
 
     else if (command == "pos") {
@@ -500,6 +501,10 @@ std::vector<std::string> Process_Commands(std::string message) {
             "Chunk: " + Format_Vector(player.CurrentChunk),
             "Tile: " + Format_Vector(player.CurrentTile)
         };
+    }
+
+    else if (command == "seed") {
+        return std::vector<std::string> {"The seed is: &3" + std::to_string(WORLD_SEED) + "&f."};
     }
 
     return std::vector<std::string> {"&4Error! &fCommand not recognized."};
