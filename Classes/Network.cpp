@@ -450,23 +450,11 @@ void Network::Send_Look_Event() {
     Send(data.dump());
 }
 
-std::string Network::Connect(std::string name, std::string host) {
-    if (name == "") {
-        return "&cError! &fPlease input a user name.";
-    }
-
+bool Network::Connect(std::string name, std::string host) {
     ClientName = name;
 
     std::string    ip   = host;
     unsigned short port = DEFAULT_PORT;
-
-    if (host == "") {
-        return "&cError! &fPlease input an IP address.";
-    }
-
-    if (std::count(host.begin(), host.end(), '.') != 3) {
-        return "&cError! &fInvalid IP address.";
-    }
 
     if (host.find(':') == std::string::npos || host.find(':') == host.length() - 1) {
         if (ip.find(':') != std::string::npos) {
@@ -474,34 +462,8 @@ std::string Network::Connect(std::string name, std::string host) {
         }
     }
     else {
-        try {
-            port = static_cast<unsigned short>(std::stoi(host.substr(host.find(':') + 1)));
-            ip = host.substr(0, host.find(':'));
-        }
-        catch (...) {
-            return "&cError! &fInvalid port.";
-        }
-    }
-
-    for (std::string const &part : Split(ip, '.')) {
-        if (part == "") {
-            return "&cError! &fMissing IP value.";
-        }
-
-        if (part.length() > 1 && part.front() == '0') {
-            return "&cError! &fPlease remove leading zeroes from IP values.";
-        }
-
-        try {
-            int partNum = std::stoi(part);
-
-            if (partNum > 255) {
-                return "&cError! &fIP value out of range. Value &6" + part + " &fis out of range (&60 &f- &6255&f).";
-            }
-        }
-        catch (const std::invalid_argument) {
-            return "&cError! &fNon-numeric characters in IP.";
-        }
+        port = static_cast<unsigned short>(std::stoi(host.substr(host.find(':') + 1)));
+        ip = host.substr(0, host.find(':'));
     }
 
     ENetEvent event;
@@ -517,10 +479,10 @@ std::string Network::Connect(std::string name, std::string host) {
         j["name"] = ClientName;
         Send(j.dump());
 
-        return "";
+        return true;
     }
 
-    return "&cError! &fCould not connect to server!";
+    return false;
 }
 
 void Network::Disconnect() {

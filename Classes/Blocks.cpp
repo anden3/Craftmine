@@ -71,14 +71,9 @@ bool Case_Insensitive_Cmp(const std::string &a, const std::string &b) {
 }
 
 static nlohmann::json Parse_JSON(std::string path) {
-    std::stringstream file_content;
     nlohmann::json json;
-
     std::ifstream file(path);
-    file_content << file.rdbuf();
-    file.close();
-
-    json << file_content;
+    json << file;
     return json;
 }
 

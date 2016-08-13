@@ -16,7 +16,7 @@ namespace Network {
     void Send_Key_Event(int key, int action);
     void Send_Look_Event();
 
-    std::string Connect(std::string name, std::string host);
+    bool Connect(std::string name, std::string host);
     void Disconnect();
 
     void Send(std::string message, unsigned char channel = 0);
