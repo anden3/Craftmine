@@ -78,9 +78,6 @@ const float PLAYER_WIDTH           = 0.1f;
 const float CAMERA_HEIGHT          = 1.7f;
 const float JUMP_HEIGHT            = 0.1f;
 
-// The file to load settings from.
-const char CONFIG_FILE[] = "config.conf";
-
 // Vertex coordinates for a 3D-block.
 // Side order is: Left - Right - Down - Up - Back - Front.
 const glm::vec3 vertices[6][6] = {
@@ -131,9 +128,9 @@ enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 // Else, it's set to the resolution of the primary monitor.
 extern int SCREEN_WIDTH, SCREEN_HEIGHT;
 
-extern int VSYNC;
-extern int FULLSCREEN;
-extern int AMBIENT_OCCLUSION;
+extern bool VSYNC;
+extern bool FULLSCREEN;
+extern bool AMBIENT_OCCLUSION;
 
 // The radius (in chunks) around the player to render.
 extern int RENDER_DISTANCE;

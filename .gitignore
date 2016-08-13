@@ -4,11 +4,12 @@ CMakeFiles/
 Screenshots/
 Worlds/*
 
-config.conf
 Craftmine
 Craftmine.exe
 Craftmine.ilk
 Craftmine.pdb
 Makefile
+servers.json
+settings.json
 
 *.dll

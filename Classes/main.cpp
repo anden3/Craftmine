@@ -90,12 +90,13 @@ GLFWwindow* Window = nullptr;
 std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 // Defining options.
-int AMBIENT_OCCLUSION = 0;
+bool AMBIENT_OCCLUSION = false;
+bool FULLSCREEN        = false;
+bool VSYNC             = true;
+
 int RENDER_DISTANCE = 4;
-int SCREEN_HEIGHT = 1080;
-int SCREEN_WIDTH = 1920;
-int FULLSCREEN = 0;
-int VSYNC = 1;
+int SCREEN_HEIGHT   = 1080;
+int SCREEN_WIDTH    = 1920;
 
 // Defining shaders.
 Shader* shader = nullptr;
@@ -106,13 +107,16 @@ Shader* outlineShader = nullptr;
 static Time T("Timer");
 
 // List of option references.
-static std::map<std::string, int*> Options = {
+static std::map<std::string, bool*> BoolOptions = {
     {"AmbientOcclusion", &AMBIENT_OCCLUSION},
+    {"FullScreen",       &FULLSCREEN},
+    {"VSync",            &VSYNC}
+};
+
+static std::map<std::string, int*> IntOptions = {
     {"RenderDistance", &RENDER_DISTANCE},
-    {"WindowResY", &SCREEN_HEIGHT},
-    {"WindowResX", &SCREEN_WIDTH},
-    {"FullScreen", &FULLSCREEN},
-    {"VSync", &VSYNC}
+    {"WindowResY",     &SCREEN_HEIGHT},
+    {"WindowResX",     &SCREEN_WIDTH}
 };
 
 // Sets settings according to the config file.
@@ -240,42 +244,44 @@ int main() {
 }
 
 void Parse_Config() {
-    std::stringstream file_content;
-
-    // Load the config file, and store it in file_content.
-    std::ifstream file(CONFIG_FILE);
-
+    nlohmann::json config;
+    std::ifstream file("settings.json");
+    
     if (!file.good()) {
         file.close();
         Write_Config();
         return;
     }
-
-    file_content << file.rdbuf();
+    
+    config << file;
     file.close();
-
-    std::string line;
-
-    while (std::getline(file_content, line)) {
-        // Get the position of the key-value divisor.
-        size_t equalPos = line.find('=');
-        std::string key = line.substr(0, equalPos);
-
-        if (key != "") {
-            *Options[key] = std::stoi(line.substr(equalPos + 1));
+    
+    for (auto it = config.begin(); it != config.end(); ++it) {
+        if (it.value().is_boolean()) {
+            *BoolOptions[it.key()] = it.value();
+        }
+        
+        else if (it.value().is_number()) {
+            *IntOptions[it.key()] = it.value();
         }
     }
 }
 
 void Write_Config() {
-    // Open the config file for writing.
-    std::ofstream file(CONFIG_FILE);
-
+    nlohmann::json config;
+    
     // For each option, write it and its value to the file.
-    for (auto const &option : Options) {
-        file << option.first << "=" << *option.second << "\n";
+    for (auto const &option : BoolOptions) {
+        config[option.first] = *option.second;
     }
-
+    
+    for (auto const &option : IntOptions) {
+        config[option.first] = *option.second;
+    }
+    
+    // Open the config file for writing.
+    std::ofstream file("settings.json");
+    file << config;
     file.close();
 }
 
