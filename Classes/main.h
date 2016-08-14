@@ -25,6 +25,7 @@ class Player;
 class Shader;
 class Listener;
 struct GLFWwindow;
+class UniformBuffer;
 
 // Declaring shaders.
 extern Shader* shader;
@@ -37,6 +38,7 @@ extern Camera Cam;
 extern Player player;
 extern Listener listener;
 extern GLFWwindow* Window;
+extern UniformBuffer UBO;
 
 extern std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
@@ -53,6 +55,10 @@ const glm::vec3 AMBIENT_LIGHT = glm::vec3(0.1f);
 
 // The maximum light level of lit blocks.
 const glm::vec3 DIFFUSE_LIGHT = glm::vec3(0.7f);
+
+// The camera drawing limits.
+const float Z_NEAR_LIMIT = 0.04f;
+const float Z_FAR_LIMIT  = 1000.0f;
 
 // The light level of blocks in direct sunlight.
 const int SUN_LIGHT_LEVEL = 15;
@@ -128,12 +134,15 @@ enum Directions {LEFT, RIGHT, DOWN, UP, BACK, FRONT};
 // Else, it's set to the resolution of the primary monitor.
 extern int SCREEN_WIDTH, SCREEN_HEIGHT;
 
+// The radius (in chunks) around the player to render.
+extern int RENDER_DISTANCE;
+
+extern int ANISOTROPIC_FILTERING;
+extern int FOV;
+
 extern bool VSYNC;
 extern bool FULLSCREEN;
 extern bool AMBIENT_OCCLUSION;
-
-// The radius (in chunks) around the player to render.
-extern int RENDER_DISTANCE;
 
 // Used for storing the time difference between the current frame and the last (in seconds).
 extern double DeltaTime;

@@ -23,6 +23,16 @@
     #undef max
 #endif
 
+#ifdef __APPLE__
+
+errno_t localtime_s(std::tm* tm, std::time* time) {
+    tm = std::localtime(time);
+    return tm == nullptr;
+}
+
+#endif
+
+
 std::string Interface::ActiveDocument  = "";
 std::string Interface::HoveringType    = "";
 void*       Interface::HoveringElement = nullptr;
@@ -189,7 +199,7 @@ Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets) {
     return data;
 }
 
-std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
+std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap, float afLevel) {
     std::string path = "Images/" + file;
 
     unsigned int texture;
@@ -201,7 +211,7 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipmap ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, afLevel);
 
     int width, height;
     unsigned char* image = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
@@ -213,7 +223,7 @@ std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap) {
     return std::make_tuple(texture, width, height);
 }
 
-unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap) {
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap, float afLevel) {
     std::string path = "Images/" + file;
 
     unsigned int texture;
@@ -230,7 +240,7 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
     glm::ivec2 subSize(width / subCount.x, height / subCount.y);
 
-    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, afLevel);
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_REPEAT);
@@ -272,11 +282,12 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 }
 
 void Take_Screenshot() {
+    std::tm tm;
     std::time_t t = std::time(nullptr);
-    std::tm* tm = std::localtime(&t);
+    localtime_s(&tm, &t);
     std::stringstream ss;
 
-    ss << std::put_time(tm, "%F %H-%M-%S");
+    ss << std::put_time(&tm, "%F %H-%M-%S");
     std::string fileName = "Screenshots/" + ss.str() + ".bmp";
     SOIL_save_screenshot(fileName.c_str(), SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }

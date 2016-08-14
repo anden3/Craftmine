@@ -357,7 +357,7 @@ void Chunk::Generate_Block(glm::ivec3 pos) {
     Blocks.insert(pos);
 }
 
-void Chunk::Generate() {
+void Chunk::Generate() {    
     glm::vec2 topPos = Position.xz();
     glm::dvec3 positionOffset = static_cast<glm::dvec3>(Position);
     positionOffset *= static_cast<double>(CHUNK_SIZE);

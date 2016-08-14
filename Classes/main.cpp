@@ -12,7 +12,6 @@
 
 #include "UI.h"
 #include "Chat.h"
-#include "Timer.h"
 #include "Sound.h"
 #include "Chunk.h"
 #include "Blocks.h"
@@ -36,7 +35,7 @@
 
 		va_list argptr;
 		va_start(argptr, format);
-		int ret = vsnprintf(str, sizeof(str), format, argptr);
+		int ret = vsnprintf(str, 1024, format, argptr);
 		va_end(argptr);
 
 		OutputDebugStringA(str);
@@ -44,10 +43,6 @@
 		return ret;
 	}
 #endif
-
-// The camera drawing limits.
-const float Z_NEAR_LIMIT = 0.04f;
-const float Z_FAR_LIMIT = 1000.0f;
 
 // Setting default values for variables.
 std::string WORLD_NAME = "";
@@ -77,8 +72,9 @@ Camera Cam = Camera();
 Player player = Player();
 Listener listener = Listener();
 
+UniformBuffer UBO = UniformBuffer();
+
 // Defining buffers.
-static UniformBuffer UBO;
 static Buffer OutlineBuffer;
 
 // The main window which everything is rendered in.
@@ -94,17 +90,17 @@ bool AMBIENT_OCCLUSION = false;
 bool FULLSCREEN        = false;
 bool VSYNC             = true;
 
-int RENDER_DISTANCE = 4;
-int SCREEN_HEIGHT   = 1080;
-int SCREEN_WIDTH    = 1920;
+int FOV                   = 90;
+int SCREEN_HEIGHT         = 1080;
+int SCREEN_WIDTH          = 1920;
+int RENDER_DISTANCE       = 4;
+int ANISOTROPIC_FILTERING = 16;
 
 // Defining shaders.
 Shader* shader = nullptr;
 Shader* mobShader = nullptr;
 Shader* modelShader = nullptr;
 Shader* outlineShader = nullptr;
-
-static Time T("Timer");
 
 // List of option references.
 static std::map<std::string, bool*> BoolOptions = {
@@ -114,9 +110,11 @@ static std::map<std::string, bool*> BoolOptions = {
 };
 
 static std::map<std::string, int*> IntOptions = {
-    {"RenderDistance", &RENDER_DISTANCE},
-    {"WindowResY",     &SCREEN_HEIGHT},
-    {"WindowResX",     &SCREEN_WIDTH}
+    {"AnisotropicFiltering", &ANISOTROPIC_FILTERING},
+    {"RenderDistance",       &RENDER_DISTANCE},
+    {"WindowResY",           &SCREEN_HEIGHT},
+    {"WindowResX",           &SCREEN_WIDTH},
+    {"FOV",                  &FOV}
 };
 
 // Sets settings according to the config file.
@@ -236,8 +234,6 @@ int main() {
     // On shutting down, join the chunk generation thread with the main thread.
     chunkGeneration.join();
 
-    T.Get("all");
-
     // Shut down the graphics library, and return.
     glfwTerminate();
     return 0;
@@ -338,10 +334,10 @@ void Init_GL() {
 
     // Set all the callback functions for events to the appropiate proxy functions.
     glfwSetKeyCallback(Window, Key_Proxy);
-    glfwSetCursorPosCallback(Window, Mouse_Proxy);
-    glfwSetScrollCallback(Window, Scroll_Proxy);
-    glfwSetMouseButtonCallback(Window, Click_Proxy);
     glfwSetCharCallback(Window, Text_Proxy);
+    glfwSetScrollCallback(Window, Scroll_Proxy);
+    glfwSetCursorPosCallback(Window, Mouse_Proxy);
+    glfwSetMouseButtonCallback(Window, Click_Proxy);
     glfwSetWindowIconifyCallback(Window, Window_Minimized);
 
     // Enable Blending, which makes transparency work.
@@ -369,7 +365,7 @@ void Init_Textures() {
 
     // Load the texture atlas into a texture array, with mipmapping enabled,
     // and store it in the active Texture Unit.
-    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16, 32), 4));
+    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16, 32), 4, static_cast<float>(ANISOTROPIC_FILTERING)));
 }
 
 void Init_Shaders() {
@@ -381,14 +377,14 @@ void Init_Shaders() {
 
     // Create the frustrum projection matrix for the camera.
     glm::mat4 projection = glm::perspective(
-        glm::radians(static_cast<float>(Cam.Zoom)),
+        glm::radians(static_cast<float>(FOV)),
         static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT,
         Z_NEAR_LIMIT, Z_FAR_LIMIT
     );
 
     // Create a matrix storage block in the shaders referenced in the last argument.
     UBO.Create("Matrices", 0, 2 * sizeof(glm::mat4),
-        std::vector<Shader*> {shader, outlineShader, modelShader, mobShader}
+        {shader, outlineShader, modelShader, mobShader}
     );
 
     UBO.Upload(1, projection);

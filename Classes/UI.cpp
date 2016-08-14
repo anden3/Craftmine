@@ -17,6 +17,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 const int AVG_UPDATE_RANGE = 10;
 const double UI_UPDATE_FREQUENCY = 1.0;
 
@@ -65,7 +67,10 @@ void Toggle_AO(void* caller);
 void Toggle_VSync(void* caller);
 void Toggle_Wireframe(void* caller);
 void Toggle_Options_Menu(void* caller);
+
+void Change_FOV(void* caller);
 void Change_Render_Distance(void* caller);
+void Change_Anisotropic_Filtering(void* caller);
 
 void Create_World(void* caller);
 void Load_World(void* caller);
@@ -288,11 +293,11 @@ void Init_Title() {
         Interface::Get_Background("menuBg")->Color = glm::vec3(0.2f);
         Interface::Get_Background("menuBg")->Opacity = 1.0f;
 
-        Interface::Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
-        Interface::Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-        Interface::Add_Slider("option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
-        Interface::Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-        Interface::Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
+        Interface::Add_Button("wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+        Interface::Add_Slider("renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
+        Interface::Add_Button("ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
+        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
     Interface::Set_Document("");
 }
 
@@ -303,32 +308,43 @@ void Init_Menu() {
 
     glm::vec4 optionButtonDims(Scale(620, 500), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
-    glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
-    glm::vec4 aoButtonDims(Scale(420, 400), buttonSize);
-    glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
+    glm::vec4 vsyncButtonDims(Scale(400, 500), buttonSize);
+    glm::vec4 aoButtonDims(Scale(400, 400), buttonSize);
+    glm::vec4 wireframeButtonDims(Scale(840, 500), buttonSize);
     glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
+    glm::vec4 afSliderDims(Scale(400, 600), buttonSize);
+    glm::vec4 fovSliderDims(Scale(400, 700), buttonSize);
+    
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
 
     glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
+    glm::vec3 afSliderRange(1, 16, ANISOTROPIC_FILTERING);
+    glm::vec3 fovSliderRange(10, 180, FOV);
 
     Interface::Set_Document("gameMenu");
-
-    Interface::Add_Background("menuBg", bgDims);
-    Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-    Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, Toggle_Title);
+        Interface::Add_Background("menuBg", bgDims);
+        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, Toggle_Title);
+    Interface::Set_Document("");
 
     Interface::Set_Document("options");
-
-    Interface::Add_Background("menuBg", bgDims);
-    Interface::Add_Button("option_vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
-    Interface::Add_Button("option_wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-    Interface::Add_Slider(
-        "option_renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE),
-        renderDistSliderDims, renderDistSliderRange, Change_Render_Distance
-    );
-    Interface::Add_Button("option_ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-    Interface::Add_Button("option_back", "Back", backButtonDims, Toggle_Options_Menu);
-
+        Interface::Add_Background("menuBg", bgDims);
+        Interface::Add_Button("vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
+        Interface::Add_Button("wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
+        Interface::Add_Slider(
+            "renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE),
+            renderDistSliderDims, renderDistSliderRange, Change_Anisotropic_Filtering
+        );
+        Interface::Add_Slider(
+            "fov", "FOV: " + std::to_string(FOV),
+            fovSliderDims, fovSliderRange, Change_FOV
+        );
+        Interface::Add_Slider(
+            "aniso", "Anisotropic Filtering: " + std::to_string(ANISOTROPIC_FILTERING),
+            afSliderDims, afSliderRange, Change_Anisotropic_Filtering
+        );
+        Interface::Add_Button("ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
+        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
     Interface::Set_Document("");
 }
 
@@ -485,6 +501,7 @@ void Init_Debug() {
     Interface::Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
     Interface::Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
     Interface::Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
+    Interface::Add_Text("vertQueue",   "Vertices Loaded: ",                        Scale(30, 730));
 
     Interface::Set_Document("");
 }
@@ -553,18 +570,23 @@ void Toggle_Debug() {
     }
 }
 
-int Get_Loaded() {
+std::tuple<int, int> Get_Loaded() {
     int total = 0;
+    int vertices = 0;
 
     for (auto const &chunk : ChunkMap) {
         total += chunk.second->Meshed;
+        
+        if (chunk.second->Visible) {
+            vertices += chunk.second->buffer.Vertices;
+        }
     }
 
-    return total;
+    return {total, vertices};
 }
 
 void Draw_Debug() {
-    CPU.push_back(int(System::GetCPUUsage()));
+    CPU.push_back(static_cast<int>(System::GetCPUUsage()));
 
     if (CPU.size() > AVG_UPDATE_RANGE) {
         CPU.pop_front();
@@ -582,16 +604,21 @@ void Draw_Debug() {
         }
 
         Interface::Get_Text_Element("cpu")->Set_Text(
-            "CPU: " + std::to_string(int(cpu_sum / AVG_UPDATE_RANGE)) + "%"
+            "CPU: " + std::to_string(static_cast<int>(cpu_sum / AVG_UPDATE_RANGE)) + "%"
         );
         Interface::Get_Text_Element("ram")->Set_Text(
             "RAM: " + System::GetPhysicalMemoryUsage()
         );
     }
+    
+    int loadedChunks, loadedVertices;
+    std::tie(loadedChunks, loadedVertices) = Get_Loaded();
 
     Interface::Get_Text_Element("chunkQueue")->Set_Text(
-        "Chunks Queued: " + std::to_string(static_cast<int>(ChunkMap.size()) - Get_Loaded())
+        "Chunks Queued: " + std::to_string(static_cast<int>(ChunkMap.size()) - loadedChunks)
     );
+    
+    Interface::Get_Text_Element("vertQueue")->Set_Text("Vertices Loaded: " + std::to_string(loadedVertices));
 
     Interface::Set_Document("");
     Interface::Draw_Document("debug");
@@ -630,13 +657,48 @@ void Toggle_Wireframe(void* caller) {
 
 void Change_Render_Distance(void* caller) {
     int value = static_cast<int>(std::ceil(static_cast<Slider*>(caller)->Value));
-
-    if (value != RENDER_DISTANCE) {
-        RENDER_DISTANCE = value;
-        Write_Config();
-
-        player.Queue_Chunks();
+    
+    if (value == RENDER_DISTANCE) {
+        return;
     }
+
+    RENDER_DISTANCE = value;
+    Write_Config();
+
+    player.Queue_Chunks();
+}
+
+void Change_Anisotropic_Filtering(void* caller) {
+    float value = std::ceil(static_cast<Slider*>(caller)->Value);
+    
+    if (value == ANISOTROPIC_FILTERING) {
+        return;
+    }
+    
+    ANISOTROPIC_FILTERING = static_cast<int>(value);
+    Write_Config();
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16, 32), 4, value));
+}
+
+void Change_FOV(void* caller) {
+    float value = std::ceil(static_cast<Slider*>(caller)->Value);
+    
+    if (value == FOV) {
+        return;
+    }
+    
+    FOV = static_cast<int>(value);
+    Write_Config();
+    
+    glm::mat4 projection = glm::perspective(
+        glm::radians(static_cast<float>(FOV)),
+        static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT,
+        Z_NEAR_LIMIT, Z_FAR_LIMIT
+    );
+
+    UBO.Upload(1, projection);
 }
 
 void Create_World(void* caller) {

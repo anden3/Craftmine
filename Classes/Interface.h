@@ -48,8 +48,8 @@ inline Data Get_Tex_Rect(T x1, T x2, T y1, T y2) {
 
 Data Get_3D_Mesh(const Block* block, float x, float y, bool offsets = false);
 
-std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap = false);
-unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap = 0);
+std::tuple<unsigned int, int, int> Load_Texture(std::string file, bool mipmap = false, float afLevel = 16.0f);
+unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipmap = 0, float afLevel = 16.0f);
 
 void Take_Screenshot();
 
