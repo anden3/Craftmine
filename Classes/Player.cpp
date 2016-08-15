@@ -745,7 +745,7 @@ void Player::Mouse_Handler(int posX, int posY) {
     }
 
     if (MouseEnabled) {
-        if (Inventory::Is_Open) {
+        if (Inventory::Is_Open || UI::CustomDocument != "") {
             Inventory::Mouse_Handler(posX, posY);
         }
 

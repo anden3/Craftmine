@@ -27,13 +27,14 @@ const std::string FONT = "Roboto";
 static double lastUIUpdate;
 static std::deque<int> CPU;
 
-bool UI::ShowDebug     = false;
-bool UI::ShowTitle     = true;
-bool UI::ShowWorlds    = false;
-bool UI::ShowOptions   = false;
-bool UI::ShowServers   = false;
-bool UI::ShowGameMenu  = false;
-bool UI::ShowInventory = false;
+bool UI::ShowDebug        = false;
+bool UI::ShowTitle        = true;
+bool UI::ShowWorlds       = false;
+bool UI::ShowOptions      = false;
+bool UI::ShowServers      = false;
+bool UI::ShowGameMenu     = false;
+bool UI::ShowInventory    = false;
+bool UI::ShowVideoOptions = false;
 
 int UI::MouseX = 0;
 int UI::MouseY = 0;
@@ -45,6 +46,7 @@ const std::string BoolStrings[2] = {"False", "True"};
 void Init_Menu();
 void Init_Debug();
 void Init_Title();
+void Init_Options();
 void Init_World_Select();
 void Init_Server_Screen();
 
@@ -58,6 +60,8 @@ void Toggle_Game_Menu();
 void Toggle_Title(void* caller);
 void Toggle_World_Screen(void* caller);
 void Toggle_Server_Screen(void* caller);
+void Toggle_Options_Menu(void* caller);
+void Toggle_Video_Options(void* caller);
 
 void Draw_Debug();
 
@@ -66,9 +70,22 @@ void Bind_Current_Document();
 void Toggle_AO(void* caller);
 void Toggle_VSync(void* caller);
 void Toggle_Wireframe(void* caller);
-void Toggle_Options_Menu(void* caller);
+
+std::pair<bool, float> Get_Slider_Value(void* slider, int &storage) {
+    float value = std::round(static_cast<Slider*>(slider)->Value);
+    
+    if (value == storage) {
+        return {false, 0.0f};
+    }
+    
+    storage = static_cast<int>(value);
+    Write_Config();
+    
+    return {true, value};
+}
 
 void Change_FOV(void* caller);
+void Change_Mipmap_Level(void* caller);
 void Change_Render_Distance(void* caller);
 void Change_Anisotropic_Filtering(void* caller);
 
@@ -86,6 +103,7 @@ void UI::Init() {
     Chat::Init();
 
     Init_Title();
+    Init_Options();
     Init_Menu();
     Init_World_Select();
     Init_Server_Screen();
@@ -99,12 +117,29 @@ void UI::Draw() {
 
     if (ShowTitle || ShowGameMenu) {
         Interface::Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-
+        
         if (ShowTitle) {
-            if (ShowOptions) {
-                Interface::Draw_Document("titleOptions");
+            Interface::Draw_Document("titleBg");
+        }
+        else {
+            Interface::Draw_Document("menuBg");
+        }
+        
+        if (ShowOptions) {
+            if (ShowVideoOptions) {
+                Interface::Draw_Document("videoOptions");
             }
-            else if (ShowServers) {
+            else {
+                Interface::Draw_Document("options");
+            }
+        }
+        
+        else if (ShowGameMenu) {
+            Interface::Draw_Document("gameMenu");
+        }
+
+        else if (ShowTitle) {
+            if (ShowServers) {
                 Interface::Draw_Document("servers");
             }
             else if (ShowWorlds) {
@@ -114,22 +149,15 @@ void UI::Draw() {
                 Interface::Draw_Document("title");
             }
         }
-
-        else {
-            if (ShowOptions) {
-                Interface::Draw_Document("options");
-            }
-            else {
-                Interface::Draw_Document("gameMenu");
-            }
-        }
     }
 
     else {
         Chat::Update();
 
         if (CustomDocument != "") {
+            Interface::Draw_Document("inventory");
             Interface::Draw_Document(CustomDocument);
+            Interface::Draw_Document("mouseStack");
         }
         else {
             Inventory::Draw();
@@ -239,17 +267,18 @@ void Bind_Current_Document() {
     if (UI::CustomDocument != "") {
         name = UI::CustomDocument;
     }
-
+    
+    if (UI::ShowOptions) {
+        if (UI::ShowVideoOptions) { name = "videoOptions"; }
+        else { name = "options"; }
+    }
+    
     else if (UI::ShowTitle) {
-        if (UI::ShowOptions) { name = "titleOptions"; }
-        else if (UI::ShowServers) { name = "servers"; }
+        if (UI::ShowServers) { name = "servers"; }
         else if (UI::ShowWorlds) { name = "worlds"; }
         else { name = "title"; }
     }
-    else if (UI::ShowGameMenu) {
-        if (UI::ShowOptions) { name = "options"; }
-        else { name = "gameMenu"; }
-    }
+    else if (UI::ShowGameMenu) { name = "gameMenu"; }
     else if (UI::ShowInventory) { name = "inventory"; }
 
     Interface::Set_Document(name);
@@ -265,114 +294,104 @@ void Init_Title() {
     glm::vec4 multiButtonDims(Scale(620, 430), buttonSize);
     glm::vec4 optionButtonDims(Scale(620, 300), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
-
-    glm::vec4 vsyncButtonDims(Scale(420, 500), buttonSize);
-    glm::vec4 aoButtonDims(Scale(420, 400), buttonSize);
-    glm::vec4 wireframeButtonDims(Scale(780, 500), buttonSize);
-    glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
-
-    glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
-
-    Interface::Set_Document("title");
-        Interface::Add_Background("titleBg", bgDims);
-        Interface::Get_Background("titleBg")->Color = glm::vec3(0.2f);
-        Interface::Get_Background("titleBg")->Opacity = 1.0f;
-
-        Interface::Add_Image("titleLogo", "logo.png", 3, logoDims);
-        Interface::Get_Image("titleLogo")->Center();
-
-        Interface::Add_Button("titleSingle", "Single Player", singleButtonDims, Toggle_World_Screen);
-        Interface::Add_Button("titleMulti", "Multi Player", multiButtonDims, Toggle_Server_Screen);
-        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-        Interface::Add_Button("titleExit", "Quit", exitButtonDims, Exit);
+    
+    Interface::Set_Document("titleBg");
+        Interface::Add_Background("bg", bgDims);
+        Interface::Get_Background("bg")->Color = glm::vec3(0.2f);
+        Interface::Get_Background("bg")->Opacity = 1.0f;
     Interface::Set_Document("");
 
-    Interface::Set_Document("titleOptions");
-        Interface::Add_Background("menuBg", bgDims);
-        Interface::Get_Background("menuBg")->Color = glm::vec3(0.2f);
-        Interface::Get_Background("menuBg")->Opacity = 1.0f;
+    Interface::Set_Document("title");
+        Interface::Add_Image("logo", "logo.png", 3, logoDims);
+        Interface::Get_Image("logo")->Center();
 
+        Interface::Add_Button("single", "Single Player", singleButtonDims, Toggle_World_Screen);
+        Interface::Add_Button("multi", "Multi Player", multiButtonDims, Toggle_Server_Screen);
+        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("exit", "Quit", exitButtonDims, Exit);
+    Interface::Set_Document("");
+}
+
+void Init_Options() {
+    glm::vec2 buttonSize(Scale(200, 40));
+    
+    glm::vec4 vsyncButtonDims(Scale(400, 500), buttonSize);
+    glm::vec4 aoButtonDims(Scale(620, 500), buttonSize);
+    glm::vec4 wireframeButtonDims(Scale(840, 500), buttonSize);
+    
+    glm::vec4 videoOptionsDims(Scale(400, 500), buttonSize);
+    glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
+    
+    glm::vec4 afDims(Scale(400, 700), buttonSize);
+    glm::vec4 renderDistDims(Scale(620, 700), buttonSize);
+    glm::vec4 fovDims(Scale(840, 700), buttonSize);
+    glm::vec4 mipmapDims(Scale(400, 600), buttonSize);
+
+    glm::vec3 renderDistRange(1, 20, RENDER_DISTANCE);
+    glm::vec3 afRange(1, 16, ANISOTROPIC_FILTERING);
+    glm::vec3 mipmapRange(0, 4, MIPMAP_LEVEL);
+    glm::vec3 fovRange(10, 180, FOV);
+    
+    Interface::Set_Document("options");        
+        Interface::Add_Button("videoOptions", "Video Options", videoOptionsDims, Toggle_Video_Options);
+        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
+    Interface::Set_Document("");
+    
+    Interface::Set_Document("videoOptions");        
         Interface::Add_Button("vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
         Interface::Add_Button("wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-        Interface::Add_Slider("renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE), renderDistSliderDims, renderDistSliderRange, Change_Render_Distance);
         Interface::Add_Button("ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Video_Options);
+        
+        Interface::Add_Slider(
+            "af", "Anisotropic Filtering: " + std::to_string(ANISOTROPIC_FILTERING),
+            afDims, afRange, Change_Anisotropic_Filtering
+        );
+        Interface::Add_Slider(
+            "renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE),
+            renderDistDims, renderDistRange, Change_Render_Distance
+        );
+        Interface::Add_Slider("fov", "FOV: " + std::to_string(FOV), fovDims, fovRange, Change_FOV);
+        Interface::Add_Slider(
+            "mipmap", "Mipmapping Level: " + std::to_string(MIPMAP_LEVEL),
+            mipmapDims, mipmapRange, Change_Mipmap_Level
+        );
     Interface::Set_Document("");
 }
 
 void Init_Menu() {
     glm::vec2 buttonSize(Scale(200, 40));
-
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
     glm::vec4 optionButtonDims(Scale(620, 500), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
-    glm::vec4 vsyncButtonDims(Scale(400, 500), buttonSize);
-    glm::vec4 aoButtonDims(Scale(400, 400), buttonSize);
-    glm::vec4 wireframeButtonDims(Scale(840, 500), buttonSize);
-    glm::vec4 renderDistSliderDims(Scale(620, 700), buttonSize);
-    glm::vec4 afSliderDims(Scale(400, 600), buttonSize);
-    glm::vec4 fovSliderDims(Scale(400, 700), buttonSize);
     
-    glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
-
-    glm::vec3 renderDistSliderRange(1, 10, RENDER_DISTANCE);
-    glm::vec3 afSliderRange(1, 16, ANISOTROPIC_FILTERING);
-    glm::vec3 fovSliderRange(10, 180, FOV);
-
-    Interface::Set_Document("gameMenu");
+    Interface::Set_Document("menuBg");
         Interface::Add_Background("menuBg", bgDims);
-        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
-        Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, Toggle_Title);
     Interface::Set_Document("");
 
-    Interface::Set_Document("options");
-        Interface::Add_Background("menuBg", bgDims);
-        Interface::Add_Button("vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
-        Interface::Add_Button("wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
-        Interface::Add_Slider(
-            "renderDistance", "Render Distance: " + std::to_string(RENDER_DISTANCE),
-            renderDistSliderDims, renderDistSliderRange, Change_Anisotropic_Filtering
-        );
-        Interface::Add_Slider(
-            "fov", "FOV: " + std::to_string(FOV),
-            fovSliderDims, fovSliderRange, Change_FOV
-        );
-        Interface::Add_Slider(
-            "aniso", "Anisotropic Filtering: " + std::to_string(ANISOTROPIC_FILTERING),
-            afSliderDims, afSliderRange, Change_Anisotropic_Filtering
-        );
-        Interface::Add_Button("ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
-        Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
+    Interface::Set_Document("gameMenu");
+        Interface::Add_Button("options", "Options", optionButtonDims, Toggle_Options_Menu);
+        Interface::Add_Button("exit", "Quit to Menu", exitButtonDims, Toggle_Title);
     Interface::Set_Document("");
 }
 
 void Init_World_Select() {
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    glm::vec2 newNameLabelDims(Scale(100, 840));
     glm::vec4 newNameDims(Scale(100, 800), Scale(200, 35));
-
-    glm::vec2 newSeedLabelDims(Scale(100, 740));
     glm::vec4 newSeedDims(Scale(100, 700), Scale(200, 35));
-
     glm::vec4 newWorldDims(Scale(100, 600), Scale(200, 40));
     glm::vec4 backButtonDims(Scale(620, 200), Scale(200, 40));
 
     Interface::Set_Document("worlds");
-        Interface::Add_Background("worldBg", bgDims);
-        Interface::Get_Background("worldBg")->Color = glm::vec3(0.2f);
-        Interface::Get_Background("worldBg")->Opacity = 1.0f;
+        Interface::Add_Text("newNameLabel", "Name:", Scale(100, 840));
+        Interface::Add_Text_Box("newName", newNameDims);
 
-        Interface::Add_Text("worldNewNameLabel", "Name:", newNameLabelDims);
-        Interface::Add_Text_Box("worldNewName", newNameDims);
+        Interface::Add_Text("newSeedLabel", "Seed:", Scale(100, 740));
+        Interface::Add_Text_Box("newSeed", newSeedDims);
 
-        Interface::Add_Text("worldNewSeedLabel", "Seed:", newSeedLabelDims);
-        Interface::Add_Text_Box("worldNewSeed", newSeedDims);
-
-        Interface::Add_Button("worldCreate", "Create New World", newWorldDims, Create_World);
-        Interface::Add_Button("worldBack", "Back", backButtonDims, Toggle_World_Screen);
+        Interface::Add_Button("create", "Create New World", newWorldDims, Create_World);
+        Interface::Add_Button("back", "Back", backButtonDims, Toggle_World_Screen);
     Interface::Set_Document("");
 
     Create_World_List();
@@ -408,41 +427,26 @@ void Create_World_List() {
 
 void Init_Server_Screen() {
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    glm::vec2 nameLabelPos(Scale(100, 840));
     glm::vec4 nameDims(Scale(100, 800), Scale(200, 35));
-
-    glm::vec2 serverNamePos(Scale(100, 740));
     glm::vec4 serverNameDims(Scale(100, 700), Scale(200, 35));
-
-    glm::vec2 ipLabelPos(Scale(100, 640));
     glm::vec4 ipDims(Scale(100, 600), Scale(200, 35));
-
     glm::vec4 addServerDims(Scale(100, 500), Scale(200, 40));
-
-    glm::vec2 errMsgPos(Scale(50, 570));
-    float errMsgWidth = Scale_X(300);
-
     glm::vec4 backDims(Scale(620, 200), Scale(200, 40));
 
     Interface::Set_Document("servers");
-        Interface::Add_Background("serverBg", bgDims);
-        Interface::Get_Background("serverBg")->Color = glm::vec3(0.2f);
-        Interface::Get_Background("serverBg")->Opacity = 1.0f;
-
-        Interface::Add_Text("nameLabel", "User Name", nameLabelPos);
+        Interface::Add_Text("nameLabel", "User Name", Scale(100, 840));
         Interface::Add_Text_Box("name", nameDims);
 
-        Interface::Add_Text("serverNameLabel", "Server Name", serverNamePos);
+        Interface::Add_Text("serverNameLabel", "Server Name", Scale(100, 740));
         Interface::Add_Text_Box("serverName", serverNameDims);
 
-        Interface::Add_Text("ipLabel", "Server Address", ipLabelPos);
+        Interface::Add_Text("ipLabel", "Server Address", Scale(100, 640));
         Interface::Add_Text_Box("ip", ipDims);
 
         Interface::Add_Button("addServer", "Add", addServerDims, Add_Server);
 
-        Interface::Add_Text("errMsg", "", errMsgPos);
-        Interface::Get_Text_Element("errMsg")->Center(errMsgPos, errMsgWidth, glm::bvec2(true, false));
+        Interface::Add_Text("errMsg", "", Scale(50, 570));
+        Interface::Get_Text_Element("errMsg")->Center(Scale(50, 570), Scale_X(300), {true, false});
 
         Interface::Add_Button("back", "Back", backDims, Toggle_Server_Screen);
     Interface::Set_Document("");
@@ -497,11 +501,13 @@ void Init_Debug() {
     lastUIUpdate = glfwGetTime();
 
     Interface::Set_Document("debug");
+    
+    std::string ramUsage = System::GetPhysicalMemoryUsage();
 
-    Interface::Add_Text("cpu",         "CPU: 0%",                                  Scale(30, 820));
-    Interface::Add_Text("ram",         "RAM: " + System::GetPhysicalMemoryUsage(), Scale(30, 790));
-    Interface::Add_Text("chunkQueue",  "Chunks Loaded: ",                          Scale(30, 760));
-    Interface::Add_Text("vertQueue",   "Vertices Loaded: ",                        Scale(30, 730));
+    Interface::Add_Text("cpu",         "CPU: 0%",           Scale(30, 820));
+    Interface::Add_Text("ram",         "RAM: " + ramUsage,  Scale(30, 790));
+    Interface::Add_Text("chunkQueue",  "Chunks Loaded: ",   Scale(30, 760));
+    Interface::Add_Text("vertQueue",   "Vertices Loaded: ", Scale(30, 730));
 
     Interface::Set_Document("");
 }
@@ -570,6 +576,14 @@ void Toggle_Debug() {
     }
 }
 
+void Toggle_Options_Menu(void* caller) {
+    UI::ShowOptions = !UI::ShowOptions;
+}
+
+void Toggle_Video_Options(void* caller) {
+    UI::ShowVideoOptions = !UI::ShowVideoOptions;
+}
+
 std::tuple<int, int> Get_Loaded() {
     int total = 0;
     int vertices = 0;
@@ -624,10 +638,6 @@ void Draw_Debug() {
     Interface::Draw_Document("debug");
 }
 
-void Toggle_Options_Menu(void* caller) {
-    UI::ShowOptions = !UI::ShowOptions;
-}
-
 void Toggle_VSync(void* caller) {
     VSYNC = !VSYNC;
     static_cast<Button*>(caller)->Text.Set_Text("V-Sync: " + BoolStrings[VSYNC]);
@@ -656,41 +666,30 @@ void Toggle_Wireframe(void* caller) {
 }
 
 void Change_Render_Distance(void* caller) {
-    int value = static_cast<int>(std::ceil(static_cast<Slider*>(caller)->Value));
+    auto result = Get_Slider_Value(caller, RENDER_DISTANCE);
     
-    if (value == RENDER_DISTANCE) {
-        return;
+    if (result.first && !UI::ShowTitle) {
+        player.Queue_Chunks();
     }
-
-    RENDER_DISTANCE = value;
-    Write_Config();
-
-    player.Queue_Chunks();
 }
 
 void Change_Anisotropic_Filtering(void* caller) {
-    float value = std::ceil(static_cast<Slider*>(caller)->Value);
+    auto result = Get_Slider_Value(caller, ANISOTROPIC_FILTERING);
     
-    if (value == ANISOTROPIC_FILTERING) {
+    if (!result.first) {
         return;
     }
     
-    ANISOTROPIC_FILTERING = static_cast<int>(value);
-    Write_Config();
-    
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16, 32), 4, value));
+    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", {16, 32}, MIPMAP_LEVEL, result.second));
 }
 
 void Change_FOV(void* caller) {
-    float value = std::ceil(static_cast<Slider*>(caller)->Value);
+    auto result = Get_Slider_Value(caller, FOV);
     
-    if (value == FOV) {
+    if (!result.first) {
         return;
     }
-    
-    FOV = static_cast<int>(value);
-    Write_Config();
     
     glm::mat4 projection = glm::perspective(
         glm::radians(static_cast<float>(FOV)),
@@ -701,10 +700,21 @@ void Change_FOV(void* caller) {
     UBO.Upload(1, projection);
 }
 
+void Change_Mipmap_Level(void* caller) {
+    auto result = Get_Slider_Value(caller, MIPMAP_LEVEL);
+    
+    if (!result.first) {
+        return;
+    }
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", {16, 32}, MIPMAP_LEVEL, static_cast<float>(ANISOTROPIC_FILTERING)));
+}
+
 void Create_World(void* caller) {
     Interface::Set_Document("worlds");
-        TextBox* name = Interface::Get_Text_Box("worldNewName");
-        TextBox* seed = Interface::Get_Text_Box("worldNewSeed");
+        TextBox* name = Interface::Get_Text_Box("newName");
+        TextBox* seed = Interface::Get_Text_Box("newSeed");
     Interface::Set_Document("");
 
     std::string worldName = name->Text;

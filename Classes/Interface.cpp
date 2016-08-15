@@ -42,6 +42,7 @@ static std::map<std::string, std::map<std::string, Bar         >> Bars;
 static std::map<std::string, std::map<std::string, Slot        >> Slots;
 static std::map<std::string, std::map<std::string, Image       >> Images;
 static std::map<std::string, std::map<std::string, Button      >> Buttons;
+static std::map<std::string, std::map<std::string, Custom      >> Customs;
 static std::map<std::string, std::map<std::string, Slider      >> Sliders;
 static std::map<std::string, std::map<std::string, TextBox     >> TextBoxes;
 static std::map<std::string, std::map<std::string, Background  >> Backgrounds;
@@ -292,6 +293,24 @@ void Take_Screenshot() {
     SOIL_save_screenshot(fileName.c_str(), SOIL_SAVE_TYPE_BMP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
+Custom::Custom(std::string name, float x, float y, Data &data) {
+    Name = name;
+    X = x;
+    Y = y;
+        
+    ModelMatrix = glm::translate(ModelMatrix, glm::vec3(X, Y, 0));
+    
+    Storage.Init(UIBackgroundShader);
+    Storage.Create(2, data);
+}
+
+void Custom::Draw() {
+    UIBackgroundShader->Upload("color", Color);
+    UIBackgroundShader->Upload("model", ModelMatrix);
+    Storage.Draw();
+    UIBackgroundShader->Upload("model", glm::mat4());
+}
+
 void TextElement::Create(std::string name, std::string text, float x, float y, float opacity, glm::vec3 color, float scale) {
 	x = std::floor(x);
 	y = std::floor(y);
@@ -468,18 +487,15 @@ inline void Button::Release() {
 
 Slider::Slider(std::string name, std::string text, float x, float y, float w, float h, float min,
     float max, float value, Func &function) : Value(value), Min(min), Max(max) {
-
-    X = x;
-    Y = y;
-    Width = w;
-    Name = name;
+    
+    std::tie(X, Y, Width, Name) = {x, y, w, name};
+    
     Height = (h == 0) ? SLIDER_PADDING * 2 : h;
-
-    Opacity = SLIDER_OPACITY;
-    HandleOpacity = SLIDER_HANDLE_OPACITY;
-
-    Color = SLIDER_COLOR;
-    HandleColor = SLIDER_HANDLE_COLOR;
+    
+    std::tie(Opacity, HandleOpacity, Color, HandleColor) = std::make_tuple(
+        SLIDER_OPACITY, SLIDER_HANDLE_OPACITY,
+        SLIDER_COLOR, SLIDER_HANDLE_COLOR
+    );
 
     Function = function;
 
@@ -488,7 +504,7 @@ Slider::Slider(std::string name, std::string text, float x, float y, float w, fl
 
     Text.Opacity = SLIDER_TEXT_OPACITY;
     Text.Color = SLIDER_TEXT_COLOR;
-
+    
     float sw = SLIDER_WIDTH / 2;
     float sx = x + w * ((Value - Min) / (Max - Min));
     HandlePosition = sx;
@@ -538,13 +554,13 @@ void Slider::Move(float position, bool setValue) {
         float percentage = (position - X) / Width;
         x = X + Width * percentage - w;
 
-        int oldValue = static_cast<int>(std::ceil(Value));
+        int oldValue = static_cast<int>(std::round(Value));
         Value = (Max - Min) * percentage;
 
         Text.Text.replace(
             Text.Text.find(std::to_string(oldValue)),
             std::to_string(oldValue).length(),
-            std::to_string(static_cast<int>(std::ceil(Value)))
+            std::to_string(static_cast<int>(std::round(Value)))
         );
         Text.Mesh();
     }
@@ -876,10 +892,6 @@ Slot::Slot(std::string name, float x, float y, float scale, Stack contents) : Sl
     Mesh();
 }
 
-void Slot::Click(int button) {
-
-}
-
 void Slot::Set_Contents(const Stack &stack) {
     Contents = stack;
     Mesh();
@@ -958,6 +970,7 @@ void Interface::Init_Shaders() {
     );
 
     UIBackgroundShader->Upload("projection", projection);
+    UIBackgroundShader->Upload("model", glm::mat4());
 
     UIBorderShader->Upload("projection", projection);
     UIBorderShader->Upload("color", glm::vec3(0));
@@ -1072,6 +1085,24 @@ void Interface::Mouse_Handler(int x, int y) {
             }
         }
     }
+    
+    if (ActiveDocument == UI::CustomDocument) {
+        for (auto &slot : Slots["inventory"]) {
+            if (In_Range(x, glm::vec2(slot.second.X, slot.second.Width))) {
+                if (In_Range(y, glm::vec2(slot.second.Y, slot.second.Height))) {
+                    slot.second.Hover();
+
+                    if (Holding) {
+                        Inventory::Dragging_Slot(&slot.second);
+                    }
+
+                    HoveringType = "slot";
+                    HoveringElement = &slot.second;
+                    return;
+                }
+            }
+        }
+    }
 
     for (auto &button : Buttons[ActiveDocument]) {
         if (In_Range(x, glm::vec2(button.second.X, button.second.Width))) {
@@ -1129,8 +1160,6 @@ void Interface::Click(int mouseButton, int action) {
         else {
             Inventory::Release_Slot();
         }
-
-        Inventory::Mouse_Handler(UI::MouseX, UI::MouseY);
     }
 
     else if (HoveringType == "button") {
@@ -1142,6 +1171,8 @@ void Interface::Click(int mouseButton, int action) {
         Slider* slider = static_cast<Slider*>(HoveringElement);
         Holding ? slider->Press() : slider->Release();
     }
+    
+    Inventory::Mouse_Handler(UI::MouseX, UI::MouseY);
 }
 
 void Interface::Draw_Document(std::string document) {
@@ -1156,6 +1187,7 @@ void Interface::Draw_Document(std::string document) {
     for (auto &object : OrthoElements[document]) { object.second.Draw(); }
     for (auto &box    : TextBoxes    [document]) { box   .second.Draw(); }
     for (auto &text   : TextElements [document]) { text  .second.Draw(); }
+    for (auto &custom : Customs      [document]) { custom.second.Draw(); }
 
     glEnable(GL_DEPTH_TEST);
 }
@@ -1236,6 +1268,9 @@ namespace Interface {
     void Add_Button(std::string name, std::string text, float x, float y, float w, float h, Func &function) {
         Buttons[ActiveDocument].emplace(name, Button(name, text, x, y, w, h, function));
     }
+    void Add_Custom(std::string name, float x, float y, Data &data) {
+        Customs[ActiveDocument].emplace(name, Custom(name, x, y, data));
+    }
     void Add_Slider(std::string name, std::string text, float x, float y, float w, float h, float min, float max, float value, Func &function) {
         Sliders[ActiveDocument].emplace(name, Slider(name, text, x, y, w, h, min, max, value, function));
     }
@@ -1257,6 +1292,7 @@ namespace Interface {
     void Delete_Slot      (std::string name) { Slots        [ActiveDocument].erase(name); }
     void Delete_Image     (std::string name) { Images       [ActiveDocument].erase(name); }
     void Delete_Button    (std::string name) { Buttons      [ActiveDocument].erase(name); }
+    void Delete_Custom    (std::string name) { Customs      [ActiveDocument].erase(name); }
     void Delete_Slider    (std::string name) { Sliders      [ActiveDocument].erase(name); }
     void Delete_Text_Box  (std::string name) { TextBoxes    [ActiveDocument].erase(name); }
     void Delete_Background(std::string name) { Backgrounds  [ActiveDocument].erase(name); }
@@ -1265,6 +1301,7 @@ namespace Interface {
     Slot*         Get_Slot        (std::string name) { return &Slots        [ActiveDocument][name]; }
     Image*        Get_Image       (std::string name) { return &Images       [ActiveDocument][name]; }
     Button*       Get_Button      (std::string name) { return &Buttons      [ActiveDocument][name]; }
+    Custom*       Get_Custom      (std::string name) { return &Customs      [ActiveDocument][name]; }
     Slider*       Get_Slider      (std::string name) { return &Sliders      [ActiveDocument][name]; }
     TextBox*      Get_Text_Box    (std::string name) { return &TextBoxes    [ActiveDocument][name]; }
     Background*   Get_Background  (std::string name) { return &Backgrounds  [ActiveDocument][name]; }

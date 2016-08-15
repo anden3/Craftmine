@@ -89,6 +89,26 @@ inline void Extend(std::vector<T> &storage, glm::vec4 input) {
     Extend(storage, T(input.x), T(input.y), T(input.z), T(input.w));
 }
 
+class Custom {
+public:
+    std::string Name;
+    
+    float X;
+    float Y;
+    
+    glm::vec3 Color;
+    
+    Buffer Storage;
+    
+    Custom() {}
+    Custom(std::string name, float x, float y, Data &data);
+    
+    void Draw();
+    
+private:
+    glm::mat4 ModelMatrix;
+};
+
 class TextElement {
 public:
     std::string Name;
@@ -313,7 +333,6 @@ public:
     Slot() {}
     Slot(std::string name, float x, float y, float scale, Stack contents);
 
-    void Click(int button);
     void Hover();
     void Stop_Hover();
 
@@ -354,6 +373,7 @@ namespace Interface {
     float Get_String_Width(std::string string);
     std::vector<std::string> Get_Fitting_String(std::string string, int width);
 
+    void Add_Custom    (std::string name, float x, float y, Data &data);
     void Add_Text      (std::string name, std::string text, float x, float y);
     void Add_Text_Box  (std::string name, float x, float y, float w, float h);
     void Add_3D_Element(std::string name, int type, int data, float x, float y, float scale);
@@ -401,6 +421,7 @@ namespace Interface {
     void Delete_Slot      (std::string name);
     void Delete_Image     (std::string name);
     void Delete_Button    (std::string name);
+    void Delete_Custom    (std::string name);
     void Delete_Slider    (std::string name);
     void Delete_Text_Box  (std::string name);
     void Delete_Background(std::string name);
@@ -409,6 +430,7 @@ namespace Interface {
     Slot*         Get_Slot        (std::string name);
     Image*        Get_Image       (std::string name);
     Button*       Get_Button      (std::string name);
+    Custom*       Get_Custom      (std::string name);
     Slider*       Get_Slider      (std::string name);
     TextBox*      Get_Text_Box    (std::string name);
     Background*   Get_Background  (std::string name);

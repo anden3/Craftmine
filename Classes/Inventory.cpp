@@ -59,50 +59,56 @@ void Inventory::Init() {
     glm::vec4 invBarDims = glm::vec4(Scale(520, 260),  Scale(400, 40));
 
     Interface::Set_Document("toolbar");
+        for (int i = 0; i < SLOTS_X; i++) {
+            std::string name = std::to_string(i);
+            glm::vec2 pos(std::floor(barDims.x + i * slotWidth.x), std::floor(barDims.y));
 
-    for (int i = 0; i < SLOTS_X; i++) {
-        std::string name = std::to_string(i);
-        glm::vec2 pos(std::floor(barDims.x + i * slotWidth.x), std::floor(barDims.y));
-
-        Interface::Add_Slot(name, pos + textPad, 40);
-        Toolbar.push_back(Interface::Get_Slot(name));
-    }
+            Interface::Add_Slot(name, pos + textPad, 40);
+            Toolbar.push_back(Interface::Get_Slot(name));
+        }
+    Interface::Set_Document("");
 
     Interface::Set_Document("inventory");
+        for (int i = 0; i < INV_SIZE; i++) {
+            std::string name = std::to_string(i);
+            glm::vec2 pos(
+                std::floor(invDims.x + (i % SLOTS_X) * slotWidth.x),
+                std::floor((i < SLOTS_X) ? invBarDims.y : invDims.y + ((i / SLOTS_X) - 1) * slotWidth.y)
+            );
 
-    for (int i = 0; i < INV_SIZE; i++) {
-        std::string name = std::to_string(i);
-        glm::vec2 pos(
-            std::floor(invDims.x + (i % SLOTS_X) * slotWidth.x),
-            std::floor((i < SLOTS_X) ? invBarDims.y : invDims.y + ((i / SLOTS_X) - 1) * slotWidth.y)
-        );
+            Interface::Add_Slot(name, pos + slotPad, 40);
 
-        Interface::Add_Slot(name, pos + slotPad, 40);
+            if (i < SLOTS_X) {
+                Interface::Get_Slot(name)->SyncedSlot = Toolbar[i];
+            }
 
-        if (i < SLOTS_X) {
-            Interface::Get_Slot(name)->SyncedSlot = Toolbar[i];
+            Inv.push_back(Interface::Get_Slot(name));
         }
 
-        Inv.push_back(Interface::Get_Slot(name));
-    }
+        for (int i = 0; i < 9; i++) {
+            std::string name = std::to_string(INV_SIZE + i);
+            glm::vec2 pos = glm::vec2(i % 3, i / 3) * slotWidth + craftDims.xy() + slotPad;
 
-    for (int i = 0; i < 9; i++) {
-        std::string name = std::to_string(INV_SIZE + i);
-        glm::vec2 pos = glm::vec2(i % 3, i / 3) * slotWidth + craftDims.xy() + slotPad;
+            Interface::Add_Slot(name, pos, 40);
+            Interface::Get_Slot(name)->CraftingInput = true;
+            Craft.push_back(Interface::Get_Slot(name));
+        }
 
-        Interface::Add_Slot(name, pos, 40);
-        Interface::Get_Slot(name)->CraftingInput = true;
-        Craft.push_back(Interface::Get_Slot(name));
-    }
+        Interface::Add_Slot(std::to_string(INV_SIZE + 9), outputDims.xy() + slotPad, 40);
+        CraftingOutput = Interface::Get_Slot(std::to_string(INV_SIZE + 9));
+        CraftingOutput->CraftingOutput = true;
+        CraftingOutput->OutputOnly = true;
 
-    Interface::Add_Slot(std::to_string(INV_SIZE + 9), outputDims.xy() + slotPad, 40);
-    CraftingOutput = Interface::Get_Slot(std::to_string(INV_SIZE + 9));
-    CraftingOutput->CraftingOutput = true;
-    CraftingOutput->OutputOnly = true;
-
-    Interface::Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
-    Interface::Get_Text_Element("mouseStack")->Opacity = 0.0f;
-    Interface::Add_3D_Element("mouseStack", 0, 0, 0, 0, blockScale);
+        Interface::Add_Text("mouseStack", std::to_string(HoldingStack.Size), 0, 0);
+        Interface::Get_Text_Element("mouseStack")->Opacity = 0.0f;
+        Interface::Add_3D_Element("mouseStack", 0, 0, 0, 0, blockScale);
+    Interface::Set_Document("");
+    
+    Interface::Set_Document("mouseStack");
+        Interface::Add_Text("stack", std::to_string(HoldingStack.Size), 0, 0);
+        Interface::Get_Text_Element("stack")->Opacity = 0.0f;
+        Interface::Add_3D_Element("stack", 0, 0, 0, 0, blockScale);
+    Interface::Set_Document("");
 
     Switch_Slot(0);
 }
@@ -482,20 +488,18 @@ void Craft_Item() {
 
 void Inventory::Switch_Slot(int slot) {
     Interface::Set_Document("toolbar");
-
-    Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Stop_Hover();
-    ActiveToolbarSlot = slot;
-    Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Hover();
-
+        Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Stop_Hover();
+        ActiveToolbarSlot = slot;
+        Interface::Get_Slot(std::to_string(ActiveToolbarSlot))->Hover();
     Interface::Set_Document("");
 }
 
 void Inventory::Mouse_Handler(double x, double y) {
     static bool meshModel = true;
 
-    Interface::Set_Document("inventory");
-    TextElement* mouseStack = Interface::Get_Text_Element("mouseStack");
-    OrthoElement* mouseModel = Interface::Get_3D_Element("mouseStack");
+    Interface::Set_Document("mouseStack");
+        TextElement* mouseStack = Interface::Get_Text_Element("stack");
+        OrthoElement* mouseModel = Interface::Get_3D_Element("stack");
     Interface::Set_Document("");
 
     mouseStack->Opacity = float(Inventory::HoldingStack.Size > 0);
@@ -557,23 +561,27 @@ void Inventory::Save(nlohmann::json &dest, std::string type) {
 
 void Inventory::Load(const JSONValue &data) {
     Interface::Set_Document("inventory");
+        for (auto it = data.begin(); it != data.end(); ++it) {
+            if (it.value()[0].get<int>() > 0) {
+                Slot* slot = Interface::Get_Slot(it.key());
 
-    for (auto it = data.begin(); it != data.end(); ++it) {
-        if (it.value()[0].get<int>() > 0) {
-            Slot* slot = Interface::Get_Slot(it.key());
-
-            if (it.value().size() == 3) {
-                slot->Set_Contents(Stack(it.value()[0], it.value()[1], it.value()[2]));
-            }
-            else {
-                slot->Set_Contents(Stack(it.value()[0], 0, it.value()[1]));
+                if (it.value().size() == 3) {
+                    slot->Set_Contents(Stack(it.value()[0], it.value()[1], it.value()[2]));
+                }
+                else {
+                    slot->Set_Contents(Stack(it.value()[0], 0, it.value()[1]));
+                }
             }
         }
-    }
-
     Interface::Set_Document("");
 }
 
 void Inventory::Draw() {
-    Interface::Draw_Document(Is_Open ? "inventory" : "toolbar");
+    if (Is_Open) {
+        Interface::Draw_Document("mouseStack");
+        Interface::Draw_Document("inventory");
+    }
+    else {
+        Interface::Draw_Document("toolbar");
+    }
 }

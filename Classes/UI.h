@@ -10,6 +10,7 @@ namespace UI {
     extern bool ShowServers;
     extern bool ShowGameMenu;
     extern bool ShowInventory;
+    extern bool ShowVideoOptions;
 
     extern int MouseX;
     extern int MouseY;

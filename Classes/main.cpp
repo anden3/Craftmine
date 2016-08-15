@@ -85,22 +85,17 @@ GLFWwindow* Window = nullptr;
 // Values are pointers to the chunks.
 std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
-// Defining options.
+// Setting default option values.
 bool AMBIENT_OCCLUSION = false;
 bool FULLSCREEN        = false;
 bool VSYNC             = true;
 
 int FOV                   = 90;
+int MIPMAP_LEVEL          = 4;
 int SCREEN_HEIGHT         = 1080;
 int SCREEN_WIDTH          = 1920;
 int RENDER_DISTANCE       = 4;
 int ANISOTROPIC_FILTERING = 16;
-
-// Defining shaders.
-Shader* shader = nullptr;
-Shader* mobShader = nullptr;
-Shader* modelShader = nullptr;
-Shader* outlineShader = nullptr;
 
 // List of option references.
 static std::map<std::string, bool*> BoolOptions = {
@@ -114,8 +109,15 @@ static std::map<std::string, int*> IntOptions = {
     {"RenderDistance",       &RENDER_DISTANCE},
     {"WindowResY",           &SCREEN_HEIGHT},
     {"WindowResX",           &SCREEN_WIDTH},
+    {"MipmapLevel",          &MIPMAP_LEVEL},
     {"FOV",                  &FOV}
 };
+
+// Defining shaders.
+Shader* shader = nullptr;
+Shader* mobShader = nullptr;
+Shader* modelShader = nullptr;
+Shader* outlineShader = nullptr;
 
 // Sets settings according to the config file.
 void Parse_Config();
@@ -365,7 +367,13 @@ void Init_Textures() {
 
     // Load the texture atlas into a texture array, with mipmapping enabled,
     // and store it in the active Texture Unit.
-    glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", glm::ivec2(16, 32), 4, static_cast<float>(ANISOTROPIC_FILTERING)));
+    glBindTexture(
+        GL_TEXTURE_2D_ARRAY,
+        Load_Array_Texture(
+            "atlas.png", {16, 32},
+            MIPMAP_LEVEL, static_cast<float>(ANISOTROPIC_FILTERING)
+        )
+    );
 }
 
 void Init_Shaders() {

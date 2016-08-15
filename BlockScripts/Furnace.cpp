@@ -6,20 +6,25 @@
 #include "Interface.h"
 
 void Furnace::Init() {
+    Data arrow = {
+        0, 0, 5, 0, 5, 20,
+        0, 0, 5, 20, 0, 20,
+        -5, 0, 2.5, -7.5, 10, 0
+    };
+    
     glm::vec2 bgPad = Scale(10);
     glm::vec2 slotWidth = Scale(80);
 
-    glm::vec4 bgDims = glm::vec4(Scale(520, 250), Scale(400, 400));
+    glm::vec4 bgDims = glm::vec4(Scale(220, 400), Scale(160, 180));
 
     Interface::Set_Document("furnace");
+        Interface::Add_Background("bg", glm::vec4(bgDims.xy(), bgDims.zw()), true, {0, 0}, bgPad);
 
-    Interface::Add_Background("furnaceBg", glm::vec4(bgDims.xy() - bgPad, bgDims.zw() + bgPad * 2.0f), true, {0, 0}, bgPad);
-
-    Interface::Add_Slot("slot1", Scale(630, 500), Scale_Y(40), Stack(1, 0, 1));
-    Interface::Add_Slot("slot2", Scale(730, 500), Scale_Y(40), Stack(2, 0, 2));
-    Interface::Add_Slot("slot3", Scale(630, 300), Scale_Y(40), Stack(3, 0, 3));
-    Interface::Add_Slot("slot4", Scale(730, 300), Scale_Y(40), Stack(4, 0, 4));
-
+        Interface::Add_Slot("slot1", Scale(280, 430), Scale_Y(40));
+        Interface::Add_Slot("slot2", Scale(280, 520), Scale_Y(40));
+        
+        Interface::Add_Custom("arrow", Scale_X(300), Scale_Y(495), arrow);
+        Interface::Get_Custom("arrow")->Color = glm::vec3(1);
     Interface::Set_Document("");
 }
 

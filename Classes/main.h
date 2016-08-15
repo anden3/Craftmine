@@ -14,7 +14,7 @@
     const bool Windows = true;
 
 	int __cdecl Print_Debug(const char *format, ...);
-#elif __APPLE__
+#else
     const bool Windows = false;
 #endif
 
@@ -138,6 +138,7 @@ extern int SCREEN_WIDTH, SCREEN_HEIGHT;
 extern int RENDER_DISTANCE;
 
 extern int ANISOTROPIC_FILTERING;
+extern int MIPMAP_LEVEL;
 extern int FOV;
 
 extern bool VSYNC;
@@ -150,8 +151,8 @@ extern double DeltaTime;
 // Used for storing the timestamp (in seconds) of the last frame.
 extern double LastFrame;
 
-extern bool Wireframe;
 extern bool GamePaused;
+extern bool Wireframe;
 extern bool ToggleWireframe;
 
 // If the mouse cursor is visible.
