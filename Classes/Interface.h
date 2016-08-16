@@ -53,11 +53,6 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
 void Take_Screenshot();
 
-float Scale_X(const float x);
-float Scale_Y(const float y);
-glm::vec2 Scale(const float t);
-glm::vec2 Scale(const float x, const float y);
-
 template <typename V, typename T>
 inline void Extend(std::vector<V> &storage, T t) { storage.push_back(V(t)); }
 

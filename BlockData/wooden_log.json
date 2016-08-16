@@ -5,5 +5,7 @@
 	"material": "wood",
     "sound": "wood",
     
+    "burnTime": 15,
+    
     "multiTexture": [20, 20, 21, 21, 20, 20]
 }

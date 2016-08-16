@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "main.h"
 #include "Chunk.h"
+#include "Blocks.h"
 #include "Player.h"
 #include "System.h"
 #include "Worlds.h"
@@ -221,8 +222,7 @@ void UI::Key_Handler(int key, int action) {
         switch (key) {
             case GLFW_KEY_ESCAPE:
                 if (CustomDocument != "") {
-                    CustomDocument = "";
-                    UI::Toggle_Mouse(false);
+                    player.LookingBlockType->CloseFunction();
                 }
 
                 else if (ShowInventory) {
@@ -564,7 +564,7 @@ void Toggle_Server_Screen(void* caller) {
 }
 
 void Toggle_Inventory() {
-    if (!UI::ShowTitle) {
+    if (!UI::ShowTitle && UI::CustomDocument == "") {
         UI::ShowInventory = !UI::ShowInventory;
         UI::Toggle_Mouse(UI::ShowInventory);
     }

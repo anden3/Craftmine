@@ -21,7 +21,10 @@ Add-Content $header ("#include <map>")
 Add-Content $header ("#include <string>")
 Add-Content $header ("#include <functional>`n")
 
-Add-Content $header ("extern std::map<std::string, std::function<void()>> BlockFunctions;`n")
+Add-Content $header ("extern std::map<std::string, std::function<void()>> BlockRightClick;")
+Add-Content $header ("extern std::map<std::string, std::function<void()>> BlockUpdate;")
+Add-Content $header ("extern std::map<std::string, std::function<void()>> BlockClose;`n")
+
 Add-Content $header ("void Init_Block_Scripts();")
 
 Add-Content $source ("#include `"Block_Scripts.h`"`n")
@@ -33,7 +36,7 @@ Foreach-Object {
     }
 }
 
-Add-Content $source ("`nstd::map<std::string, std::function<void()>> BlockFunctions = {")
+Add-Content $source ("`nstd::map<std::string, std::function<void()>> BlockRightClick = {")
 
 Get-ChildItem "BlockScripts" -Filter *.h |
 Foreach-Object {
@@ -43,6 +46,28 @@ Foreach-Object {
 }
 
 Add-Content $source ("};")
+
+Add-Content $source ("`nstd::map<std::string, std::function<void()>> BlockUpdate = {")
+
+Get-ChildItem "BlockScripts" -Filter *.h |
+Foreach-Object {
+    if ($_.name -ne "Block_Scripts.h") {
+        Add-Content $source ("`t{`"" + $_.basename + "`", " + $_.basename + "::Update" + "},")
+    }
+}
+
+Add-Content $source ("};")
+
+Add-Content $source ("`nstd::map<std::string, std::function<void()>> BlockClose = {")
+
+Get-ChildItem "BlockScripts" -Filter *.h |
+Foreach-Object {
+    if ($_.name -ne "Block_Scripts.h") {
+        Add-Content $source ("`t{`"" + $_.basename + "`", " + $_.basename + "::Close" + "},")
+    }
+}
+
+Add-Content $source ("};`n")
 
 Add-Content $source ("void Init_Block_Scripts() {")
 Get-ChildItem "BlockScripts" -Filter *.h |

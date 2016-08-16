@@ -11,6 +11,11 @@
 #include "../BlockScripts/Block_Scripts.h"
 
 #define BLOCK_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val; }
+#define STACK_LAMBDA(_v) [](Block &b, JSONValue val) { \
+    if (val.is_number()) b._v = Stack(val.get<int>()); \
+    else if (val.size() == 2) b._v = Stack(val[0].get<int>(), val[1]); \
+    else b._v = Stack(val[0], val[1], val[2]); \
+}
 #define STRING_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val.get<std::string>(); }
 #define VECTOR_LAMBDA(_v) [](Block &b, JSONValue val) { \
     for (unsigned long j = 0; j < 3; j++) \
@@ -26,11 +31,13 @@ typedef nlohmann::basic_json<
 static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambdas = {
     {"id",                  BLOCK_LAMBDA(ID)                 },
 	{"isTool",              BLOCK_LAMBDA(IsTool)             },
+    {"burnTime",            BLOCK_LAMBDA(BurnTime)           },
     {"hardness",            BLOCK_LAMBDA(Hardness)           },
 	{"isMBRoot",            BLOCK_LAMBDA(IsMBRoot)           },
     {"collision",           BLOCK_LAMBDA(Collision)          },
 	{"fullBlock",           BLOCK_LAMBDA(FullBlock)          },
 	{"placeable",           BLOCK_LAMBDA(Placeable)          },
+    {"smeltable",           BLOCK_LAMBDA(Smeltable)          },
     {"durability",          BLOCK_LAMBDA(Durability)         },
     {"luminosity",          BLOCK_LAMBDA(Luminosity)         },
     {"multiBlock",          BLOCK_LAMBDA(MultiBlock)         },
@@ -40,6 +47,8 @@ static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambd
 	{"transparent",         BLOCK_LAMBDA(Transparent)		 },
 	{"craftingYield",       BLOCK_LAMBDA(CraftingYield)      },
 	{"requiredMiningLevel", BLOCK_LAMBDA(RequiredMiningLevel)},
+    
+    {"smeltResult",         STACK_LAMBDA(SmeltResult)        },
 
 	{"name",                STRING_LAMBDA(Name)              },
 	{"sound",               STRING_LAMBDA(Sound)             },
@@ -308,9 +317,10 @@ void Blocks::Init() {
 					Process_Block(it, subType);
 				}
 
-				if (BlockFunctions.count(subType.Name)) {
+				if (BlockRightClick.count(subType.Name)) {
 					subType.Interactable = true;
-					subType.RightClickFunction = BlockFunctions[subType.Name];
+					subType.RightClickFunction = BlockRightClick[subType.Name];
+                    subType.CloseFunction      = BlockClose[subType.Name];
 				}
 
 				block.Types[subIndex++] = subType;
@@ -318,9 +328,10 @@ void Blocks::Init() {
 			}
         }
 
-		if (BlockFunctions.count(block.Name)) {
+		if (BlockRightClick.count(block.Name)) {
 			block.Interactable = true;
-			block.RightClickFunction = BlockFunctions[block.Name];
+            block.RightClickFunction = BlockRightClick[block.Name];
+            block.CloseFunction      = BlockClose[block.Name];
 		}
 
         BlockTypes[block.ID] = block;
@@ -328,6 +339,10 @@ void Blocks::Init() {
     }
 
     closedir(blockDir);
+}
+
+const Block* Blocks::Get_Block(Stack stack) {
+    return Get_Block(stack.Type, stack.Data);
 }
 
 const Block* Blocks::Get_Block(int type, int data) {

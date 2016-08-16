@@ -3,11 +3,13 @@
     "hardness": 3,
 	"material": "stone",
     "sound": "stone",
+    "smeltable": true,
     
     "types": [
         {
             "name": "Coal Ore",
 			"requiredMiningLevel": 1,
+            "smeltResult": 263,
             "texture": 34
         },
         {

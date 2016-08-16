@@ -578,8 +578,8 @@ void Inventory::Load(const JSONValue &data) {
 
 void Inventory::Draw() {
     if (Is_Open) {
-        Interface::Draw_Document("mouseStack");
         Interface::Draw_Document("inventory");
+        Interface::Draw_Document("mouseStack");
     }
     else {
         Interface::Draw_Document("toolbar");

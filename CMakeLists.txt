@@ -17,8 +17,8 @@ set (SOURCES
     ${SOURCE_PATH}/Player.cpp
     ${SOURCE_PATH}/Shader.cpp
     ${SOURCE_PATH}/Sound.cpp
+    ${SOURCE_PATH}/Stack.cpp
     ${SOURCE_PATH}/System.cpp
-    ${SOURCE_PATH}/Timer.cpp
     ${SOURCE_PATH}/UI.cpp
 	${SOURCE_PATH}/Worlds.cpp
 )
@@ -39,8 +39,8 @@ if (WIN32)
     set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
 
     set (CMAKE_GENERATOR "Visual Studio 14 2015 Win64" CACHE INTERNAL "" FORCE)
-
-    execute_process(
+    
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/BlockScripts/Block_Scripts.cpp
         COMMAND powershell -executionpolicy bypass BlockScripts\\Load_Scripts.ps1
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     )
@@ -72,7 +72,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_LIST_DIR})
 
 include_directories(${INCLUDE_DIRS})
 link_directories(${LIBRARY_DIRS})
-add_executable(Craftmine ${SOURCES} BlockScripts/Block_Scripts.cpp)
+add_executable(Craftmine ${SOURCES} ${CMAKE_CURRENT_LIST_DIR}/BlockScripts/Block_Scripts.cpp)
 
 set_target_properties(Craftmine PROPERTIES LINKER_LANGUAGE CXX)
 

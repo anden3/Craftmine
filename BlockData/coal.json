@@ -1,0 +1,7 @@
+{
+    "name": "Coal",
+    "id": 263,
+    "icon": 263,
+    "burnTime": 80,
+    "placeable": false
+}

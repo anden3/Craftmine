@@ -698,15 +698,17 @@ void Player::Key_Handler(int key, int action) {
         else if (key == GLFW_KEY_SPACE && OnGround) {
             Jumping = true;
         }
-
+        
         else if (key == GLFW_KEY_TAB) {
-            Inventory::Is_Open = !Inventory::Is_Open;
+            if (UI::CustomDocument == "") {
+                Inventory::Is_Open = !Inventory::Is_Open;
 
-            if (Inventory::Is_Open) {
-                Inventory::Mouse_Handler();
+                if (Inventory::Is_Open) {
+                    Inventory::Mouse_Handler();
+                }
+
+                Mesh_Holding();
             }
-
-            Mesh_Holding();
         }
 
         else if (key == GLFW_KEY_Q) {

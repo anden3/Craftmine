@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Stack.h"
+
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 
@@ -19,6 +21,7 @@ struct Block {
 	bool Craftable     = false;
 	bool FullBlock     = true;
 	bool Placeable     = true;
+    bool Smeltable     = false;
 	bool Targetable    = true;
 	bool HasTexture    = false;
 	bool MultiBlock    = false;
@@ -37,8 +40,9 @@ struct Block {
     int MiningSpeed         = 0;
 	int CraftingYield       = 1;
 	int RequiredMiningLevel = 0;
-
-	float Hardness = 0;
+    
+    float BurnTime = 0.0f;
+	float Hardness = 0.0f;
 
 	std::string Name              = "";
 	std::string Sound             = "";
@@ -51,8 +55,11 @@ struct Block {
 	glm::ivec3 MBOffset    = {0, 0, 0};
 
 	std::regex Recipe;
+    
+    Stack SmeltResult = Stack();
 
 	std::function<void()> RightClickFunction;
+    std::function<void()> CloseFunction;
 
     std::vector<int> Textures = {};
 
@@ -63,7 +70,8 @@ struct Block {
 
 namespace Blocks {
     void Init();
-
+    
+    const Block* Get_Block(Stack stack);
     const Block* Get_Block(int type, int data = 0);
     const Block* Get_Block(std::string name);
 

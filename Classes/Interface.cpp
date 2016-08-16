@@ -125,12 +125,6 @@ const std::map<char, glm::vec3> ColorCodes = {
     {'f', {1.000, 1.000, 1.000} }, // White
 };
 
-float Scale_X(const float x) { return (x / 1440.0f) * SCREEN_WIDTH; }
-float Scale_Y(const float y) { return (y / 900.0f)  * SCREEN_HEIGHT; }
-
-glm::vec2 Scale(const float t)                { return glm::vec2(Scale_X(t), Scale_Y(t)); }
-glm::vec2 Scale(const float x, const float y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
-
 struct CharacterInfo {
   glm::vec2 Advance;
   glm::vec2 BitmapSize;

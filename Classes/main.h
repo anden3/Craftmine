@@ -163,5 +163,11 @@ extern std::atomic_flag ChunkMapBusy;
 
 extern bool Multiplayer;
 
+inline float Scale_X(const float x) { return std::floor((x / 1440.0f) * SCREEN_WIDTH); }
+inline float Scale_Y(const float y) { return std::floor((y / 900.0f)  * SCREEN_HEIGHT); }
+
+inline glm::vec2 Scale(const float t)                { return glm::vec2(Scale_X(t), Scale_Y(t)); }
+inline glm::vec2 Scale(const float x, const float y) { return glm::vec2(Scale_X(x), Scale_Y(y)); }
+
 void Write_Config();
 void Exit(void* caller);

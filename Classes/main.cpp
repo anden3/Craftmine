@@ -200,6 +200,10 @@ int main() {
         }
 
         if (!GamePaused) {
+            for (auto const &func : BlockUpdate) {
+                func.second();
+            }
+            
             // Check if any sounds should be removed.
             listener.Poll_Sounds();
 

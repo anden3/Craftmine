@@ -1,6 +1,7 @@
 header=Block_Scripts.h
 source=Block_Scripts.cpp
 
+# Creating empty files
 : > ${header}
 : > ${source}
 
@@ -10,7 +11,9 @@ echo "#include <map>" >> ${header}
 echo "#include <string>" >> ${header}
 echo "#include <functional>" >> ${header}
 
-echo "\nextern std::map<std::string, std::function<void()>> BlockFunctions;" >> ${header}
+echo "\nextern std::map<std::string, std::function<void()>> BlockRightClick;" >> ${header}
+echo "\nextern std::map<std::string, std::function<void()>> BlockUpdate;" >> ${header}
+echo "\nextern std::map<std::string, std::function<void()>> BlockClose;" >> ${header}
 
 echo "\nvoid Init_Block_Scripts();" >> ${header}
 
@@ -22,7 +25,7 @@ for f in *.h; do
     fi
 done
 
-echo "\nstd::map<std::string, std::function<void()>> BlockFunctions = {" >> ${source}
+echo "\nstd::map<std::string, std::function<void()>> BlockRightClick = {" >> ${source}
 
 for f in *.h; do
     if [ $f != $header ]; then
@@ -31,6 +34,26 @@ for f in *.h; do
 done
 
 echo "};" >> ${source}
+
+echo "\nstd::map<std::string, std::function<void()>> BlockUpdate = {" >> ${source}
+
+for f in *.h; do
+    if [ $f != $header ]; then
+        echo "\t{\"$(basename "$f" .h)\", $(basename "$f" .h)::Update}," >> ${source}
+    fi
+done
+
+echo "};" >> ${source}
+
+echo "\nstd::map<std::string, std::function<void()>> BlockClose = {" >> ${source}
+
+for f in *.h; do
+    if [ $f != $header ]; then
+        echo "\t{\"$(basename "$f" .h)\", $(basename "$f" .h)::Close}," >> ${source}
+    fi
+done
+
+echo "};\n" >> ${source}
 
 echo "void Init_Block_Scripts() {" >> ${source}
 
