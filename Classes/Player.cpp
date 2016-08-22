@@ -321,8 +321,7 @@ void Player::Move() {
                 MovementAngleDirection *= -1;
             }
 
-            MovementAngle += MovementAngleDirection * speed
-                * static_cast<float>(DeltaTime);
+            MovementAngle += MovementAngleDirection * speed * static_cast<float>(DeltaTime);
         }
         else {
             MovementAngle = 0.0f;
@@ -334,18 +333,20 @@ void Player::Col_Detection() {
     if (ChunkMap.empty() || !Exists(CurrentChunk)) {
         return;
     }
-
+    
     Velocity.y -= GRAVITY;
     OnGround = (Velocity.y <= 0 && Check_Col(
-        {WorldPos.x, WorldPos.y + Velocity.y - 0.01f, WorldPos.z}
+        {WorldPos.x, WorldPos.y + Velocity.y, WorldPos.z}
     ));
 
     if (OnGround) {
+        WorldPos.y = std::round(WorldPos.y);
         Velocity.y = 0;
     }
 
     else if (Velocity.y != 0) {
         glm::vec3 checkPos = WorldPos + glm::vec3(0, Velocity.y, 0);
+        
         if (Velocity.y > 0) {
             checkPos.y += CAMERA_HEIGHT;
         }
@@ -492,8 +493,15 @@ float Player::Get_Block_Break_Time() {
     if (requiredTime == 0.0f) {
         return 0.0f;
     }
-
-    if (CurrentBlock != 0 && CurrentBlockType->IsTool) {
+    
+    if (CurrentBlock == 0 || !CurrentBlockType->IsTool) {
+        requiredTime *= 1.5f * 3.33f;
+        
+        if (LookingBlockType->RequiredMiningLevel > 0) {
+            requiredTime *= 5.0f;
+        }
+    }
+    else {
         if (LookingBlockType->Material == CurrentBlockType->EffectiveMaterial) {
             if (CurrentBlockType->MiningLevel >= LookingBlockType->RequiredMiningLevel) {
                 requiredTime *= 1.5f;
@@ -507,9 +515,6 @@ float Player::Get_Block_Break_Time() {
         else {
             requiredTime *= 1.5f * 3.33f;
         }
-    }
-    else {
-        requiredTime *= 1.5f * 3.33f;
     }
 
     if (!OnGround) {
@@ -866,6 +871,17 @@ void Player::Click_Handler(int button, int action) {
     if (!Exists(LookingAirChunk)) {
         return;
     }
+    
+    glm::ivec3 playerPos = glm::floor(WorldPos);
+    glm::ivec3 blockPos = Get_World_Pos(LookingAirChunk, LookingAirTile);
+    
+    if (blockPos.xz() == playerPos.xz()) {
+        int heightDiff = blockPos.y - playerPos.y;
+        
+        if (heightDiff == 0 || heightDiff == 1) {
+            return;
+        }
+    }
 
     ChunkMap[LookingAirChunk]->Add_Block(
         LookingAirTile, CurrentBlock, CurrentBlockData
@@ -897,6 +913,8 @@ void Player::Break_Block(glm::vec3 pos, bool external) {
         ChunkMap[chunk]->Get_Type(tile), ChunkMap[chunk]->Get_Data(tile)
     );
     int blockType = block->ID;
+    int blockData = block->Data;
+    int blockSize = 1;
 
     if (block->Luminosity > 0) {
         Remove_Light();
@@ -905,13 +923,11 @@ void Player::Break_Block(glm::vec3 pos, bool external) {
     if (block->Sound != "") {
         Play_Sound(block->Sound, chunk, tile);
     }
-
-    if (blockType == 1) {
-        blockType = 4;
-    }
-
-    else if (blockType == 2) {
-        blockType = 3;
+    
+    if (block->Drop.Type) {
+        blockType = block->Drop.Type;
+        blockData = block->Drop.Data;
+        blockSize = block->Drop.Size;
     }
 
     ChunkMap[chunk]->Remove_Block(tile);
@@ -924,7 +940,7 @@ void Player::Break_Block(glm::vec3 pos, bool external) {
         Entity::Spawn(pos, blockType);
     }
     else {
-        Entity::Spawn(pos, blockType, block->Data);
+        Entity::Spawn(pos, blockType, blockData, blockSize);
     }
 
     Check_Hit();

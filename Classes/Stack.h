@@ -5,6 +5,7 @@
 struct Stack {
     Stack();
 
+    Stack(std::string type);
     Stack(std::string type, int size = 1);
 
     Stack(int type, int data, int size) : Type(type), Size(size), Data(data) {}

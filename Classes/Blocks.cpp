@@ -11,11 +11,7 @@
 #include "../BlockScripts/Block_Scripts.h"
 
 #define BLOCK_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val; }
-#define STACK_LAMBDA(_v) [](Block &b, JSONValue val) { \
-    if (val.is_number()) b._v = Stack(val.get<int>()); \
-    else if (val.size() == 2) b._v = Stack(val[0].get<int>(), val[1]); \
-    else b._v = Stack(val[0], val[1], val[2]); \
-}
+#define STACK_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = Parse_JSON_Stack(val); }
 #define STRING_LAMBDA(_v) [](Block &b, JSONValue val) { b._v = val.get<std::string>(); }
 #define VECTOR_LAMBDA(_v) [](Block &b, JSONValue val) { \
     for (unsigned long j = 0; j < 3; j++) \
@@ -27,6 +23,20 @@ typedef nlohmann::basic_json<
         char, std::char_traits<char>, std::allocator<char>
     >, bool, long long, double, std::allocator
 > JSONValue;
+
+Stack Parse_JSON_Stack(JSONValue val) {
+    if (val.is_array()) {
+        if (val.size() == 2) {
+            if (val[0].is_string()) { return Stack(val[0].get<std::string>(), val[1]); }
+            else { return Stack(val[0].get<int>(), val[1]); }
+        }
+        else { return Stack(val[0], val[1], val[2]); }
+    }
+    else {
+        if (val.is_number()) { return Stack(val.get<int>()); }
+        else { return Stack(val.get<std::string>(), 1); }
+    }
+}
 
 static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambdas = {
     {"id",                  BLOCK_LAMBDA(ID)                 },
@@ -48,6 +58,7 @@ static std::map<std::string, std::function<void(Block &b, JSONValue val)>> lambd
 	{"craftingYield",       BLOCK_LAMBDA(CraftingYield)      },
 	{"requiredMiningLevel", BLOCK_LAMBDA(RequiredMiningLevel)},
     
+    {"drop",                STACK_LAMBDA(Drop)               },
     {"smeltResult",         STACK_LAMBDA(SmeltResult)        },
 
 	{"name",                STRING_LAMBDA(Name)              },

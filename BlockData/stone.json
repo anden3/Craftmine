@@ -4,5 +4,7 @@
     "hardness": 1.5,
 	"material": "stone",
     "sound": "stone",
-    "texture": 1
+    "requiredMiningLevel": 1,
+    "texture": 1,
+    "drop": 4
 }

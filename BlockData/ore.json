@@ -3,23 +3,26 @@
     "hardness": 3,
 	"material": "stone",
     "sound": "stone",
-    "smeltable": true,
     
     "types": [
         {
             "name": "Coal Ore",
 			"requiredMiningLevel": 1,
-            "smeltResult": 263,
-            "texture": 34
+            "texture": 34,
+            "drop": 263
         },
         {
             "name": "Iron Ore",
 			"requiredMiningLevel": 2,
+            "smeltResult": [256, 1, 1],
+            "smeltable": true,
             "texture": 33
         },
         {
             "name": "Gold Ore",
 			"requiredMiningLevel": 3,
+            "smeltResult": [256, 2, 1],
+            "smeltable": true,
             "texture": 32
         },
 		{

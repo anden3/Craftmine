@@ -11,9 +11,10 @@
 
 std::vector<EntityInstance*> Entities;
 
-EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 velocity) {
+EntityInstance::EntityInstance(glm::vec3 pos, int type, int typeData, int size, glm::vec3 velocity) {
     Position = pos + glm::vec3(0.5f);
     Type = type;
+    Size = size;
     BlockData = typeData;
 
     Data data;
@@ -144,12 +145,8 @@ void EntityInstance::Draw() {
 }
 
 
-void Entity::Spawn(glm::vec3 pos, int type, int typeData, glm::vec3 velocity) {
-    if (type == 2) {
-        type = 3;
-    }
-
-    Entities.push_back(new EntityInstance(pos, type, typeData, velocity));
+void Entity::Spawn(glm::vec3 pos, int type, int typeData, int size, glm::vec3 velocity) {
+    Entities.push_back(new EntityInstance(pos, type, typeData, size, velocity));
 }
 
 void Entity::Update() {

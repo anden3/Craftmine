@@ -1,0 +1,16 @@
+{
+    "id": 256,
+    "placeable": false,
+    
+    "types": [
+        {
+            "name": "Iron Ingot",
+            "icon": 279
+        },
+        
+        {
+            "name": "Gold Ingot",
+            "icon": 295
+        }
+    ]
+}

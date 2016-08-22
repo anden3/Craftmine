@@ -2,6 +2,7 @@
     "name": "Grass",
     "id": 2,
     "hardness": 0.5,
+    "drop": 3,
 	"material": "dirt",
     "sound": "dirt",
     "multiTexture": [3, 3, 2, 0, 3, 3]

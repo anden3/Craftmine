@@ -56,6 +56,7 @@ struct Block {
 
 	std::regex Recipe;
     
+    Stack Drop        = Stack();
     Stack SmeltResult = Stack();
 
 	std::function<void()> RightClickFunction;

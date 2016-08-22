@@ -331,11 +331,12 @@ void Collision_Detection(PlayerChar &p) {
 
     p.Velocity.y -= GRAVITY;
     p.OnGround = (p.Velocity.y <= 0 && Check_Col(
-        {p.Position.x, p.Position.y + p.Velocity.y - 0.01f, p.Position.z}
+        {p.Position.x, p.Position.y + p.Velocity.y, p.Position.z}
     ));
 
     if (p.OnGround) {
         p.Velocity.y = 0;
+        p.Position.y = std::floor(p.Position.y);
     }
 
     else if (p.Velocity.y != 0) {

@@ -26,7 +26,7 @@ public:
 
     bool Can_Move = false;
 
-    EntityInstance(glm::vec3 pos, int type, int typeData, glm::vec3 velocity);
+    EntityInstance(glm::vec3 pos, int type, int typeData, int size, glm::vec3 velocity);
     void Update();
     void Draw();
 
@@ -41,7 +41,7 @@ private:
 };
 
 namespace Entity {
-    void Spawn(glm::vec3 pos, int type, int typeData = 0, glm::vec3 velocity = glm::vec3(-100));
+    void Spawn(glm::vec3 pos, int type, int typeData = 0, int size = 1, glm::vec3 velocity = glm::vec3(-100));
     void Update();
     void Check_Pickup(glm::vec3 playerPos);
     void Draw();
