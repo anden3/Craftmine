@@ -154,6 +154,10 @@ void Chat::Key_Handler(int key) {
 }
 
 void Chat::Mouse_Handler(int x, int y) {
+    if (MouseEnabled) {
+        player.LastMousePos = glm::ivec2(x, y);
+    }
+
     MouseX = x;
     MouseY = SCREEN_HEIGHT - y;
 

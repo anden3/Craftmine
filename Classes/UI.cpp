@@ -74,14 +74,14 @@ void Toggle_Wireframe(void* caller);
 
 std::pair<bool, float> Get_Slider_Value(void* slider, int &storage) {
     float value = std::round(static_cast<Slider*>(slider)->Value);
-    
+
     if (value == storage) {
         return {false, 0.0f};
     }
-    
+
     storage = static_cast<int>(value);
     Write_Config();
-    
+
     return {true, value};
 }
 
@@ -118,14 +118,14 @@ void UI::Draw() {
 
     if (ShowTitle || ShowGameMenu) {
         Interface::Mouse_Handler(player.LastMousePos.x, player.LastMousePos.y);
-        
+
         if (ShowTitle) {
             Interface::Draw_Document("titleBg");
         }
         else {
             Interface::Draw_Document("menuBg");
         }
-        
+
         if (ShowOptions) {
             if (ShowVideoOptions) {
                 Interface::Draw_Document("videoOptions");
@@ -134,7 +134,7 @@ void UI::Draw() {
                 Interface::Draw_Document("options");
             }
         }
-        
+
         else if (ShowGameMenu) {
             Interface::Draw_Document("gameMenu");
         }
@@ -229,6 +229,9 @@ void UI::Key_Handler(int key, int action) {
                     Inventory::Is_Open = false;
                     Toggle_Inventory();
                 }
+                else if (ShowVideoOptions) {
+                    Toggle_Video_Options(nullptr);
+                }
                 else {
                     Toggle_Game_Menu();
                 }
@@ -267,12 +270,12 @@ void Bind_Current_Document() {
     if (UI::CustomDocument != "") {
         name = UI::CustomDocument;
     }
-    
+
     if (UI::ShowOptions) {
         if (UI::ShowVideoOptions) { name = "videoOptions"; }
         else { name = "options"; }
     }
-    
+
     else if (UI::ShowTitle) {
         if (UI::ShowServers) { name = "servers"; }
         else if (UI::ShowWorlds) { name = "worlds"; }
@@ -295,7 +298,7 @@ void Init_Title() {
     glm::vec4 optionButtonDims(Scale(620, 300), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
-    
+
     Interface::Set_Document("titleBg");
         Interface::Add_Background("bg", bgDims);
         Interface::Get_Background("bg")->Color = glm::vec3(0.2f);
@@ -315,14 +318,14 @@ void Init_Title() {
 
 void Init_Options() {
     glm::vec2 buttonSize(Scale(200, 40));
-    
+
     glm::vec4 vsyncButtonDims(Scale(400, 500), buttonSize);
     glm::vec4 aoButtonDims(Scale(620, 500), buttonSize);
     glm::vec4 wireframeButtonDims(Scale(840, 500), buttonSize);
-    
+
     glm::vec4 videoOptionsDims(Scale(400, 500), buttonSize);
     glm::vec4 backButtonDims(Scale(620, 200), buttonSize);
-    
+
     glm::vec4 afDims(Scale(400, 700), buttonSize);
     glm::vec4 renderDistDims(Scale(620, 700), buttonSize);
     glm::vec4 fovDims(Scale(840, 700), buttonSize);
@@ -332,18 +335,18 @@ void Init_Options() {
     glm::vec3 afRange(1, 16, ANISOTROPIC_FILTERING);
     glm::vec3 mipmapRange(0, 4, MIPMAP_LEVEL);
     glm::vec3 fovRange(10, 180, FOV);
-    
-    Interface::Set_Document("options");        
+
+    Interface::Set_Document("options");
         Interface::Add_Button("videoOptions", "Video Options", videoOptionsDims, Toggle_Video_Options);
         Interface::Add_Button("back", "Back", backButtonDims, Toggle_Options_Menu);
     Interface::Set_Document("");
-    
-    Interface::Set_Document("videoOptions");        
+
+    Interface::Set_Document("videoOptions");
         Interface::Add_Button("vsync", "V-Sync: " + BoolStrings[VSYNC], vsyncButtonDims, Toggle_VSync);
         Interface::Add_Button("wireframe", "Wireframe: " + BoolStrings[Wireframe], wireframeButtonDims, Toggle_Wireframe);
         Interface::Add_Button("ao", "Ambient Occlusion: " + BoolStrings[AMBIENT_OCCLUSION], aoButtonDims, Toggle_AO);
         Interface::Add_Button("back", "Back", backButtonDims, Toggle_Video_Options);
-        
+
         Interface::Add_Slider(
             "af", "Anisotropic Filtering: " + std::to_string(ANISOTROPIC_FILTERING),
             afDims, afRange, Change_Anisotropic_Filtering
@@ -365,7 +368,7 @@ void Init_Menu() {
     glm::vec4 bgDims(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glm::vec4 optionButtonDims(Scale(620, 500), buttonSize);
     glm::vec4 exitButtonDims(Scale(620, 200), buttonSize);
-    
+
     Interface::Set_Document("menuBg");
         Interface::Add_Background("menuBg", bgDims);
     Interface::Set_Document("");
@@ -450,7 +453,7 @@ void Init_Server_Screen() {
 
         Interface::Add_Button("back", "Back", backDims, Toggle_Server_Screen);
     Interface::Set_Document("");
-    
+
     Create_Server_List();
 }
 
@@ -463,15 +466,15 @@ void Create_Server_List() {
 
     static float deleteButtonXPos = Scale_X(880);
     static glm::vec2 deleteButtonSize(Scale(40, 40));
-    
+
     std::fstream serverFile("servers.json");
     bool fileExists = serverFile.is_open();
     serverFile.close();
-    
+
     if (!fileExists) {
         return;
     }
-    
+
     nlohmann::json json;
     serverFile.open("servers.json", std::ifstream::in);
     json << serverFile;
@@ -480,10 +483,10 @@ void Create_Server_List() {
     Interface::Set_Document("servers");
         for (auto it = json.begin(); it != json.end(); ++it) {
             std::string serverName = it.key();
-            
+
             Interface::Delete_Button(serverName);
             Interface::Delete_Button("remove_" + serverName);
-            
+
             Interface::Add_Button(
                 serverName, serverName, glm::vec4(serverXPos, Scale_Y(serverStartY), serverSize), Load_Server
             );
@@ -501,7 +504,7 @@ void Init_Debug() {
     lastUIUpdate = glfwGetTime();
 
     Interface::Set_Document("debug");
-    
+
     std::string ramUsage = System::GetPhysicalMemoryUsage();
 
     Interface::Add_Text("cpu",         "CPU: 0%",           Scale(30, 820));
@@ -590,7 +593,7 @@ std::tuple<int, int> Get_Loaded() {
 
     for (auto const &chunk : ChunkMap) {
         total += chunk.second->Meshed;
-        
+
         if (chunk.second->Visible) {
             vertices += chunk.second->buffer.Vertices;
         }
@@ -624,14 +627,14 @@ void Draw_Debug() {
             "RAM: " + System::GetPhysicalMemoryUsage()
         );
     }
-    
+
     int loadedChunks, loadedVertices;
     std::tie(loadedChunks, loadedVertices) = Get_Loaded();
 
     Interface::Get_Text_Element("chunkQueue")->Set_Text(
         "Chunks Queued: " + std::to_string(static_cast<int>(ChunkMap.size()) - loadedChunks)
     );
-    
+
     Interface::Get_Text_Element("vertQueue")->Set_Text("Vertices Loaded: " + std::to_string(loadedVertices));
 
     Interface::Set_Document("");
@@ -667,7 +670,7 @@ void Toggle_Wireframe(void* caller) {
 
 void Change_Render_Distance(void* caller) {
     auto result = Get_Slider_Value(caller, RENDER_DISTANCE);
-    
+
     if (result.first && !UI::ShowTitle) {
         player.Queue_Chunks();
     }
@@ -675,22 +678,22 @@ void Change_Render_Distance(void* caller) {
 
 void Change_Anisotropic_Filtering(void* caller) {
     auto result = Get_Slider_Value(caller, ANISOTROPIC_FILTERING);
-    
+
     if (!result.first) {
         return;
     }
-    
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", {16, 32}, MIPMAP_LEVEL, result.second));
 }
 
 void Change_FOV(void* caller) {
     auto result = Get_Slider_Value(caller, FOV);
-    
+
     if (!result.first) {
         return;
     }
-    
+
     glm::mat4 projection = glm::perspective(
         glm::radians(static_cast<float>(FOV)),
         static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT,
@@ -702,11 +705,11 @@ void Change_FOV(void* caller) {
 
 void Change_Mipmap_Level(void* caller) {
     auto result = Get_Slider_Value(caller, MIPMAP_LEVEL);
-    
+
     if (!result.first) {
         return;
     }
-    
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_ARRAY, Load_Array_Texture("atlas.png", {16, 32}, MIPMAP_LEVEL, static_cast<float>(ANISOTROPIC_FILTERING)));
 }
@@ -777,19 +780,19 @@ void Add_Server(void* caller) {
         TextBox*     username   = Interface::Get_Text_Box("name");
         TextBox*     ipEl       = Interface::Get_Text_Box("ip");
     Interface::Set_Document("");
-    
+
     std::string host = ipEl->Text;
-    
+
     if (username->Text == "") {
         errMsg->Set_Text("&cError! &fPlease input a user name.");
         return;
     }
-    
+
     if (serverName->Text == "") {
         errMsg->Set_Text("&cError! &fPlease input a server name.");
         return;
     }
-    
+
     if (host == "") {
         errMsg->Set_Text("&cError! &fPlease input an IP address.");
         return;
@@ -799,7 +802,7 @@ void Add_Server(void* caller) {
         errMsg->Set_Text("&cError! &fInvalid IP address.");
         return;
     }
-    
+
     std::string ip;
     unsigned short port;
 
@@ -821,9 +824,9 @@ void Add_Server(void* caller) {
             return;
         }
     }
-    
+
     auto ipParts = Split(ip, '.');
-    
+
     if (ipParts.size() < 4) {
         errMsg->Set_Text("&cError! &fMissing IP value.");
         return;
@@ -857,7 +860,7 @@ void Add_Server(void* caller) {
     std::fstream serverFile("servers.json");
 
     bool fileExists = serverFile.is_open();
-    
+
     if (fileExists) {
         serverFile.close();
 
@@ -881,7 +884,7 @@ void Add_Server(void* caller) {
 
     servers >> serverFile;
     serverFile.close();
-    
+
     Create_Server_List();
 }
 
@@ -890,10 +893,10 @@ void Load_Server(void* caller) {
     std::ifstream file("servers.json");
     json << file;
     file.close();
-    
+
     std::string serverName = static_cast<Button*>(caller)->Name;
     std::string serverIP = json[serverName]["ip"];
-    
+
     PLAYER_NAME = json[serverName]["username"];
 
     if (Network::Connect(PLAYER_NAME, serverIP)) {
@@ -919,13 +922,13 @@ void Delete_Server(void* caller) {
     std::ifstream file("servers.json");
     json << file;
     file.close();
-    
+
     json.erase(serverName);
-    
+
     std::ofstream outFile("servers.json");
     json >> outFile;
     outFile.close();
-    
+
     Create_Server_List();
 }
 

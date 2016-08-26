@@ -2,11 +2,10 @@
 
 #include "Buffer.h"
 
-static const float ENTITY_SCALE = 0.4f;
-static const float ROTATION_RATE = 10.0f;
-static const float FRICTION = 0.3f;
-static const float IGNORE_TIMER = 1.0f;
-
+static const float FRICTION       = 0.3f;
+static const float ENTITY_SCALE   = 0.4f;
+static const float IGNORE_TIMER   = 1.0f;
+static const float ROTATION_RATE  = 10.0f;
 static const float MERGING_RADIUS = 1.0f;
 
 const float ATTRACT_RANGE = 4.0f;

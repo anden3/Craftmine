@@ -25,7 +25,7 @@
 
 #ifdef __APPLE__
 
-errno_t localtime_s(std::tm* tm, std::time* time) {
+errno_t localtime_s(std::tm* tm, std::time_t* time) {
     tm = std::localtime(time);
     return tm == nullptr;
 }
@@ -230,7 +230,7 @@ unsigned int Load_Array_Texture(std::string file, glm::ivec2 subCount, int mipma
 
     FreeImage_FlipVertical(image);
 
-    int width = static_cast<int>(FreeImage_GetWidth(image));
+    int width  = static_cast<int>(FreeImage_GetWidth(image));
     int height = static_cast<int>(FreeImage_GetHeight(image));
 
     glm::ivec2 subSize(width / subCount.x, height / subCount.y);
@@ -291,9 +291,9 @@ Custom::Custom(std::string name, float x, float y, Data &data) {
     Name = name;
     X = x;
     Y = y;
-        
+
     ModelMatrix = glm::translate(ModelMatrix, glm::vec3(X, Y, 0));
-    
+
     Storage.Init(UIBackgroundShader);
     Storage.Create(2, data);
 }
@@ -481,11 +481,11 @@ inline void Button::Release() {
 
 Slider::Slider(std::string name, std::string text, float x, float y, float w, float h, float min,
     float max, float value, Func &function) : Value(value), Min(min), Max(max) {
-    
-    std::tie(X, Y, Width, Name) = {x, y, w, name};
-    
+
+    std::tie(X, Y, Width, Name) = std::make_tuple(x, y, w, name);
+
     Height = (h == 0) ? SLIDER_PADDING * 2 : h;
-    
+
     std::tie(Opacity, HandleOpacity, Color, HandleColor) = std::make_tuple(
         SLIDER_OPACITY, SLIDER_HANDLE_OPACITY,
         SLIDER_COLOR, SLIDER_HANDLE_COLOR
@@ -498,7 +498,7 @@ Slider::Slider(std::string name, std::string text, float x, float y, float w, fl
 
     Text.Opacity = SLIDER_TEXT_OPACITY;
     Text.Color = SLIDER_TEXT_COLOR;
-    
+
     float sw = SLIDER_WIDTH / 2;
     float sx = x + w * ((Value - Min) / (Max - Min));
     HandlePosition = sx;
@@ -868,7 +868,7 @@ void TextBox::Draw() {
     }
 }
 
-Slot::Slot(std::string name, float x, float y, float scale, Stack contents) : SlotSize(scale), Contents(contents) {
+Slot::Slot(std::string name, float x, float y, float scale, Stack contents) : Contents(contents), SlotSize(scale) {
     X = x;
     Y = y;
     Name = name;
@@ -1079,7 +1079,7 @@ void Interface::Mouse_Handler(int x, int y) {
             }
         }
     }
-    
+
     if (ActiveDocument == UI::CustomDocument) {
         for (auto &slot : Slots["inventory"]) {
             if (In_Range(x, glm::vec2(slot.second.X, slot.second.Width))) {
@@ -1165,7 +1165,7 @@ void Interface::Click(int mouseButton, int action) {
         Slider* slider = static_cast<Slider*>(HoveringElement);
         Holding ? slider->Press() : slider->Release();
     }
-    
+
     Inventory::Mouse_Handler(UI::MouseX, UI::MouseY);
 }
 

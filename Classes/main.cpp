@@ -114,9 +114,9 @@ static std::map<std::string, int*> IntOptions = {
 };
 
 // Defining shaders.
-Shader* shader = nullptr;
-Shader* mobShader = nullptr;
-Shader* modelShader = nullptr;
+Shader* shader        = nullptr;
+Shader* mobShader     = nullptr;
+Shader* modelShader   = nullptr;
 Shader* outlineShader = nullptr;
 
 // Sets settings according to the config file.
@@ -203,7 +203,7 @@ int main() {
             for (auto const &func : BlockUpdate) {
                 func.second();
             }
-            
+
             // Check if any sounds should be removed.
             listener.Poll_Sounds();
 
@@ -248,21 +248,21 @@ int main() {
 void Parse_Config() {
     nlohmann::json config;
     std::ifstream file("settings.json");
-    
+
     if (!file.good()) {
         file.close();
         Write_Config();
         return;
     }
-    
+
     config << file;
     file.close();
-    
+
     for (auto it = config.begin(); it != config.end(); ++it) {
         if (it.value().is_boolean()) {
             *BoolOptions[it.key()] = it.value();
         }
-        
+
         else if (it.value().is_number()) {
             *IntOptions[it.key()] = it.value();
         }
@@ -271,16 +271,16 @@ void Parse_Config() {
 
 void Write_Config() {
     nlohmann::json config;
-    
+
     // For each option, write it and its value to the file.
     for (auto const &option : BoolOptions) {
         config[option.first] = *option.second;
     }
-    
+
     for (auto const &option : IntOptions) {
         config[option.first] = *option.second;
     }
-    
+
     // Open the config file for writing.
     std::ofstream file("settings.json");
     file << config;
