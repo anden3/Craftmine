@@ -4,6 +4,11 @@ CMakeFiles/
 Screenshots/
 Worlds/*
 
+BlockScripts/Block_Scripts.h
+BlockScripts/Block_Scripts.cpp
+
+Craftmine.app/
+
 Craftmine
 Craftmine.exe
 Craftmine.ilk

@@ -87,7 +87,7 @@ std::unordered_map<glm::vec3, Chunk*, VectorHasher> ChunkMap;
 
 // Setting default option values.
 bool AMBIENT_OCCLUSION = false;
-bool FULLSCREEN        = false;
+bool FULLSCREEN        = true;
 bool VSYNC             = true;
 
 int FOV                   = 90;

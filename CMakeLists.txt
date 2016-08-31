@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 project(Craftmine)
 
 set (SOURCE_PATH ${CMAKE_CURRENT_LIST_DIR}/Classes)
+set (EXEC_LOCATION ${CMAKE_CURRENT_LIST_DIR}/Craftmine.app/Contents/MacOS/Craftmine)
+set (EXEC_LIBS ${CMAKE_CURRENT_LIST_DIR}/Craftmine.app/Contents/Libraries)
+set (EXEC_FWORKS ${CMAKE_CURRENT_LIST_DIR}/Craftmine.app/Contents/Frameworks)
 
 set (SOURCES
     ${SOURCE_PATH}/Blocks.cpp
@@ -39,7 +42,7 @@ if (WIN32)
     set (INCLUDE_DIRS ${SOURCE_PATH} F:/include F:/include/freetype2)
 
     set (CMAKE_GENERATOR "Visual Studio 14 2015 Win64" CACHE INTERNAL "" FORCE)
-    
+
     add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/BlockScripts/Block_Scripts.cpp
         COMMAND powershell -executionpolicy bypass BlockScripts\\Load_Scripts.ps1
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
@@ -60,8 +63,8 @@ elseif (APPLE)
     )
 
     execute_process(
-        COMMAND BlockScripts/Load_Scripts.sh
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMAND Load_Scripts.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/BlockScripts
     )
 endif()
 
@@ -77,9 +80,68 @@ add_executable(Craftmine ${SOURCES} ${CMAKE_CURRENT_LIST_DIR}/BlockScripts/Block
 set_target_properties(Craftmine PROPERTIES LINKER_LANGUAGE CXX)
 
 if (APPLE)
+    set (FOLDERS_TO_COPY
+        BlockData
+        Fonts
+        Images
+        Shaders
+        Sounds
+        Structures
+        Worlds
+    )
+
     target_compile_options(Craftmine PUBLIC
         -arch x86_64 -std=gnu++14 -F Build -MMD -MT dependencies -O0 -g -Wall
         -Wno-missing-braces
+    )
+
+    set (LIBS enet freeimage freetype glew glfw3 icuuc noise ogg SOIL vorbis vorbisfile)
+
+    set (LIB_PATHS "")
+
+    foreach (f ${LIBS})
+        list(APPEND LIB_PATHS "/usr/local/lib/lib${f}.dylib")
+    endforeach(f)
+
+    list (APPEND LIB_PATHS
+        ${BOOST_SYSTEM} ${BOOST_FILESYSTEM}
+    )
+
+    set (FRAMEWORKS ${OPENGL_LIB} ${OPENAL_LIB})
+
+    add_custom_command (TARGET Craftmine PRE_LINK
+        COMMAND mkdir -p Craftmine.app/Contents/MacOS
+        COMMAND mkdir -p ${EXEC_LIBS}
+        COMMAND mkdir -p Craftmine.app/Contents/Resources
+        COMMAND mkdir -p Craftmine.app/Contents/Frameworks
+
+        COMMAND rsync -La --chmod=+rw ${LIB_PATHS} ${EXEC_LIBS}
+        COMMAND rsync -a ${FRAMEWORKS} Craftmine.app/Contents/Frameworks
+        COMMAND rsync -a ${FOLDERS_TO_COPY} Craftmine.app/Contents/Resources
+
+        COMMAND install_name_tool -id @executable_path/../Libraries/libenet.dylib ${EXEC_LIBS}/libenet.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libFreeImage.dylib ${EXEC_LIBS}/libFreeImage.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libfreetype.dylib ${EXEC_LIBS}/libfreetype.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libglew.dylib ${EXEC_LIBS}/libglew.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libglfw3.dylib ${EXEC_LIBS}/libglfw3.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libicuuc.dylib ${EXEC_LIBS}/libicuuc.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libnoise.dylib ${EXEC_LIBS}/libnoise.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libogg.dylib ${EXEC_LIBS}/libogg.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libSOIL.dylib ${EXEC_LIBS}/libSOIL.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libvorbis.dylib ${EXEC_LIBS}/libvorbis.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libvorbisfile.dylib ${EXEC_LIBS}/libvorbisfile.dylib
+
+        COMMAND install_name_tool -id @executable_path/../Libraries/libboost_system.dylib ${EXEC_LIBS}/libboost_system.dylib
+        COMMAND install_name_tool -id @executable_path/../Libraries/libboost_filesystem.dylib ${EXEC_LIBS}/libboost_filesystem.dylib
+        COMMAND install_name_tool -id @executable_path/../Frameworks/OpenAL.framework/Versions/Current/OpenAL ${EXEC_FWORKS}/OpenAL.framework/Versions/Current/OpenAL
+        COMMAND install_name_tool -id @executable_path/../Frameworks/OpenGL.framework/Versions/Current/OpenGL ${EXEC_FWORKS}/OpenGL.framework/Versions/Current/OpenGL
+
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    )
+
+    add_custom_command(TARGET Craftmine POST_BUILD
+        COMMAND mv Craftmine ${EXEC_LOCATION}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     )
 endif()
 
